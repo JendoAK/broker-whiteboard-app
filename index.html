@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Broker Whiteboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="title-block">
+          <span class="logo-crop" aria-label="Broker Whiteboard">
+            <img class="app-logo" src="broker-whiteboard-logo.png" alt="" />
+          </span>
+          <div class="main-nav">
+            <button class="ghost-action whiteboard-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">📌</span><span>Leads</span></button>
+            <button class="ghost-action todo-nav-action nav-button" id="openTodo" type="button"><span class="nav-icon" aria-hidden="true">✓</span><span>To-Do List</span></button>
+            <button class="ghost-action vendor-nav-action nav-button" id="openVendorReport" type="button"><span class="nav-icon" aria-hidden="true">&#128202;</span><span>Vendor Reporting</span></button>
+            <button class="ghost-action address-nav-action nav-button" id="openAddressBook" type="button"><span class="nav-icon" aria-hidden="true">&#128214;</span><span>Address Book</span></button>
+            <button class="ghost-action stock-nav-action nav-button" id="openStockLists" type="button"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
+            <button class="ghost-action calendar-action nav-button" id="openCalendar" type="button"><span class="nav-icon" aria-hidden="true">▦</span><span>Calendar</span></button>
+          </div>
+          <div class="view-actions">
+            <button class="primary-action add-note-action" id="addNoteTop" type="button">+ Add Lead</button>
+          </div>
+        </div>
+        <div class="utility-actions" aria-label="Board utilities">
+          <button class="ghost-action login-action" type="button">Login</button>
+          <details class="settings-menu">
+            <summary class="settings-button" aria-label="Settings">⚙</summary>
+            <div class="settings-panel">
+              <button class="ghost-action" id="openArchive" type="button">Archive</button>
+              <button class="ghost-action" id="openTrash" type="button">Trash</button>
+              <button class="ghost-action" id="exportBackup" type="button">Export Backup</button>
+              <button class="ghost-action" id="importBackup" type="button">Import Backup</button>
+            </div>
+          </details>
+          <input id="backupFile" type="file" accept="application/json,.json" hidden />
+        </div>
+      </header>
+
+      <section class="summary-grid" aria-label="Dashboard summary">
+        <button class="summary-tile" data-quick-filter="all" type="button">
+          <span id="summaryAll">0</span>
+          <small>All leads / workflow</small>
+        </button>
+        <button class="summary-tile" data-quick-filter="overdue" type="button">
+          <span id="summaryOverdue">0</span>
+          <small>Overdue</small>
+        </button>
+        <button class="summary-tile" data-quick-filter="today" type="button">
+          <span id="summaryToday">0</span>
+          <small>Due today</small>
+        </button>
+        <button class="summary-tile" data-quick-filter="week" type="button">
+          <span id="summaryWeek">0</span>
+          <small>Due this week</small>
+        </button>
+        <button class="summary-tile" data-quick-filter="nextWeek" type="button">
+          <span id="summaryNextWeek">0</span>
+          <small>Due next week</small>
+        </button>
+        <button class="summary-tile" data-quick-filter="month" type="button">
+          <span id="summaryMonth">0</span>
+          <small>Due this month</small>
+        </button>
+        <button class="summary-tile" data-quick-filter="high" type="button">
+          <span id="summaryHigh">0</span>
+          <small>High priority</small>
+        </button>
+        <button class="summary-tile" data-quick-filter="Need Action" type="button">
+          <span id="summaryWaiting">0</span>
+          <small>Need Action</small>
+        </button>
+      </section>
+
+      <section class="controls" aria-label="Board controls">
+        <label class="search-box">
+          <span>Search</span>
+          <input id="searchInput" type="search" placeholder="Account, account #, rep, vendor, product, note..." />
+        </label>
+        <label>
+          <span>Vendor</span>
+          <select id="vendorFilter">
+            <option value="">All</option>
+          </select>
+        </label>
+        <label>
+          <span>Priority</span>
+          <select id="priorityFilter">
+            <option value="">All</option>
+            <option>High</option>
+            <option>Medium</option>
+            <option>Low</option>
+          </select>
+        </label>
+        <label>
+          <span>Due</span>
+          <select id="dueFilter">
+            <option value="">Any date</option>
+            <option value="overdue">Overdue</option>
+            <option value="today">Today</option>
+            <option value="week">This week</option>
+            <option value="nextWeek">Next week</option>
+            <option value="month">This month</option>
+            <option value="none">No date</option>
+          </select>
+        </label>
+        <label>
+          <span>Source</span>
+          <select id="sourceFilter">
+            <option value="">All</option>
+            <option>Email</option>
+            <option>Text</option>
+            <option>Call</option>
+            <option>In Person</option>
+            <option>Market Visit</option>
+          </select>
+        </label>
+        <label>
+          <span>Status</span>
+          <select id="statusFilter">
+            <option value="">All</option>
+            <option>New Lead</option>
+            <option>Need Action</option>
+            <option>Samples Requested</option>
+            <option>Ready to Show / Send Out</option>
+            <option>Showed / Waiting on Feedback</option>
+            <option>Follow Up</option>
+            <option>Done</option>
+          </select>
+        </label>
+        <label>
+          <span>Sort</span>
+          <select id="sortSelect">
+            <option value="due">Due date</option>
+            <option value="priority">Priority</option>
+            <option value="newest">Newest</option>
+          </select>
+        </label>
+        <button class="ghost-action" id="clearFilters" type="button">Clear</button>
+      </section>
+
+      <main class="board" id="board" aria-label="Opportunity board"></main>
+    </div>
+
+    <dialog class="note-dialog" id="noteDialog">
+      <form method="dialog" class="note-form" id="noteForm">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Quick capture</p>
+            <h2 id="dialogTitle">Add Lead</h2>
+          </div>
+          <div class="dialog-header-actions">
+            <button class="ghost-action print-action" id="printLead" type="button">Print Lead</button>
+            <button class="primary-action header-save-action" type="submit">Save Lead</button>
+            <button class="icon-button" id="closeDialog" type="button" aria-label="Close">&times;</button>
+          </div>
+        </div>
+
+        <input id="cardId" type="hidden" />
+        <div class="field-grid">
+          <div class="lead-top-row wide">
+            <label class="account-name-field">
+              <span>Account name</span>
+              <input id="accountInput" list="accountSuggestions" required autocomplete="off" />
+              <datalist id="accountSuggestions"></datalist>
+              <datalist id="vendorSuggestions"></datalist>
+              <datalist id="apnSuggestions"></datalist>
+              <datalist id="salesRepSuggestions"></datalist>
+            </label>
+            <label class="account-number-field">
+              <span>USF Acct. #</span>
+              <input id="accountNumberInput" autocomplete="off" />
+            </label>
+            <label class="account-number-field">
+              <span>Sysco Acct. #</span>
+              <input id="syscoAccountNumberInput" autocomplete="off" />
+            </label>
+            <label class="lead-distributor-field">
+              <span>Distributor</span>
+              <select id="leadDistributorInput">
+                <option selected>US Foods</option>
+                <option>Sysco</option>
+                <option>Linford</option>
+              </select>
+            </label>
+          </div>
+          <label class="wide">
+            <span>Note</span>
+            <textarea id="noteInput" required rows="4" placeholder="What came in? What needs to happen next?"></textarea>
+          </label>
+          <div class="lead-flow-row wide">
+            <label>
+              <span>Priority</span>
+              <select id="priorityInput">
+                <option>High</option>
+                <option selected>Medium</option>
+                <option>Low</option>
+              </select>
+            </label>
+            <label>
+              <span>Follow-up date</span>
+              <input id="dueInput" class="date-picker-input" type="text" placeholder="YYYY-MM-DD" readonly />
+            </label>
+            <label>
+              <span>Status</span>
+              <select id="statusInput">
+                <option>New Lead</option>
+                <option>Need Action</option>
+                <option>Samples Requested</option>
+                <option>Ready to Show / Send Out</option>
+                <option>Showed / Waiting on Feedback</option>
+                <option>Follow Up</option>
+                <option>Done</option>
+              </select>
+            </label>
+            <label>
+              <span>Source</span>
+              <select id="sourceInput">
+                <option>Email</option>
+                <option>Text</option>
+                <option>Call</option>
+                <option>In Person</option>
+                <option>Market Visit</option>
+              </select>
+            </label>
+          </div>
+          <div class="lead-rep-row wide">
+            <label>
+              <span>USF Sales rep</span>
+              <input id="salesRepInput" list="salesRepSuggestions" autocomplete="off" />
+            </label>
+            <label>
+              <span>Sysco Sales rep</span>
+              <input id="syscoSalesRepInput" list="salesRepSuggestions" autocomplete="off" />
+            </label>
+          </div>
+          <div class="products-section wide">
+            <div class="section-label-row">
+              <span>Products</span>
+              <div class="section-actions">
+                <button class="small-action print-action" id="printProducts" type="button">Print Products</button>
+                <button class="small-action" id="addProduct" type="button">+ Product</button>
+              </div>
+            </div>
+            <div class="product-list" id="productList"></div>
+          </div>
+          <div class="attachments-section wide">
+            <div class="section-label-row">
+              <span>Attachments</span>
+              <button class="small-action" id="addAttachment" type="button">+ File</button>
+            </div>
+            <input
+              id="attachmentInput"
+              type="file"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.webp,.txt"
+              multiple
+              hidden
+            />
+            <div class="paste-target" id="attachmentPasteTarget" tabindex="0">Paste a screenshot here with Ctrl+V</div>
+            <div class="attachment-list" id="attachmentList"></div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="ghost-action" id="archiveCard" type="button">Archive</button>
+          <button class="danger-action" id="deleteCard" type="button">Delete</button>
+          <span></span>
+          <button class="ghost-action" id="cancelForm" type="button">Cancel</button>
+          <button class="primary-action" type="submit">Save Lead</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="account-dialog" id="accountDialog">
+      <div class="account-panel">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Account window</p>
+            <h2 id="accountDialogTitle">Account</h2>
+            <p class="account-subtitle" id="accountDialogSubtitle"></p>
+          </div>
+          <button class="icon-button" id="closeAccountDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <div class="account-notes" id="accountNotes"></div>
+      </div>
+    </dialog>
+
+    <dialog class="archive-dialog" id="archiveDialog">
+      <div class="account-panel">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Saved for later</p>
+            <h2>Archive</h2>
+          </div>
+          <button class="icon-button" id="closeArchiveDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <label class="archive-search">
+          <span>Search archived leads</span>
+          <input id="archiveSearch" type="search" placeholder="Account, account #, rep, vendor, product, note..." />
+        </label>
+        <div class="account-notes archive-list" id="archiveList"></div>
+      </div>
+    </dialog>
+
+    <dialog class="archive-dialog" id="trashDialog">
+      <div class="account-panel">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Deleted leads</p>
+            <h2>Trash</h2>
+          </div>
+          <button class="icon-button" id="closeTrashDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <label class="archive-search">
+          <span>Search deleted leads</span>
+          <input id="trashSearch" type="search" placeholder="Account, account #, rep, vendor, product, note..." />
+        </label>
+        <div class="account-notes archive-list" id="trashList"></div>
+      </div>
+    </dialog>
+
+    <dialog class="calendar-dialog" id="calendarDialog">
+      <div class="account-panel">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Follow-up dates</p>
+            <h2 id="calendarTitle">Calendar</h2>
+          </div>
+          <button class="icon-button" id="closeCalendarDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <div class="calendar-controls">
+          <button class="ghost-action" id="calendarThisMonth" type="button">This Month</button>
+          <button class="ghost-action" id="calendarNextMonth" type="button">Next Month</button>
+          <button class="ghost-action" id="calendarThisWeek" type="button">This Week</button>
+          <button class="ghost-action" id="calendarNextWeek" type="button">Next Week</button>
+          <button class="ghost-action" id="calendarToday" type="button">Today</button>
+          <button class="ghost-action print-action" id="printCalendar" type="button">Print Calendar</button>
+        </div>
+        <div class="calendar-weekdays" aria-hidden="true">
+          <span>Mon</span>
+          <span>Tue</span>
+          <span>Wed</span>
+          <span>Thu</span>
+          <span>Fri</span>
+          <span>Sat</span>
+          <span>Sun</span>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </div>
+    </dialog>
+
+    <dialog class="account-dialog" id="calendarDayDialog">
+      <div class="account-panel">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Day view</p>
+            <h2 id="calendarDayTitle">Tasks</h2>
+          </div>
+          <button class="icon-button" id="closeCalendarDayDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <div class="account-notes" id="calendarDayList"></div>
+      </div>
+    </dialog>
+
+    <dialog class="attachment-dialog" id="attachmentDialog">
+      <div class="attachment-panel">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Lead attachment</p>
+            <h2 id="attachmentTitle">Preview</h2>
+          </div>
+          <button class="icon-button" id="closeAttachmentDialog" type="button" aria-label="Close">&times;</button>
+        </div>
+        <div class="attachment-preview" id="attachmentPreview"></div>
+      </div>
+    </dialog>
+
+    <section class="todo-view" id="todoDialog" hidden>
+      <div class="todo-panel">
+        <header class="topbar">
+          <div class="title-block">
+            <span class="logo-crop" aria-label="Broker Whiteboard">
+              <img class="app-logo" src="broker-whiteboard-logo.png" alt="" />
+            </span>
+            <div class="main-nav">
+              <button class="ghost-action whiteboard-nav-action nav-button" id="closeTodoDialog" type="button"><span class="nav-icon" aria-hidden="true">📌</span><span>Leads</span></button>
+              <button class="ghost-action todo-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">✓</span><span>To-Do List</span></button>
+              <button class="ghost-action vendor-nav-action nav-button" id="openVendorReportTodo" type="button"><span class="nav-icon" aria-hidden="true">&#128202;</span><span>Vendor Reporting</span></button>
+              <button class="ghost-action address-nav-action nav-button" id="openAddressBookTodo" type="button"><span class="nav-icon" aria-hidden="true">&#128214;</span><span>Address Book</span></button>
+              <button class="ghost-action stock-nav-action nav-button" id="openStockListsTodo" type="button"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
+              <button class="ghost-action calendar-action nav-button" id="openCalendarTodo" type="button"><span class="nav-icon" aria-hidden="true">▦</span><span>Calendar</span></button>
+            </div>
+            <div class="view-actions todo-top-actions">
+              <button class="primary-action" id="addTodo" type="button">+ Add Task</button>
+            </div>
+          </div>
+          <div class="utility-actions" aria-label="Board utilities">
+            <button class="ghost-action login-action" type="button">Login</button>
+            <details class="settings-menu">
+              <summary class="settings-button" aria-label="Settings">⚙</summary>
+              <div class="settings-panel">
+                <button class="ghost-action" id="openArchiveTodo" type="button">Archive</button>
+                <button class="ghost-action" id="openTrashTodo" type="button">Trash</button>
+                <button class="ghost-action" id="exportBackupTodo" type="button">Export Backup</button>
+                <button class="ghost-action" id="importBackupTodo" type="button">Import Backup</button>
+              </div>
+            </details>
+          </div>
+        </header>
+
+        <section class="summary-grid todo-summary-grid" aria-label="To-do summary">
+          <button class="summary-tile" data-todo-quick="all" type="button"><span id="todoAll">0</span><small>All tasks / workflow</small></button>
+          <button class="summary-tile" data-todo-quick="today" type="button"><span id="todoToday">0</span><small>Due today</small></button>
+          <button class="summary-tile" data-todo-quick="overdue" type="button"><span id="todoOverdue">0</span><small>Overdue tasks</small></button>
+          <button class="summary-tile" data-todo-quick="week" type="button"><span id="todoWeek">0</span><small>Due this week</small></button>
+          <button class="summary-tile" data-todo-quick="nextWeek" type="button"><span id="todoNextWeek">0</span><small>Due next week</small></button>
+          <button class="summary-tile" data-todo-quick="month" type="button"><span id="todoMonth">0</span><small>Due this month</small></button>
+          <button class="summary-tile" data-todo-quick="nextMonth" type="button"><span id="todoNextMonth">0</span><small>Due next month</small></button>
+        </section>
+
+        <section class="controls todo-controls" aria-label="To-do controls">
+          <label class="search-box"><span>Search</span><input id="todoSearch" type="search" placeholder="Task, person, account, vendor, notes..." /></label>
+          <label><span>Priority</span><select id="todoPriorityFilter"><option value="">All</option><option>High</option><option>Medium</option><option>Low</option></select></label>
+          <label><span>Due</span><select id="todoDueFilter"><option value="">Any date</option><option value="overdue">Overdue</option><option value="today">Today</option><option value="week">This week</option><option value="month">This month</option><option value="none">No date</option></select></label>
+          <label><span>Assigned by</span><input id="todoAssignedFilter" autocomplete="off" /></label>
+          <label><span>Status</span><select id="todoStatusFilter"><option value="">All</option><option>New</option><option>In Progress</option><option>Waiting on Someone</option><option>Done</option></select></label>
+          <button class="ghost-action" id="clearTodoFilters" type="button">Clear</button>
+        </section>
+
+        <main class="todo-board" id="todoBoard" aria-label="To-do board"></main>
+      </div>
+    </section>
+
+
+    <section class="vendor-view" id="vendorReportDialog" hidden>
+      <div class="vendor-panel">
+        <header class="topbar">
+          <div class="title-block">
+            <span class="logo-crop" aria-label="Broker Whiteboard">
+              <img class="app-logo" src="broker-whiteboard-logo.png" alt="" />
+            </span>
+            <div class="main-nav">
+              <button class="ghost-action whiteboard-nav-action nav-button" id="closeVendorReport" type="button"><span class="nav-icon" aria-hidden="true">&#128204;</span><span>Leads</span></button>
+              <button class="ghost-action todo-nav-action nav-button" id="openTodoVendor" type="button"><span class="nav-icon" aria-hidden="true">&#10003;</span><span>To-Do List</span></button>
+              <button class="ghost-action vendor-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">&#128202;</span><span>Vendor Reporting</span></button>
+              <button class="ghost-action address-nav-action nav-button" id="openAddressBookVendor" type="button"><span class="nav-icon" aria-hidden="true">&#128214;</span><span>Address Book</span></button>
+              <button class="ghost-action stock-nav-action nav-button" id="openStockListsVendor" type="button"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
+              <button class="ghost-action calendar-action nav-button" id="openCalendarVendor" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+            </div>
+          </div>
+          <div class="utility-actions" aria-label="Board utilities">
+            <button class="ghost-action login-action" type="button">Login</button>
+            <details class="settings-menu">
+              <summary class="settings-button" aria-label="Settings">⚙</summary>
+              <div class="settings-panel">
+                <button class="ghost-action" id="openArchiveVendor" type="button">Archive</button>
+                <button class="ghost-action" id="openTrashVendor" type="button">Trash</button>
+                <button class="ghost-action" id="exportBackupVendor" type="button">Export Backup</button>
+                <button class="ghost-action" id="importBackupVendor" type="button">Import Backup</button>
+              </div>
+            </details>
+          </div>
+        </header>
+
+        <section class="vendor-add-row">
+          <button class="primary-action vendor-add-action" id="addManualVendorReport" type="button">+ Add Report Lead</button>
+        </section>
+
+        <section class="controls vendor-controls" aria-label="Vendor report filters">
+          <label><span>Vendor / Brand</span><select id="vendorReportVendorFilter"><option value="">All</option></select></label>
+          <label><span>Month</span><input id="vendorReportMonthFilter" type="month" /></label>
+          <label><span>Submitted</span><select id="vendorReportSubmittedFilter"><option value="">All</option><option value="submitted">Submitted</option><option value="not-submitted">Not Submitted</option></select></label>
+          <button class="ghost-action" id="clearVendorReportFilters" type="button">Clear</button>
+        </section>
+
+        <main class="vendor-report-panel">
+          <div class="quick-list-header">
+            <div><p class="eyebrow">Vendor opportunities</p><h2>Lead submissions</h2></div>
+            <div class="vendor-report-header-actions">
+              <span class="count-pill" id="vendorReportCount">0</span>
+            </div>
+          </div>
+          <div class="quick-table-wrap" id="vendorReportTable"></div>
+        </main>
+      </div>
+    </section>
+
+    <section class="address-book-view" id="addressBookDialog" hidden>
+      <div class="address-book-panel">
+        <header class="topbar">
+          <div class="title-block">
+            <span class="logo-crop" aria-label="Broker Whiteboard">
+              <img class="app-logo" src="broker-whiteboard-logo.png" alt="" />
+            </span>
+            <div class="main-nav">
+              <button class="ghost-action whiteboard-nav-action nav-button" id="closeAddressBook" type="button"><span class="nav-icon" aria-hidden="true">&#128204;</span><span>Leads</span></button>
+              <button class="ghost-action todo-nav-action nav-button" id="openTodoAddress" type="button"><span class="nav-icon" aria-hidden="true">&#10003;</span><span>To-Do List</span></button>
+              <button class="ghost-action vendor-nav-action nav-button" id="openVendorReportAddress" type="button"><span class="nav-icon" aria-hidden="true">&#128202;</span><span>Vendor Reporting</span></button>
+              <button class="ghost-action address-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">&#128214;</span><span>Address Book</span></button>
+              <button class="ghost-action stock-nav-action nav-button" id="openStockListsAddress" type="button"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
+              <button class="ghost-action calendar-action nav-button" id="openCalendarAddress" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+            </div>
+          </div>
+          <div class="utility-actions" aria-label="Board utilities">
+            <button class="ghost-action login-action" type="button">Login</button>
+            <details class="settings-menu">
+              <summary class="settings-button" aria-label="Settings">⚙</summary>
+              <div class="settings-panel">
+                <button class="ghost-action" id="openArchiveAddress" type="button">Archive</button>
+                <button class="ghost-action" id="openTrashAddress" type="button">Trash</button>
+                <button class="ghost-action" id="exportBackupAddress" type="button">Export Backup</button>
+                <button class="ghost-action" id="importBackupAddress" type="button">Import Backup</button>
+              </div>
+            </details>
+          </div>
+        </header>
+
+        <section class="address-book-actions-row">
+          <button class="primary-action address-add-action" id="addAddressEntry" type="button">+ Add Operator</button>
+        </section>
+
+        <section class="controls address-book-controls" aria-label="Address book filters">
+          <label class="search-box"><span>Search</span><input id="addressBookSearch" type="search" placeholder="Operation, contact, phone, email, account #..." /></label>
+          <button class="ghost-action" id="clearAddressBookSearch" type="button">Clear</button>
+        </section>
+
+        <main class="address-book-table-panel">
+          <div class="quick-list-header">
+            <div><p class="eyebrow">Operators</p><h2>Customer address book</h2></div>
+            <span class="count-pill" id="addressBookCount">0</span>
+          </div>
+          <div class="quick-table-wrap" id="addressBookTable"></div>
+        </main>
+      </div>
+    </section>
+
+    <dialog class="note-dialog" id="addressBookFormDialog">
+      <form method="dialog" class="note-form" id="addressBookForm">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Operator details</p>
+            <h2 id="addressBookFormTitle">Add Operator</h2>
+          </div>
+          <button class="icon-button" id="closeAddressBookForm" type="button" aria-label="Close">&times;</button>
+        </div>
+        <input id="addressBookId" type="hidden" />
+        <div class="field-grid address-book-form-grid">
+          <div class="address-name-row wide">
+            <label><span>Name of operation</span><input id="addressOperation" required autocomplete="off" /></label>
+            <label><span>Address</span><textarea id="addressStreet" rows="2"></textarea></label>
+          </div>
+          <div class="address-account-row wide">
+            <label><span>USF Acct. #</span><input id="addressAccountNumber" autocomplete="off" /></label>
+            <label><span>Sysco Acct. #</span><input id="addressSyscoAccountNumber" autocomplete="off" /></label>
+            <label><span>Website</span><input id="addressWebsite" autocomplete="off" placeholder="https://..." /></label>
+          </div>
+          <div class="address-rep-row wide">
+            <label><span>USF Sales rep</span><input id="addressUsfSalesRep" list="salesRepSuggestions" autocomplete="off" /></label>
+            <label><span>Sysco Sales rep</span><input id="addressSyscoSalesRep" list="salesRepSuggestions" autocomplete="off" /></label>
+            <label class="compact-field"><span># Locations</span><input id="addressLocations" type="number" min="0" max="99" autocomplete="off" /></label>
+            <label><span>Last updated</span><input id="addressLastUpdated" disabled /></label>
+          </div>
+          <div class="products-section wide contact-section">
+            <div class="section-label-row"><span>Primary contact</span></div>
+            <div class="address-contact-grid">
+              <label><span>Name</span><input id="addressPrimaryName" autocomplete="off" /></label>
+              <label><span>Role</span><input id="addressPrimaryRole" autocomplete="off" /></label>
+              <label><span>Email</span><input id="addressPrimaryEmail" type="email" autocomplete="off" /></label>
+              <label><span>Phone</span><input id="addressPrimaryPhone" autocomplete="off" /></label>
+            </div>
+          </div>
+          <div class="products-section wide contact-section">
+            <div class="section-label-row"><span>Secondary contact</span></div>
+            <div class="address-contact-grid">
+              <label><span>Name</span><input id="addressSecondaryName" autocomplete="off" /></label>
+              <label><span>Role</span><input id="addressSecondaryRole" autocomplete="off" /></label>
+              <label><span>Email</span><input id="addressSecondaryEmail" type="email" autocomplete="off" /></label>
+              <label><span>Phone</span><input id="addressSecondaryPhone" autocomplete="off" /></label>
+            </div>
+          </div>
+          <label class="wide"><span>Notes</span><textarea id="addressNotes" rows="3"></textarea></label>
+          <div class="wide address-map-row">
+            <button class="ghost-action" id="openAddressMap" type="button">Open Address in Google Maps</button>
+          </div>
+          <div class="products-section wide">
+            <div class="section-label-row">
+              <span>More contacts</span>
+              <button class="small-action address-contact-add" id="addAddressContact" type="button">+ Contact</button>
+            </div>
+            <div class="address-contact-list" id="addressContactList"></div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="danger-action" id="deleteAddressEntry" type="button">Delete</button>
+          <span></span>
+          <button class="ghost-action" id="cancelAddressBookForm" type="button">Cancel</button>
+          <button class="primary-action address-save-action" type="submit">Save Operator</button>
+        </div>
+      </form>
+    </dialog>
+
+    <section class="stock-view" id="stockListsDialog" hidden>
+      <div class="stock-panel">
+        <header class="topbar">
+          <div class="title-block">
+            <span class="logo-crop" aria-label="Broker Whiteboard">
+              <img class="app-logo" src="broker-whiteboard-logo.png" alt="" />
+            </span>
+            <div class="main-nav">
+              <button class="ghost-action whiteboard-nav-action nav-button" id="closeStockLists" type="button"><span class="nav-icon" aria-hidden="true">&#128204;</span><span>Leads</span></button>
+              <button class="ghost-action todo-nav-action nav-button" id="openTodoStock" type="button"><span class="nav-icon" aria-hidden="true">&#10003;</span><span>To-Do List</span></button>
+              <button class="ghost-action vendor-nav-action nav-button" id="openVendorReportStock" type="button"><span class="nav-icon" aria-hidden="true">&#128202;</span><span>Vendor Reporting</span></button>
+              <button class="ghost-action address-nav-action nav-button" id="openAddressBookStock" type="button"><span class="nav-icon" aria-hidden="true">&#128214;</span><span>Address Book</span></button>
+              <button class="ghost-action stock-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
+              <button class="ghost-action calendar-action nav-button" id="openCalendarStock" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+            </div>
+            <div class="view-actions stock-list-picker" id="stockListPicker">
+              <button class="primary-action stock-list-choice stock-list-usf" type="button" data-stock-list="usFoods" aria-label="US Foods Stock List">
+                <img class="stock-logo-img stock-logo-usf-img" src="https://commons.wikimedia.org/wiki/Special:FilePath/US_Foods_logo.svg" alt="US Foods" />
+              </button>
+              <button class="primary-action stock-list-choice stock-list-sysco" type="button" data-stock-list="sysco" aria-label="Sysco Stock List">
+                <img class="stock-logo-img stock-logo-sysco-img" src="https://logotyp.us/file/sysco.svg" alt="Sysco" />
+              </button>
+              <button class="primary-action stock-list-choice stock-list-linford" type="button" data-stock-list="linford" aria-label="Linford Stock List">
+                <img class="stock-logo-img stock-logo-linford-img" src="linford-logo.svg" alt="Linford of Alaska" />
+              </button>
+            </div>
+            <div class="view-actions stock-actions" id="stockListActions" hidden>
+              <button class="primary-action stock-add-action" id="addStockProduct" type="button">+ Add Product</button>
+              <button class="primary-action stock-import-action" id="importStockList" type="button">Upload List</button>
+              <button class="primary-action stock-print-action" id="printStockList" type="button">Print Stock List</button>
+              <input id="stockImportFile" type="file" accept=".csv,.tsv,.txt,.xlsx,.xls" hidden />
+            </div>
+          </div>
+          <div class="utility-actions" aria-label="Board utilities">
+            <button class="ghost-action login-action" type="button">Login</button>
+            <details class="settings-menu">
+              <summary class="settings-button" aria-label="Settings">⚙</summary>
+              <div class="settings-panel">
+                <button class="ghost-action" id="openArchiveStock" type="button">Archive</button>
+                <button class="ghost-action" id="openTrashStock" type="button">Trash</button>
+                <button class="ghost-action" id="exportBackupStock" type="button">Export Backup</button>
+                <button class="ghost-action" id="importBackupStock" type="button">Import Backup</button>
+              </div>
+            </details>
+          </div>
+        </header>
+
+        <section class="controls stock-controls" aria-label="Stock list filters">
+          <select id="stockDistributorFilter" hidden><option value="">All</option><option>US Foods Anchorage</option><option>US Foods Southeast</option><option>Sysco</option><option>Linford</option></select>
+          <label class="search-box"><span>Search</span><input id="stockSearch" type="search" placeholder="Product, vendor, brand, APN/SUPC, GTIN..." /></label>
+          <label><span>Vendor</span><select id="stockVendorFilter"><option value="">All</option></select></label>
+          <label><span>Category</span><select id="stockCategoryFilter"><option value="">All</option></select></label>
+          <label><span>Storage</span><select id="stockStorageFilter"><option value="">All</option><option>Chill</option><option>Frozen</option><option>Dry</option></select></label>
+          <label><span>Brand type</span><select id="stockBrandTypeFilter"><option value="">All</option><option value="EB">EB</option><option value="MB">MB</option></select></label>
+          <button class="ghost-action" id="clearStockFilters" type="button">Clear</button>
+        </section>
+        <datalist id="stockCategorySuggestions"></datalist>
+
+        <main class="stock-table-panel">
+          <div class="quick-list-header">
+            <div><p class="eyebrow">Products</p><h2 id="stockListTitle">Choose a stock list</h2></div>
+            <span class="count-pill" id="stockCount">0</span>
+          </div>
+          <div class="quick-table-wrap" id="stockTable"></div>
+        </main>
+      </div>
+    </section>
+
+    <dialog class="note-dialog" id="stockFormDialog">
+      <form method="dialog" class="note-form" id="stockForm">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Stock product</p>
+            <h2 id="stockFormTitle">Add Product</h2>
+          </div>
+          <button class="icon-button" id="closeStockForm" type="button" aria-label="Close">&times;</button>
+        </div>
+        <input id="stockId" type="hidden" />
+        <div class="field-grid stock-product-grid">
+          <label><span>Vendor / Manufacturer</span><input id="stockVendor" list="vendorSuggestions" autocomplete="off" /></label>
+          <label><span>Brand name</span><input id="stockBrandName" autocomplete="off" /></label>
+          <label><span>Brand type</span><select id="stockBrandType"><option value=""></option><option value="EB">EB</option><option value="MB">MB</option></select></label>
+          <label><span>APN</span><input id="stockApn" autocomplete="off" /></label>
+          <label><span>SUPC</span><input id="stockSupc" autocomplete="off" /></label>
+          <label><span>MF#</span><input id="stockManufacturerNumber" autocomplete="off" /></label>
+          <label><span>GTIN</span><input id="stockGtin" autocomplete="off" /></label>
+          <label class="stock-description-field"><span>Product description</span><input id="stockDescription" required autocomplete="off" /></label>
+          <label><span>Packaging</span><input id="stockPackaging" autocomplete="off" placeholder="4/5lb bags" /></label>
+          <label><span>Storage</span><select id="stockStorage"><option value=""></option><option>Chill</option><option>Frozen</option><option>Dry</option></select></label>
+          <label><span>Category</span><input id="stockCategory" list="stockCategorySuggestions" autocomplete="off" placeholder="Seafood, Meat, Desserts..." /></label>
+          <label><span>Distributor</span><select id="stockDistributor" required><option>US Foods Anchorage</option><option>US Foods Southeast</option><option>Sysco</option><option>Linford</option></select></label>
+          <label><span>SO</span><select id="stockSo"><option value=""></option><option>Yes</option></select></label>
+          <div class="attachments-section wide">
+            <div class="section-label-row">
+              <span>Product files</span>
+              <div class="section-actions">
+                <select id="stockAttachmentCategory" aria-label="File category">
+                  <option>Specsheet</option>
+                  <option>Coupon</option>
+                  <option>POS</option>
+                  <option>Other</option>
+                </select>
+                <button class="small-action" id="addStockAttachment" type="button">+ File</button>
+              </div>
+            </div>
+            <input id="stockAttachmentInput" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,application/pdf,image/*,text/*" multiple hidden />
+            <div class="attachment-list" id="stockAttachmentList"></div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="danger-action" id="deleteStockProduct" type="button">Delete</button>
+          <span></span>
+          <button class="ghost-action" id="cancelStockForm" type="button">Cancel</button>
+          <button class="primary-action stock-save-action" type="submit">Save Product</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="note-dialog" id="stockImportDialog">
+      <form method="dialog" class="note-form" id="stockImportForm">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Stock list import</p>
+            <h2>Upload Spreadsheet</h2>
+          </div>
+          <button class="icon-button" id="closeStockImport" type="button" aria-label="Close">&times;</button>
+        </div>
+        <div class="field-grid">
+          <label><span>Distributor</span><select id="stockImportDistributor" required><option>US Foods Anchorage</option><option>US Foods Southeast</option><option>Sysco</option><option>Linford</option></select></label>
+          <label><span>Default vendor</span><input id="stockImportVendor" list="vendorSuggestions" autocomplete="off" /></label>
+          <label><span>Default category</span><input id="stockImportCategory" list="stockCategorySuggestions" autocomplete="off" /></label>
+          <label><span>Default storage</span><select id="stockImportStorage"><option value=""></option><option>Chill</option><option>Frozen</option><option>Dry</option></select></label>
+          <p class="wide import-help">Upload a CSV or tab-delimited file exported from Excel. The app will look for columns like USF#, SUPC, UPC, GTIN, pack, size, brand, product, vendor, category, and chill/frozen/dry.</p>
+        </div>
+        <div class="form-actions">
+          <span></span>
+          <button class="ghost-action" id="cancelStockImport" type="button">Cancel</button>
+          <button class="primary-action stock-import-action" type="submit">Choose File</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="note-dialog" id="stockPrintDialog">
+      <form method="dialog" class="note-form" id="stockPrintForm">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Stock list print</p>
+            <h2>Print Stock List</h2>
+          </div>
+          <button class="icon-button" id="closeStockPrint" type="button" aria-label="Close">&times;</button>
+        </div>
+        <div class="field-grid">
+          <label class="wide"><span>Vendor</span><select id="stockPrintVendor"><option value="">All vendors</option></select></label>
+          <div class="products-section wide">
+            <div class="section-label-row"><span>Columns to print</span></div>
+            <div class="stock-print-columns" id="stockPrintColumns"></div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <span></span>
+          <button class="ghost-action" id="cancelStockPrint" type="button">Cancel</button>
+          <button class="primary-action stock-print-action" type="submit">Print</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="note-dialog" id="manualVendorDialog">
+      <form method="dialog" class="note-form" id="manualVendorForm">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Vendor reporting</p>
+            <h2>Add Report Lead</h2>
+          </div>
+          <button class="icon-button" id="closeManualVendorForm" type="button" aria-label="Close">&times;</button>
+        </div>
+        <input id="manualVendorId" type="hidden" />
+        <div class="field-grid">
+          <label><span>Account name</span><input id="manualVendorAccount" required autocomplete="off" /></label>
+          <label><span>Vendor / Brand</span><input id="manualVendorVendor" list="vendorSuggestions" required autocomplete="off" /></label>
+          <label class="wide"><span>Product shown</span><input id="manualVendorProduct" required autocomplete="off" /></label>
+          <label class="wide"><span>Opportunity / target note</span><textarea id="manualVendorOpportunity" rows="3"></textarea></label>
+          <label><span>Won / Lost / Unsure</span><select id="manualVendorOutcome"><option>Unsure</option><option>Won</option><option>Lost</option></select></label>
+          <label><span>Submitted date</span><input id="manualVendorSubmittedDate" class="date-picker-input" type="text" placeholder="YYYY-MM-DD" readonly /></label>
+        </div>
+        <div class="form-actions">
+          <span></span>
+          <button class="ghost-action" id="cancelManualVendorForm" type="button">Cancel</button>
+          <button class="primary-action" type="submit">Save Report Lead</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="note-dialog" id="todoFormDialog">
+      <form method="dialog" class="note-form" id="todoForm">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Task detail</p>
+            <h2 id="todoFormTitle">Add Task</h2>
+          </div>
+          <button class="icon-button" id="closeTodoForm" type="button" aria-label="Close">×</button>
+        </div>
+        <input id="todoId" type="hidden" />
+        <div class="field-grid">
+          <label class="wide"><span>Task title</span><input id="todoTitle" required autocomplete="off" /></label>
+          <label><span>Priority</span><select id="todoPriority"><option>High</option><option selected>Medium</option><option>Low</option></select></label>
+          <label><span>Due date</span><input id="todoDue" class="date-picker-input" type="text" placeholder="YYYY-MM-DD" readonly /></label>
+          <label><span>Assigned by</span><input id="todoAssignedBy" autocomplete="off" /></label>
+          <label><span>Status</span><select id="todoStatus"><option>New</option><option>In Progress</option><option>Waiting on Someone</option><option>Done</option></select></label>
+          <label><span>Related account/customer</span><input id="todoAccount" autocomplete="off" /></label>
+          <label><span>Related vendor/brand</span><input id="todoVendor" autocomplete="off" /></label>
+          <label class="wide"><span>Notes</span><textarea id="todoNotes" rows="4"></textarea></label>
+          <div class="products-section wide">
+            <div class="section-label-row">
+              <span>Subtasks / checklist</span>
+              <button class="small-action" id="addSubtask" type="button">+ Subtask</button>
+            </div>
+            <div class="subtask-list" id="subtaskList"></div>
+          </div>
+          <label><span>Date created</span><input id="todoCreated" disabled /></label>
+          <label><span>Date completed</span><input id="todoCompleted" disabled /></label>
+        </div>
+        <div class="form-actions">
+          <button class="danger-action" id="deleteTodo" type="button">Delete</button>
+          <button class="ghost-action" id="convertTodoToLead" type="button">Turn into Lead</button>
+          <span></span>
+          <button class="ghost-action" id="cancelTodoForm" type="button">Cancel</button>
+          <button class="primary-action" type="submit">Save Task</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
