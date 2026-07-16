@@ -1,34 +1,53 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Broker Whiteboard</title>
+    <title>FoodBrokerBase</title>
+    <meta name="theme-color" content="#dce7ee" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="FoodBrokerBase" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="pwa-icon-192.png" />
+    <link rel="apple-touch-icon" href="pwa-icon-192.png" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <datalist id="timelineSearchSuggestions"></datalist>
     <div class="app-shell">
       <header class="topbar">
         <div class="title-block">
           <span class="logo-crop" aria-label="Broker Whiteboard">
             <img class="app-logo" src="broker-whiteboard-logo.png" alt="" />
           </span>
+            <section class="global-timeline-search" aria-label="Timeline search">
+              <label>
+                <span>Timeline Search</span>
+                <input class="timeline-search-input" type="search" list="timelineSearchSuggestions" placeholder="Search operator, product, vendor, APN, task, sample..." />
+              </label>
+              <button class="ghost-action timeline-search-action" type="button">Search Timeline</button>
+            </section>
           <div class="main-nav">
-            <button class="ghost-action whiteboard-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">📌</span><span>Leads</span></button>
-            <button class="ghost-action todo-nav-action nav-button" id="openTodo" type="button"><span class="nav-icon" aria-hidden="true">✓</span><span>To-Do List</span></button>
+            <button class="ghost-action whiteboard-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">&#128204;</span><span>Leads</span></button>
+            <button class="ghost-action todo-nav-action nav-button" id="openTodo" type="button"><span class="nav-icon" aria-hidden="true">&#10003;</span><span>To-Do List</span></button>
             <button class="ghost-action vendor-nav-action nav-button" id="openVendorReport" type="button"><span class="nav-icon" aria-hidden="true">&#128202;</span><span>Vendor Reporting</span></button>
             <button class="ghost-action address-nav-action nav-button" id="openAddressBook" type="button"><span class="nav-icon" aria-hidden="true">&#128214;</span><span>Address Book</span></button>
             <button class="ghost-action stock-nav-action nav-button" id="openStockLists" type="button"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
-            <button class="ghost-action calendar-action nav-button" id="openCalendar" type="button"><span class="nav-icon" aria-hidden="true">▦</span><span>Calendar</span></button>
+            <button class="ghost-action sample-nav-action nav-button" id="openSampleTracker" type="button"><span class="nav-icon" aria-hidden="true">&#129514;</span><span>Trackers</span></button>
+            <button class="ghost-action market-nav-action nav-button" id="openMarketVisits" type="button"><span class="nav-icon" aria-hidden="true">&#128506;</span><span>Market Visits</span></button>
+            <button class="ghost-action calendar-action nav-button" id="openCalendar" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
           </div>
           <div class="view-actions">
             <button class="primary-action add-note-action" id="addNoteTop" type="button">+ Add Lead</button>
+            <button class="ghost-action print-action" id="printWeeklyRecapTop" type="button">Print Weekly Recap</button>
           </div>
+
         </div>
         <div class="utility-actions" aria-label="Board utilities">
           <button class="ghost-action login-action" type="button">Login</button>
           <details class="settings-menu">
-            <summary class="settings-button" aria-label="Settings">⚙</summary>
+            <summary class="settings-button" aria-label="Settings">&#9881;</summary>
             <div class="settings-panel">
               <button class="ghost-action" id="openArchive" type="button">Archive</button>
               <button class="ghost-action" id="openTrash" type="button">Trash</button>
@@ -39,6 +58,25 @@
           <input id="backupFile" type="file" accept="application/json,.json" hidden />
         </div>
       </header>
+
+      <dialog class="archive-dialog weekly-recap-dialog" id="weeklyRecapDialog">
+        <form method="dialog" class="account-panel">
+          <div class="form-header">
+            <div>
+              <p class="eyebrow">Lead recap</p>
+              <h2>Print Weekly Recap</h2>
+            </div>
+            <button class="icon-button" id="closeWeeklyRecapDialog" type="button" aria-label="Close">&times;</button>
+          </div>
+          <p class="weekly-recap-help">Choose the sections you want to print for your update.</p>
+          <div class="weekly-recap-options">
+            <label><input type="checkbox" value="last" data-weekly-recap-check /> Last Week</label>
+            <label><input type="checkbox" value="this" data-weekly-recap-check checked /> This Week</label>
+            <label><input type="checkbox" value="next" data-weekly-recap-check /> Next Week</label>
+          </div>
+          <button class="primary-action weekly-recap-print-action" id="printSelectedWeeklyRecap" type="button">Print Recap</button>
+        </form>
+      </dialog>
 
       <section class="summary-grid" aria-label="Dashboard summary">
         <button class="summary-tile" data-quick-filter="all" type="button">
@@ -168,6 +206,7 @@
               <datalist id="accountSuggestions"></datalist>
               <datalist id="vendorSuggestions"></datalist>
               <datalist id="apnSuggestions"></datalist>
+              <datalist id="productSearchSuggestions"></datalist>
               <datalist id="salesRepSuggestions"></datalist>
             </label>
             <label class="account-number-field">
@@ -189,7 +228,11 @@
           </div>
           <label class="wide">
             <span>Note</span>
-            <textarea id="noteInput" required rows="4" placeholder="What came in? What needs to happen next?"></textarea>
+            <div class="lead-note-history" id="leadNoteHistory" hidden></div>
+            <textarea id="noteInput" rows="4" placeholder="Add a new note or follow-up..."></textarea>
+            <div class="lead-note-compose-actions">
+              <button class="ghost-action note-lock-action" id="saveLeadNoteEntry" type="button">Save Note</button>
+            </div>
           </label>
           <div class="lead-flow-row wide">
             <label>
@@ -242,10 +285,19 @@
               <span>Products</span>
               <div class="section-actions">
                 <button class="small-action print-action" id="printProducts" type="button">Print Products</button>
-                <button class="small-action" id="addProduct" type="button">+ Product</button>
               </div>
             </div>
+            <div class="lead-product-search">
+              <label>
+                <span>Search product</span>
+                <input id="productSearchInput" list="productSearchSuggestions" autocomplete="off" placeholder="Search APN, SUPC, product, vendor..." />
+              </label>
+              <button class="small-action product-search-add" id="addProductFromSearch" type="button">+ Add from Search</button>
+            </div>
             <div class="product-list" id="productList"></div>
+            <div class="product-list-actions">
+              <button class="small-action product-row-add" id="addProduct" type="button">+ Product</button>
+            </div>
           </div>
           <div class="attachments-section wide">
             <div class="section-label-row">
@@ -282,7 +334,7 @@
             <h2 id="accountDialogTitle">Account</h2>
             <p class="account-subtitle" id="accountDialogSubtitle"></p>
           </div>
-          <button class="icon-button" id="closeAccountDialog" type="button" aria-label="Close">×</button>
+          <button class="icon-button" id="closeAccountDialog" type="button" aria-label="Close">&times;</button>
         </div>
         <div class="account-notes" id="accountNotes"></div>
       </div>
@@ -295,7 +347,7 @@
             <p class="eyebrow">Saved for later</p>
             <h2>Archive</h2>
           </div>
-          <button class="icon-button" id="closeArchiveDialog" type="button" aria-label="Close">×</button>
+          <button class="icon-button" id="closeArchiveDialog" type="button" aria-label="Close">&times;</button>
         </div>
         <label class="archive-search">
           <span>Search archived leads</span>
@@ -312,7 +364,7 @@
             <p class="eyebrow">Deleted leads</p>
             <h2>Trash</h2>
           </div>
-          <button class="icon-button" id="closeTrashDialog" type="button" aria-label="Close">×</button>
+          <button class="icon-button" id="closeTrashDialog" type="button" aria-label="Close">&times;</button>
         </div>
         <label class="archive-search">
           <span>Search deleted leads</span>
@@ -329,7 +381,7 @@
             <p class="eyebrow">Follow-up dates</p>
             <h2 id="calendarTitle">Calendar</h2>
           </div>
-          <button class="icon-button" id="closeCalendarDialog" type="button" aria-label="Close">×</button>
+          <button class="icon-button" id="closeCalendarDialog" type="button" aria-label="Close">&times;</button>
         </div>
         <div class="calendar-controls">
           <button class="ghost-action" id="calendarThisMonth" type="button">This Month</button>
@@ -359,7 +411,7 @@
             <p class="eyebrow">Day view</p>
             <h2 id="calendarDayTitle">Tasks</h2>
           </div>
-          <button class="icon-button" id="closeCalendarDayDialog" type="button" aria-label="Close">×</button>
+          <button class="icon-button" id="closeCalendarDayDialog" type="button" aria-label="Close">&times;</button>
         </div>
         <div class="account-notes" id="calendarDayList"></div>
       </div>
@@ -378,6 +430,27 @@
       </div>
     </dialog>
 
+    <dialog class="note-dialog timeline-dialog" id="timelineDialog">
+      <form method="dialog" class="note-form timeline-form">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Account and product history</p>
+            <h2>Timeline Search</h2>
+          </div>
+          <button class="icon-button" id="closeTimelineDialog" type="button" aria-label="Close">&times;</button>
+        </div>
+        <div class="timeline-search-panel">
+          <label>
+            <span>Search anything</span>
+            <input id="timelineDialogSearchInput" type="search" placeholder="Operator, product, vendor, APN, sales rep, note..." />
+          </label>
+          <button class="ghost-action" id="clearTimelineSearch" type="button">Clear</button>
+        </div>
+        <div class="timeline-summary" id="timelineSummary">Type an operator, product, vendor, APN, or note to see related activity.</div>
+        <div class="timeline-results" id="timelineResults"></div>
+      </form>
+    </dialog>
+
     <section class="todo-view" id="todoDialog" hidden>
       <div class="todo-panel">
         <header class="topbar">
@@ -385,13 +458,22 @@
             <span class="logo-crop" aria-label="Broker Whiteboard">
               <img class="app-logo" src="broker-whiteboard-logo.png" alt="" />
             </span>
+            <section class="global-timeline-search" aria-label="Timeline search">
+              <label>
+                <span>Timeline Search</span>
+                <input class="timeline-search-input" type="search" list="timelineSearchSuggestions" placeholder="Search operator, product, vendor, APN, task, sample..." />
+              </label>
+              <button class="ghost-action timeline-search-action" type="button">Search Timeline</button>
+            </section>
             <div class="main-nav">
-              <button class="ghost-action whiteboard-nav-action nav-button" id="closeTodoDialog" type="button"><span class="nav-icon" aria-hidden="true">📌</span><span>Leads</span></button>
-              <button class="ghost-action todo-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">✓</span><span>To-Do List</span></button>
+              <button class="ghost-action whiteboard-nav-action nav-button" id="closeTodoDialog" type="button"><span class="nav-icon" aria-hidden="true">&#128204;</span><span>Leads</span></button>
+              <button class="ghost-action todo-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">&#10003;</span><span>To-Do List</span></button>
               <button class="ghost-action vendor-nav-action nav-button" id="openVendorReportTodo" type="button"><span class="nav-icon" aria-hidden="true">&#128202;</span><span>Vendor Reporting</span></button>
               <button class="ghost-action address-nav-action nav-button" id="openAddressBookTodo" type="button"><span class="nav-icon" aria-hidden="true">&#128214;</span><span>Address Book</span></button>
               <button class="ghost-action stock-nav-action nav-button" id="openStockListsTodo" type="button"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
-              <button class="ghost-action calendar-action nav-button" id="openCalendarTodo" type="button"><span class="nav-icon" aria-hidden="true">▦</span><span>Calendar</span></button>
+              <button class="ghost-action sample-nav-action nav-button" id="openSampleTrackerTodo" type="button"><span class="nav-icon" aria-hidden="true">&#129514;</span><span>Trackers</span></button>
+              <button class="ghost-action market-nav-action nav-button" id="openMarketVisitsTodo" type="button"><span class="nav-icon" aria-hidden="true">&#128506;</span><span>Market Visits</span></button>
+              <button class="ghost-action calendar-action nav-button" id="openCalendarTodo" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
             </div>
             <div class="view-actions todo-top-actions">
               <button class="primary-action" id="addTodo" type="button">+ Add Task</button>
@@ -400,7 +482,7 @@
           <div class="utility-actions" aria-label="Board utilities">
             <button class="ghost-action login-action" type="button">Login</button>
             <details class="settings-menu">
-              <summary class="settings-button" aria-label="Settings">⚙</summary>
+              <summary class="settings-button" aria-label="Settings">&#9881;</summary>
               <div class="settings-panel">
                 <button class="ghost-action" id="openArchiveTodo" type="button">Archive</button>
                 <button class="ghost-action" id="openTrashTodo" type="button">Trash</button>
@@ -442,19 +524,28 @@
             <span class="logo-crop" aria-label="Broker Whiteboard">
               <img class="app-logo" src="broker-whiteboard-logo.png" alt="" />
             </span>
+            <section class="global-timeline-search" aria-label="Timeline search">
+              <label>
+                <span>Timeline Search</span>
+                <input class="timeline-search-input" type="search" list="timelineSearchSuggestions" placeholder="Search operator, product, vendor, APN, task, sample..." />
+              </label>
+              <button class="ghost-action timeline-search-action" type="button">Search Timeline</button>
+            </section>
             <div class="main-nav">
               <button class="ghost-action whiteboard-nav-action nav-button" id="closeVendorReport" type="button"><span class="nav-icon" aria-hidden="true">&#128204;</span><span>Leads</span></button>
               <button class="ghost-action todo-nav-action nav-button" id="openTodoVendor" type="button"><span class="nav-icon" aria-hidden="true">&#10003;</span><span>To-Do List</span></button>
               <button class="ghost-action vendor-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">&#128202;</span><span>Vendor Reporting</span></button>
               <button class="ghost-action address-nav-action nav-button" id="openAddressBookVendor" type="button"><span class="nav-icon" aria-hidden="true">&#128214;</span><span>Address Book</span></button>
               <button class="ghost-action stock-nav-action nav-button" id="openStockListsVendor" type="button"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
+              <button class="ghost-action sample-nav-action nav-button" id="openSampleTrackerVendor" type="button"><span class="nav-icon" aria-hidden="true">&#129514;</span><span>Trackers</span></button>
+              <button class="ghost-action market-nav-action nav-button" id="openMarketVisitsVendor" type="button"><span class="nav-icon" aria-hidden="true">&#128506;</span><span>Market Visits</span></button>
               <button class="ghost-action calendar-action nav-button" id="openCalendarVendor" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
             </div>
           </div>
           <div class="utility-actions" aria-label="Board utilities">
             <button class="ghost-action login-action" type="button">Login</button>
             <details class="settings-menu">
-              <summary class="settings-button" aria-label="Settings">⚙</summary>
+              <summary class="settings-button" aria-label="Settings">&#9881;</summary>
               <div class="settings-panel">
                 <button class="ghost-action" id="openArchiveVendor" type="button">Archive</button>
                 <button class="ghost-action" id="openTrashVendor" type="button">Trash</button>
@@ -495,19 +586,28 @@
             <span class="logo-crop" aria-label="Broker Whiteboard">
               <img class="app-logo" src="broker-whiteboard-logo.png" alt="" />
             </span>
+            <section class="global-timeline-search" aria-label="Timeline search">
+              <label>
+                <span>Timeline Search</span>
+                <input class="timeline-search-input" type="search" list="timelineSearchSuggestions" placeholder="Search operator, product, vendor, APN, task, sample..." />
+              </label>
+              <button class="ghost-action timeline-search-action" type="button">Search Timeline</button>
+            </section>
             <div class="main-nav">
               <button class="ghost-action whiteboard-nav-action nav-button" id="closeAddressBook" type="button"><span class="nav-icon" aria-hidden="true">&#128204;</span><span>Leads</span></button>
               <button class="ghost-action todo-nav-action nav-button" id="openTodoAddress" type="button"><span class="nav-icon" aria-hidden="true">&#10003;</span><span>To-Do List</span></button>
               <button class="ghost-action vendor-nav-action nav-button" id="openVendorReportAddress" type="button"><span class="nav-icon" aria-hidden="true">&#128202;</span><span>Vendor Reporting</span></button>
               <button class="ghost-action address-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">&#128214;</span><span>Address Book</span></button>
               <button class="ghost-action stock-nav-action nav-button" id="openStockListsAddress" type="button"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
+              <button class="ghost-action sample-nav-action nav-button" id="openSampleTrackerAddress" type="button"><span class="nav-icon" aria-hidden="true">&#129514;</span><span>Trackers</span></button>
+              <button class="ghost-action market-nav-action nav-button" id="openMarketVisitsAddress" type="button"><span class="nav-icon" aria-hidden="true">&#128506;</span><span>Market Visits</span></button>
               <button class="ghost-action calendar-action nav-button" id="openCalendarAddress" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
             </div>
           </div>
           <div class="utility-actions" aria-label="Board utilities">
             <button class="ghost-action login-action" type="button">Login</button>
             <details class="settings-menu">
-              <summary class="settings-button" aria-label="Settings">⚙</summary>
+              <summary class="settings-button" aria-label="Settings">&#9881;</summary>
               <div class="settings-panel">
                 <button class="ghost-action" id="openArchiveAddress" type="button">Archive</button>
                 <button class="ghost-action" id="openTrashAddress" type="button">Trash</button>
@@ -563,6 +663,16 @@
             <label class="compact-field"><span># Locations</span><input id="addressLocations" type="number" min="0" max="99" autocomplete="off" /></label>
             <label><span>Last updated</span><input id="addressLastUpdated" disabled /></label>
           </div>
+          <fieldset class="wide delivery-days-field">
+            <legend>Delivery days</legend>
+            <div class="delivery-day-options">
+              <label><input type="checkbox" name="addressDeliveryDays" value="Monday" /><span>Monday</span></label>
+              <label><input type="checkbox" name="addressDeliveryDays" value="Tuesday" /><span>Tuesday</span></label>
+              <label><input type="checkbox" name="addressDeliveryDays" value="Wednesday" /><span>Wednesday</span></label>
+              <label><input type="checkbox" name="addressDeliveryDays" value="Thursday" /><span>Thursday</span></label>
+              <label><input type="checkbox" name="addressDeliveryDays" value="Friday" /><span>Friday</span></label>
+            </div>
+          </fieldset>
           <div class="products-section wide contact-section">
             <div class="section-label-row"><span>Primary contact</span></div>
             <div class="address-contact-grid">
@@ -602,6 +712,362 @@
       </form>
     </dialog>
 
+    <section class="market-view" id="marketVisitsDialog" hidden>
+      <div class="market-panel">
+        <header class="topbar">
+          <div class="title-block">
+            <span class="logo-crop" aria-label="Broker Whiteboard">
+              <img class="app-logo" src="broker-whiteboard-logo.png" alt="" />
+            </span>
+            <section class="global-timeline-search" aria-label="Timeline search">
+              <label>
+                <span>Timeline Search</span>
+                <input class="timeline-search-input" type="search" list="timelineSearchSuggestions" placeholder="Search operator, product, vendor, APN, task, sample..." />
+              </label>
+              <button class="ghost-action timeline-search-action" type="button">Search Timeline</button>
+            </section>
+            <div class="main-nav">
+              <button class="ghost-action whiteboard-nav-action nav-button" id="closeMarketVisits" type="button"><span class="nav-icon" aria-hidden="true">&#128204;</span><span>Leads</span></button>
+              <button class="ghost-action todo-nav-action nav-button" id="openTodoMarket" type="button"><span class="nav-icon" aria-hidden="true">&#10003;</span><span>To-Do List</span></button>
+              <button class="ghost-action vendor-nav-action nav-button" id="openVendorReportMarket" type="button"><span class="nav-icon" aria-hidden="true">&#128202;</span><span>Vendor Reporting</span></button>
+              <button class="ghost-action address-nav-action nav-button" id="openAddressBookMarket" type="button"><span class="nav-icon" aria-hidden="true">&#128214;</span><span>Address Book</span></button>
+              <button class="ghost-action stock-nav-action nav-button" id="openStockListsMarket" type="button"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
+              <button class="ghost-action sample-nav-action nav-button" id="openSampleTrackerMarket" type="button"><span class="nav-icon" aria-hidden="true">&#129514;</span><span>Trackers</span></button>
+              <button class="ghost-action market-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">&#128506;</span><span>Market Visits</span></button>
+              <button class="ghost-action calendar-action nav-button" id="openCalendarMarket" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+            </div>
+          </div>
+          <div class="utility-actions" aria-label="Board utilities">
+            <button class="ghost-action login-action" type="button">Login</button>
+            <details class="settings-menu">
+              <summary class="settings-button" aria-label="Settings">&#9881;</summary>
+              <div class="settings-panel">
+                <button class="ghost-action" id="openArchiveMarket" type="button">Archive</button>
+                <button class="ghost-action" id="openTrashMarket" type="button">Trash</button>
+                <button class="ghost-action" id="exportBackupMarket" type="button">Export Backup</button>
+                <button class="ghost-action" id="importBackupMarket" type="button">Import Backup</button>
+              </div>
+            </details>
+          </div>
+        </header>
+
+        <section class="market-header-row">
+          <div class="market-subtabs" role="tablist" aria-label="Market visit type">
+            <button class="market-subtab active-market-subtab" id="marketPcTab" type="button" data-market-type="pc">P. C. Market Visit</button>
+            <button class="market-subtab" id="marketManufacturerTab" type="button" data-market-type="manufacturer">Vendor Market Visit</button>
+          </div>
+        </section>
+
+        <section class="market-action-row">
+          <div class="market-create-actions">
+            <button class="primary-action market-add-action" id="addPcMarketVisit" type="button">+ Add P.C. Market Visit</button>
+            <button class="primary-action market-add-action" id="addManufacturerMarketVisit" type="button">+ Add Vendor Market Visit</button>
+          </div>
+          <div class="market-view-toggle">
+            <button class="ghost-action active-market-view" type="button" data-market-view="list">List / Agenda</button>
+            <button class="ghost-action" type="button" data-market-view="calendar">Calendar</button>
+          </div>
+        </section>
+
+        <section class="controls market-controls" aria-label="Market visit filters">
+          <label class="search-box"><span>Search</span><input id="marketSearch" type="search" placeholder="Visit, manufacturer, operator, sales rep, product..." /></label>
+          <label><span>Manufacturer</span><select id="marketManufacturerFilter"><option value="">All</option></select></label>
+          <label><span>Sales rep</span><input id="marketRepFilter" autocomplete="off" /></label>
+          <label><span>Status</span><select id="marketStatusFilter"><option value="">All</option><option>Planned</option><option>In Progress</option><option>Completed</option><option>Follow Up Needed</option></select></label>
+          <label><span>Date range</span><select id="marketDateFilter"><option value="">Any date</option><option value="today">Today</option><option value="week">This week</option><option value="nextWeek">Next week</option><option value="month">This month</option></select></label>
+          <button class="ghost-action" id="clearMarketFilters" type="button">Clear</button>
+        </section>
+
+        <main class="market-content" id="marketContent"></main>
+      </div>
+    </section>
+
+    <dialog class="note-dialog market-form-dialog" id="marketVisitFormDialog">
+      <form method="dialog" class="note-form" id="marketVisitForm">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Market visit</p>
+            <h2 id="marketVisitFormTitle">Create Market Visit</h2>
+          </div>
+          <button class="icon-button" id="closeMarketVisitForm" type="button" aria-label="Close">&times;</button>
+        </div>
+        <input id="marketVisitId" type="hidden" />
+        <input id="marketVisitType" type="hidden" />
+        <div class="field-grid">
+          <label class="market-pc-field wide"><span>Visit name</span><input id="marketVisitName" autocomplete="off" /></label>
+          <label class="market-mfr-field"><span>Manufacturer / vendor</span><select id="marketVisitVendor"><option value="">Choose vendor</option></select></label>
+          <label class="market-mfr-field"><span>Regional manager / visitor</span><input id="marketVisitorName" autocomplete="off" /></label>
+          <label><span>Start date</span><input id="marketStartDate" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
+          <label><span>End date</span><input id="marketEndDate" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
+          <label class="market-pc-field"><span>Start time</span><input id="marketStartTime" type="text" placeholder="8:00 AM" autocomplete="off" /></label>
+          <label class="market-pc-field"><span>End time</span><input id="marketEndTime" type="text" placeholder="5:00 PM" autocomplete="off" /></label>
+          <label class="market-pc-field wide"><span>Location / area</span><input id="marketLocation" autocomplete="off" /></label>
+          <label class="market-pc-field wide"><span>Sales reps involved</span><input id="marketSalesReps" list="salesRepSuggestions" placeholder="Alexa, Dudley..." autocomplete="off" /></label>
+          <label class="market-pc-field"><span>Status</span><select id="marketStatus"><option>Planned</option><option>In Progress</option><option>Completed</option><option>Follow Up Needed</option></select></label>
+          <label class="wide"><span>Notes</span><textarea id="marketNotes" rows="4"></textarea></label>
+        </div>
+        <div class="form-actions">
+          <button class="danger-action" id="deleteMarketVisit" type="button">Delete</button>
+          <span></span>
+          <button class="ghost-action" id="cancelMarketVisitForm" type="button">Cancel</button>
+          <button class="primary-action market-save-action" type="submit">Save Visit</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="note-dialog market-print-dialog" id="marketPrintDialog">
+      <form method="dialog" class="note-form" id="marketPrintForm">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Print options</p>
+            <h2>Print Market Visit</h2>
+          </div>
+          <button class="icon-button" id="closeMarketPrint" type="button" aria-label="Close">&times;</button>
+        </div>
+        <input id="marketPrintVisitId" type="hidden" />
+        <div class="print-option-list">
+          <label><input id="marketPrintSchedule" type="checkbox" checked /> Schedule</label>
+          <label><input id="marketPrintProducts" type="checkbox" checked /> Product list</label>
+        </div>
+        <div class="form-actions">
+          <span></span>
+          <span></span>
+          <button class="ghost-action" id="cancelMarketPrint" type="button">Cancel</button>
+          <button class="primary-action market-save-action" type="submit">Print</button>
+        </div>
+      </form>
+    </dialog>
+
+    <section class="sample-view" id="sampleTrackerDialog" hidden>
+      <div class="sample-panel">
+        <header class="topbar">
+          <div class="title-block">
+            <span class="logo-crop" aria-label="Broker Whiteboard">
+              <img class="app-logo" src="broker-whiteboard-logo.png" alt="" />
+            </span>
+            <section class="global-timeline-search" aria-label="Timeline search">
+              <label>
+                <span>Timeline Search</span>
+                <input class="timeline-search-input" type="search" list="timelineSearchSuggestions" placeholder="Search operator, product, vendor, APN, task, sample..." />
+              </label>
+              <button class="ghost-action timeline-search-action" type="button">Search Timeline</button>
+            </section>
+            <div class="main-nav">
+              <button class="ghost-action whiteboard-nav-action nav-button" id="closeSampleTracker" type="button"><span class="nav-icon" aria-hidden="true">&#128204;</span><span>Leads</span></button>
+              <button class="ghost-action todo-nav-action nav-button" id="openTodoSample" type="button"><span class="nav-icon" aria-hidden="true">&#10003;</span><span>To-Do List</span></button>
+              <button class="ghost-action vendor-nav-action nav-button" id="openVendorReportSample" type="button"><span class="nav-icon" aria-hidden="true">&#128202;</span><span>Vendor Reporting</span></button>
+              <button class="ghost-action address-nav-action nav-button" id="openAddressBookSample" type="button"><span class="nav-icon" aria-hidden="true">&#128214;</span><span>Address Book</span></button>
+              <button class="ghost-action stock-nav-action nav-button" id="openStockListsSample" type="button"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
+              <button class="ghost-action sample-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">&#129514;</span><span>Trackers</span></button>
+              <button class="ghost-action market-nav-action nav-button" id="openMarketVisitsSample" type="button"><span class="nav-icon" aria-hidden="true">&#128506;</span><span>Market Visits</span></button>
+              <button class="ghost-action calendar-action nav-button" id="openCalendarSample" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+            </div>
+            <div class="view-actions">
+              <button class="primary-action sample-add-action" id="addSample" type="button">+ Add Sample</button>
+            </div>
+          </div>
+          <div class="utility-actions" aria-label="Board utilities">
+            <button class="ghost-action login-action" type="button">Login</button>
+            <details class="settings-menu">
+              <summary class="settings-button" aria-label="Settings">&#9881;</summary>
+              <div class="settings-panel">
+                <button class="ghost-action" id="openArchiveSample" type="button">Archive</button>
+                <button class="ghost-action" id="openTrashSample" type="button">Trash</button>
+                <button class="ghost-action" id="exportBackupSample" type="button">Export Backup</button>
+                <button class="ghost-action" id="importBackupSample" type="button">Import Backup</button>
+              </div>
+            </details>
+          </div>
+        </header>
+
+        <div class="tracker-tabs" role="tablist" aria-label="Trackers">
+          <button class="tracker-tab active-tracker-tab" type="button" data-tracker-tab="samples">Sample Tracker</button>
+          <button class="tracker-tab" type="button" data-tracker-tab="dot">DOT Foods Orders</button>
+          <button class="tracker-tab" type="button" data-tracker-tab="nestle">Nestle Machines</button>
+        </div>
+
+        <section class="summary-grid sample-summary-grid" data-tracker-panel="samples" aria-label="Sample tracker summary">
+          <button class="summary-tile" data-sample-quick="all" type="button"><span id="sampleAll">0</span><small>All samples</small></button>
+          <button class="summary-tile" data-sample-quick="today" type="button"><span id="sampleToday">0</span><small>Expected today</small></button>
+          <button class="summary-tile" data-sample-quick="week" type="button"><span id="sampleWeek">0</span><small>Expected this week</small></button>
+          <button class="summary-tile" data-sample-quick="overdue" type="button"><span id="sampleOverdue">0</span><small>Overdue</small></button>
+          <button class="summary-tile" data-sample-quick="ordered" type="button"><span id="sampleOrdered">0</span><small>Ordered</small></button>
+          <button class="summary-tile" data-sample-quick="received" type="button"><span id="sampleReceived">0</span><small>Received</small></button>
+        </section>
+
+        <section class="controls sample-controls" data-tracker-panel="samples" aria-label="Sample filters">
+          <label class="search-box"><span>Search</span><input id="sampleSearch" type="search" placeholder="Product, account, distributor, ordered by, note..." /></label>
+          <label><span>Expected</span><select id="sampleDateFilter"><option value="">Any date</option><option value="overdue">Overdue</option><option value="today">Today</option><option value="week">This week</option><option value="none">No date</option></select></label>
+          <label><span>Status</span><select id="sampleStatusFilter"><option value="">All</option><option>Requested</option><option>Ordered</option><option>Added to PO</option><option>Received</option><option>Delivered / Shown</option><option>Cancelled</option></select></label>
+          <button class="ghost-action" id="clearSampleFilters" type="button">Clear</button>
+        </section>
+
+        <main class="sample-table-panel" data-tracker-panel="samples">
+          <div class="quick-list-header">
+            <div><p class="eyebrow">Samples</p><h2>Sample tracker</h2></div>
+            <span class="count-pill" id="sampleCount">0</span>
+          </div>
+          <div class="quick-table-wrap" id="sampleTable"></div>
+        </main>
+
+        <section class="summary-grid sample-summary-grid tracker-summary-grid" data-tracker-panel="dot" hidden aria-label="DOT Foods order summary">
+          <button class="summary-tile" data-dot-quick="all" type="button"><span id="dotAll">0</span><small>All DOT orders</small></button>
+          <button class="summary-tile" data-dot-quick="today" type="button"><span id="dotToday">0</span><small>ETA today</small></button>
+          <button class="summary-tile" data-dot-quick="week" type="button"><span id="dotWeek">0</span><small>ETA this week</small></button>
+          <button class="summary-tile" data-dot-quick="overdue" type="button"><span id="dotOverdue">0</span><small>Overdue</small></button>
+          <button class="summary-tile" data-dot-quick="ordered" type="button"><span id="dotOrdered">0</span><small>Ordered</small></button>
+          <button class="summary-tile" data-dot-quick="received" type="button"><span id="dotReceived">0</span><small>Received</small></button>
+        </section>
+
+        <section class="controls sample-controls" data-tracker-panel="dot" hidden aria-label="DOT Foods order filters">
+          <label class="search-box"><span>Search</span><input id="dotSearch" type="search" placeholder="Product, account, distributor, PO, ordered by, note..." /></label>
+          <label><span>ETA</span><select id="dotDateFilter"><option value="">Any date</option><option value="overdue">Overdue</option><option value="today">Today</option><option value="week">This week</option><option value="none">No date</option></select></label>
+          <label><span>Status</span><select id="dotStatusFilter"><option value="">All</option><option>Need to Order</option><option>Ordered</option><option>In Transit</option><option>Received</option><option>Delivered</option><option>Cancelled</option></select></label>
+          <button class="ghost-action" id="clearDotFilters" type="button">Clear</button>
+        </section>
+
+        <main class="sample-table-panel" data-tracker-panel="dot" hidden>
+          <div class="quick-list-header">
+            <div><p class="eyebrow">DOT Foods</p><h2>Order tracker</h2></div>
+            <span class="count-pill" id="dotCount">0</span>
+          </div>
+          <div class="quick-table-wrap" id="dotTable"></div>
+        </main>
+
+        <section class="summary-grid sample-summary-grid tracker-summary-grid" data-tracker-panel="nestle" hidden aria-label="Nestle machine summary">
+          <button class="summary-tile" data-nestle-quick="all" type="button"><span id="nestleAll">0</span><small>All machines</small></button>
+          <button class="summary-tile" data-nestle-quick="today" type="button"><span id="nestleToday">0</span><small>Due today</small></button>
+          <button class="summary-tile" data-nestle-quick="week" type="button"><span id="nestleWeek">0</span><small>Due this week</small></button>
+          <button class="summary-tile" data-nestle-quick="overdue" type="button"><span id="nestleOverdue">0</span><small>Overdue</small></button>
+          <button class="summary-tile" data-nestle-quick="installed" type="button"><span id="nestleInstalled">0</span><small>Installed</small></button>
+          <button class="summary-tile" data-nestle-quick="service" type="button"><span id="nestleService">0</span><small>Needs service</small></button>
+        </section>
+
+        <section class="controls sample-controls" data-tracker-panel="nestle" hidden aria-label="Nestle machine filters">
+          <label class="search-box"><span>Search</span><input id="nestleSearch" type="search" placeholder="Machine, operator, serial, location, contact, note..." /></label>
+          <label><span>Date</span><select id="nestleDateFilter"><option value="">Any date</option><option value="overdue">Overdue</option><option value="today">Today</option><option value="week">This week</option><option value="none">No date</option></select></label>
+          <label><span>Status</span><select id="nestleStatusFilter"><option value="">All</option><option>Requested</option><option>Approved</option><option>Ordered</option><option>Installed</option><option>Needs Service</option><option>Returned</option><option>Cancelled</option></select></label>
+          <button class="ghost-action" id="clearNestleFilters" type="button">Clear</button>
+        </section>
+
+        <main class="sample-table-panel" data-tracker-panel="nestle" hidden>
+          <div class="quick-list-header">
+            <div><p class="eyebrow">Nestle</p><h2>Machine tracker</h2></div>
+            <span class="count-pill" id="nestleCount">0</span>
+          </div>
+          <div class="quick-table-wrap" id="nestleTable"></div>
+        </main>
+      </div>
+    </section>
+
+    <dialog class="note-dialog" id="sampleFormDialog">
+      <form method="dialog" class="note-form" id="sampleForm">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Sample tracker</p>
+            <h2 id="sampleFormTitle">Add Sample</h2>
+          </div>
+          <button class="icon-button" id="closeSampleForm" type="button" aria-label="Close">&times;</button>
+        </div>
+        <input id="sampleId" type="hidden" />
+        <div class="field-grid">
+          <label class="wide"><span>Product ordered</span><input id="sampleProduct" required autocomplete="off" /></label>
+          <label><span>Who ordered</span><input id="sampleOrderedBy" autocomplete="off" /></label>
+          <label><span>Expected date</span><input id="sampleExpected" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
+          <label><span>Order type</span><select id="sampleOrderType"><option>Direct from manufacturer</option><option>Added to PO</option><option>Other</option></select></label>
+          <label><span>Status</span><select id="sampleStatus"><option>Requested</option><option>Ordered</option><option>Added to PO</option><option>Received</option><option>Delivered / Shown</option><option>Cancelled</option></select></label>
+          <label class="wide"><span>Account or distributor who wants sample</span><input id="sampleRequestedFor" autocomplete="off" /></label>
+          <label class="wide"><span>Note</span><textarea id="sampleNote" rows="4" placeholder="Tracking number, vendor contact, what needs to happen next..."></textarea></label>
+          <div class="sample-attachment-label wide"><span>Attachments</span></div>
+          <div class="attachments-section wide">
+            <div class="section-label-row">
+              <span></span>
+              <button class="small-action" id="addSampleAttachment" type="button">+ File</button>
+            </div>
+            <div class="paste-target" id="sampleAttachmentPasteTarget" tabindex="0">Paste a screenshot here with Ctrl+V</div>
+            <div class="attachment-list" id="sampleAttachmentList"></div>
+            <input id="sampleAttachmentInput" type="file" accept="image/*,.pdf,.csv,.txt" multiple hidden />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="danger-action" id="deleteSample" type="button">Delete</button>
+          <span></span>
+          <button class="ghost-action" id="cancelSampleForm" type="button">Cancel</button>
+          <button class="primary-action sample-save-action" type="submit">Save Sample</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="note-dialog" id="dotFormDialog">
+      <form method="dialog" class="note-form" id="dotForm">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">DOT Foods order tracker</p>
+            <h2 id="dotFormTitle">Add DOT Order</h2>
+          </div>
+          <button class="icon-button" id="closeDotForm" type="button" aria-label="Close">&times;</button>
+        </div>
+        <input id="dotId" type="hidden" />
+        <div class="field-grid">
+          <label class="wide"><span>Products ordered</span><textarea id="dotProduct" rows="4" required placeholder="Enter one product per line..." autocomplete="off"></textarea></label>
+          <label><span>Ordered date</span><input id="dotOrderedDate" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
+          <label><span>PO / order #</span><input id="dotPo" autocomplete="off" /></label>
+          <label><span>Who ordered</span><input id="dotOrderedBy" autocomplete="off" /></label>
+          <label><span>ETA / expected date</span><input id="dotExpected" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
+          <label><span>Storage type</span><select id="dotStorageType"><option value="">Choose type</option><option>Freeze</option><option>Dry</option><option>Chill</option></select></label>
+          <label><span>Status</span><select id="dotStatus"><option>Need to Order</option><option>Ordered</option><option>In Transit</option><option>Received</option><option>Delivered</option><option>Cancelled</option></select></label>
+          <label><span>For account / distributor</span><input id="dotRequestedFor" autocomplete="off" /></label>
+          <label class="wide"><span>Note</span><textarea id="dotNote" rows="4" placeholder="Tracking, ETA, who needs it, next step..."></textarea></label>
+          <div class="sample-attachment-label wide"><span>Attachments</span></div>
+          <div class="attachments-section wide">
+            <div class="section-label-row">
+              <span></span>
+              <button class="small-action" id="addDotAttachment" type="button">+ File</button>
+            </div>
+            <div class="paste-target" id="dotAttachmentPasteTarget" tabindex="0">Paste a screenshot here with Ctrl+V</div>
+            <div class="attachment-list" id="dotAttachmentList"></div>
+            <input id="dotAttachmentInput" type="file" accept="image/*,.pdf,.csv,.txt,.doc,.docx" multiple hidden />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="danger-action" id="deleteDotOrder" type="button">Delete</button>
+          <span></span>
+          <button class="ghost-action" id="cancelDotForm" type="button">Cancel</button>
+          <button class="primary-action sample-save-action" type="submit">Save DOT Order</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="note-dialog" id="nestleFormDialog">
+      <form method="dialog" class="note-form" id="nestleForm">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Nestle machine tracker</p>
+            <h2 id="nestleFormTitle">Add Nestle Machine</h2>
+          </div>
+          <button class="icon-button" id="closeNestleForm" type="button" aria-label="Close">&times;</button>
+        </div>
+        <input id="nestleId" type="hidden" />
+        <div class="field-grid">
+          <label class="wide"><span>Machine / program</span><input id="nestleMachine" required autocomplete="off" /></label>
+          <label><span>Operator / account</span><input id="nestleAccount" list="accountSuggestions" autocomplete="off" /></label>
+          <label><span>Location</span><input id="nestleLocation" autocomplete="off" /></label>
+          <label><span>Contact person</span><input id="nestleContact" autocomplete="off" /></label>
+          <label><span>Serial #</span><input id="nestleSerial" autocomplete="off" /></label>
+          <label><span>Expected / follow-up date</span><input id="nestleExpected" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
+          <label><span>Status</span><select id="nestleStatus"><option>Requested</option><option>Approved</option><option>Ordered</option><option>Installed</option><option>Needs Service</option><option>Returned</option><option>Cancelled</option></select></label>
+          <label><span>Sales rep</span><input id="nestleSalesRep" list="salesRepSuggestions" autocomplete="off" /></label>
+          <label class="wide"><span>Note</span><textarea id="nestleNote" rows="4" placeholder="Machine request, install details, service issue, next step..."></textarea></label>
+        </div>
+        <div class="form-actions">
+          <button class="danger-action" id="deleteNestleMachine" type="button">Delete</button>
+          <span></span>
+          <button class="ghost-action" id="cancelNestleForm" type="button">Cancel</button>
+          <button class="primary-action sample-save-action" type="submit">Save Machine</button>
+        </div>
+      </form>
+    </dialog>
+
     <section class="stock-view" id="stockListsDialog" hidden>
       <div class="stock-panel">
         <header class="topbar">
@@ -609,12 +1075,21 @@
             <span class="logo-crop" aria-label="Broker Whiteboard">
               <img class="app-logo" src="broker-whiteboard-logo.png" alt="" />
             </span>
+            <section class="global-timeline-search" aria-label="Timeline search">
+              <label>
+                <span>Timeline Search</span>
+                <input class="timeline-search-input" type="search" list="timelineSearchSuggestions" placeholder="Search operator, product, vendor, APN, task, sample..." />
+              </label>
+              <button class="ghost-action timeline-search-action" type="button">Search Timeline</button>
+            </section>
             <div class="main-nav">
               <button class="ghost-action whiteboard-nav-action nav-button" id="closeStockLists" type="button"><span class="nav-icon" aria-hidden="true">&#128204;</span><span>Leads</span></button>
               <button class="ghost-action todo-nav-action nav-button" id="openTodoStock" type="button"><span class="nav-icon" aria-hidden="true">&#10003;</span><span>To-Do List</span></button>
               <button class="ghost-action vendor-nav-action nav-button" id="openVendorReportStock" type="button"><span class="nav-icon" aria-hidden="true">&#128202;</span><span>Vendor Reporting</span></button>
               <button class="ghost-action address-nav-action nav-button" id="openAddressBookStock" type="button"><span class="nav-icon" aria-hidden="true">&#128214;</span><span>Address Book</span></button>
               <button class="ghost-action stock-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
+              <button class="ghost-action sample-nav-action nav-button" id="openSampleTrackerStock" type="button"><span class="nav-icon" aria-hidden="true">&#129514;</span><span>Trackers</span></button>
+              <button class="ghost-action market-nav-action nav-button" id="openMarketVisitsStock" type="button"><span class="nav-icon" aria-hidden="true">&#128506;</span><span>Market Visits</span></button>
               <button class="ghost-action calendar-action nav-button" id="openCalendarStock" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
             </div>
             <div class="view-actions stock-list-picker" id="stockListPicker">
@@ -638,7 +1113,7 @@
           <div class="utility-actions" aria-label="Board utilities">
             <button class="ghost-action login-action" type="button">Login</button>
             <details class="settings-menu">
-              <summary class="settings-button" aria-label="Settings">⚙</summary>
+              <summary class="settings-button" aria-label="Settings">&#9881;</summary>
               <div class="settings-panel">
                 <button class="ghost-action" id="openArchiveStock" type="button">Archive</button>
                 <button class="ghost-action" id="openTrashStock" type="button">Trash</button>
@@ -687,13 +1162,15 @@
           <label><span>APN</span><input id="stockApn" autocomplete="off" /></label>
           <label><span>SUPC</span><input id="stockSupc" autocomplete="off" /></label>
           <label><span>MF#</span><input id="stockManufacturerNumber" autocomplete="off" /></label>
-          <label><span>GTIN</span><input id="stockGtin" autocomplete="off" /></label>
+          <div class="stock-gtin-so-field">
+            <label><span>GTIN</span><input id="stockGtin" autocomplete="off" /></label>
+            <label class="stock-so-check"><input id="stockSo" type="checkbox" value="Yes" /><span>Special Order</span></label>
+          </div>
           <label class="stock-description-field"><span>Product description</span><input id="stockDescription" required autocomplete="off" /></label>
           <label><span>Packaging</span><input id="stockPackaging" autocomplete="off" placeholder="4/5lb bags" /></label>
           <label><span>Storage</span><select id="stockStorage"><option value=""></option><option>Chill</option><option>Frozen</option><option>Dry</option></select></label>
           <label><span>Category</span><input id="stockCategory" list="stockCategorySuggestions" autocomplete="off" placeholder="Seafood, Meat, Desserts..." /></label>
           <label><span>Distributor</span><select id="stockDistributor" required><option>US Foods Anchorage</option><option>US Foods Southeast</option><option>Sysco</option><option>Linford</option></select></label>
-          <label><span>SO</span><select id="stockSo"><option value=""></option><option>Yes</option></select></label>
           <div class="attachments-section wide">
             <div class="section-label-row">
               <span>Product files</span>
@@ -704,10 +1181,10 @@
                   <option>POS</option>
                   <option>Other</option>
                 </select>
-                <button class="small-action" id="addStockAttachment" type="button">+ File</button>
+                <button class="small-action stock-file-action" id="addStockAttachment" type="button"><span aria-hidden="true">+</span><span>File</span></button>
               </div>
             </div>
-            <input id="stockAttachmentInput" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv,application/pdf,image/*,text/*" multiple hidden />
+            <input id="stockAttachmentInput" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.txt,.csv,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*,text/*" multiple hidden />
             <div class="attachment-list" id="stockAttachmentList"></div>
           </div>
         </div>
@@ -755,6 +1232,12 @@
         </div>
         <div class="field-grid">
           <label class="wide"><span>Vendor</span><select id="stockPrintVendor"><option value="">All vendors</option></select></label>
+          <label class="wide"><span>Print layout</span>
+            <select id="stockPrintLayout">
+              <option value="continuous">Continuous list</option>
+              <option value="vendor-page">One vendor per page</option>
+            </select>
+          </label>
           <div class="products-section wide">
             <div class="section-label-row"><span>Columns to print</span></div>
             <div class="stock-print-columns" id="stockPrintColumns"></div>
@@ -779,7 +1262,7 @@
         </div>
         <input id="manualVendorId" type="hidden" />
         <div class="field-grid">
-          <label><span>Account name</span><input id="manualVendorAccount" required autocomplete="off" /></label>
+          <label><span>Account name</span><input id="manualVendorAccount" list="accountSuggestions" required autocomplete="off" /></label>
           <label><span>Vendor / Brand</span><input id="manualVendorVendor" list="vendorSuggestions" required autocomplete="off" /></label>
           <label class="wide"><span>Product shown</span><input id="manualVendorProduct" required autocomplete="off" /></label>
           <label class="wide"><span>Opportunity / target note</span><textarea id="manualVendorOpportunity" rows="3"></textarea></label>
@@ -801,7 +1284,7 @@
             <p class="eyebrow">Task detail</p>
             <h2 id="todoFormTitle">Add Task</h2>
           </div>
-          <button class="icon-button" id="closeTodoForm" type="button" aria-label="Close">×</button>
+          <button class="icon-button" id="closeTodoForm" type="button" aria-label="Close">&times;</button>
         </div>
         <input id="todoId" type="hidden" />
         <div class="field-grid">
@@ -810,8 +1293,8 @@
           <label><span>Due date</span><input id="todoDue" class="date-picker-input" type="text" placeholder="YYYY-MM-DD" readonly /></label>
           <label><span>Assigned by</span><input id="todoAssignedBy" autocomplete="off" /></label>
           <label><span>Status</span><select id="todoStatus"><option>New</option><option>In Progress</option><option>Waiting on Someone</option><option>Done</option></select></label>
-          <label><span>Related account/customer</span><input id="todoAccount" autocomplete="off" /></label>
-          <label><span>Related vendor/brand</span><input id="todoVendor" autocomplete="off" /></label>
+          <label><span>Operator</span><input id="todoAccount" list="accountSuggestions" autocomplete="off" /></label>
+          <label><span>Related vendor/brand</span><input id="todoVendor" list="vendorSuggestions" autocomplete="off" /></label>
           <label class="wide"><span>Notes</span><textarea id="todoNotes" rows="4"></textarea></label>
           <div class="products-section wide">
             <div class="section-label-row">
@@ -834,5 +1317,16 @@
     </dialog>
 
     <script src="app.js"></script>
+    <script>
+      if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("./service-worker.js").catch((error) => console.warn("Service worker registration failed", error));
+        });
+      }
+    </script>
   </body>
 </html>
+
+
+
+
