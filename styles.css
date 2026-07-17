@@ -188,6 +188,13 @@ button {
   justify-content: center;
 }
 
+.cloud-sync-action {
+  border-color: #3f6c45;
+  background: #e2ecd8;
+  color: #243f29;
+  font-weight: 900;
+}
+
 .login-action {
   min-width: 82px;
 }
@@ -1427,6 +1434,53 @@ body.lead-drag-suppressed .note-card .card-details {
   background: #dce8ee;
   color: #183448;
   font-weight: 900;
+}
+
+body.auth-pending .app-shell > :not(.topbar):not(.auth-gate),
+body.auth-required:not(.auth-signed-in) .app-shell > :not(.topbar):not(.auth-gate) {
+  display: none !important;
+}
+
+body.auth-pending .main-nav,
+body.auth-pending .view-actions,
+body.auth-pending .global-timeline-search,
+body.auth-pending .settings-menu,
+body.auth-required:not(.auth-signed-in) .main-nav,
+body.auth-required:not(.auth-signed-in) .view-actions,
+body.auth-required:not(.auth-signed-in) .global-timeline-search,
+body.auth-required:not(.auth-signed-in) .settings-menu {
+  display: none !important;
+}
+
+.auth-gate {
+  display: grid;
+  place-items: center;
+  min-height: 52vh;
+  padding: 28px 0;
+}
+
+.auth-gate[hidden] {
+  display: none !important;
+}
+
+.auth-gate-card {
+  width: min(620px, 100%);
+  border: 1px solid rgba(31, 48, 64, 0.18);
+  border-radius: 10px;
+  padding: 24px;
+  background: rgba(255, 253, 248, 0.92);
+  box-shadow: 0 24px 60px rgba(31, 48, 64, 0.15);
+}
+
+.auth-gate-card h1 {
+  margin-bottom: 12px;
+  font-size: clamp(2rem, 4vw, 3.1rem);
+}
+
+.auth-gate-card p:not(.eyebrow) {
+  color: var(--muted);
+  font-size: 1.08rem;
+  font-weight: 800;
 }
 
 .timeline-dialog {

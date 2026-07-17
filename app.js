@@ -180,6 +180,7 @@ let cloudSyncLoading = false;
 let cloudSyncUserId = "";
 let cloudSaveTimer = null;
 let pendingCloudSections = new Set();
+let lastCloudError = "";
 
 const cloudSectionConfigs = [
   { key: storageKey, label: "Leads", get: () => cards, set: (value) => (cards = Array.isArray(value) ? value.map(normalizeCard) : []) },
@@ -1596,8 +1597,10 @@ async function saveCloudSections(sectionKeys = cloudSectionConfigs.map((section)
       onConflict: "owner_id,record_type,record_key"
     });
     if (error) throw error;
+    lastCloudError = "";
     return true;
   } catch (error) {
+    lastCloudError = error?.message || "Unknown cloud save error.";
     console.warn("FoodBrokerBase cloud save failed.", error);
     pendingCloudSections = new Set([...sectionKeys, ...pendingCloudSections]);
     return false;
@@ -1664,9 +1667,67 @@ window.setTimeout(() => {
 }, 0);
 window.foodBrokerBaseCloud = {
   pull: loadCloudSections,
-  pushAll: () => saveCloudSections(undefined, { force: true }),
-  isReady: () => cloudSyncReady
+  pushAll: () => syncLocalDataToCloud({ silent: true }),
+  isReady: () => cloudSyncReady,
+  syncNow: syncLocalDataToCloud
 };
+
+function setCloudSyncButtonsBusy(isBusy) {
+  document.querySelectorAll("[data-cloud-sync-action]").forEach((button) => {
+    button.disabled = isBusy;
+    button.textContent = isBusy ? "Uploading..." : "Upload This Browser to Cloud";
+  });
+}
+
+async function syncLocalDataToCloud(options = {}) {
+  const client = getCloudClient();
+  const user = getCloudUser();
+  if (!client) {
+    if (!options.silent) alert("Cloud sync did not load. Check your internet connection, refresh the page, and try again.");
+    return false;
+  }
+  if (!user) {
+    if (!options.silent) {
+      alert("Please sign in first. Then open Settings and click Upload This Browser to Cloud again.");
+      window.foodBrokerBaseAuth?.openDialog?.();
+    }
+    return false;
+  }
+
+  setCloudSyncButtonsBusy(true);
+  const uploaded = await saveCloudSections(undefined, { force: true });
+  setCloudSyncButtonsBusy(false);
+
+  if (!options.silent) {
+    if (uploaded) {
+      alert("Uploaded this browser's FoodBrokerBase data to Supabase. Now sign in on your phone or another browser and the same data should load there.");
+    } else {
+      alert(`This browser still has the data, but Supabase did not save it yet. ${lastCloudError || "Please try again."}`);
+    }
+  }
+
+  return uploaded;
+}
+
+function setupCloudSyncButtons() {
+  document.querySelectorAll(".settings-panel").forEach((panel) => {
+    if (panel.querySelector("[data-cloud-sync-action]")) return;
+    const button = document.createElement("button");
+    button.className = "ghost-action cloud-sync-action";
+    button.type = "button";
+    button.dataset.cloudSyncAction = "upload";
+    button.textContent = "Upload This Browser to Cloud";
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const uploaded = await syncLocalDataToCloud();
+      if (uploaded) panel.closest("details")?.removeAttribute("open");
+    });
+    panel.appendChild(button);
+  });
+}
+
+setupCloudSyncButtons();
 
 function openStockFileDb() {
   if (!("indexedDB" in window)) return Promise.reject(new Error("IndexedDB is not available."));
@@ -1764,7 +1825,7 @@ function importBackup(event) {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.addEventListener("load", () => {
+  reader.addEventListener("load", async () => {
     try {
       const parsed = JSON.parse(String(reader.result || ""));
       const importedCards = Array.isArray(parsed) ? parsed : parsed.cards;
@@ -1793,7 +1854,16 @@ function importBackup(event) {
       persistMarketVisits();
       clearFilters(false);
       render();
-      alert("Backup imported.");
+      if (getCloudClient() && getCloudUser()) {
+        const uploaded = await syncLocalDataToCloud({ silent: true });
+        alert(
+          uploaded
+            ? "Backup imported and uploaded to Supabase."
+            : `Backup imported into this browser, but Supabase did not save it yet. ${lastCloudError || "Open Settings and try Upload This Browser to Cloud."}`
+        );
+      } else {
+        alert("Backup imported into this browser. Sign in, then open Settings and click Upload This Browser to Cloud so your phone and other browsers can see it.");
+      }
     } catch {
       alert("That file does not look like a Broker Whiteboard backup.");
     } finally {

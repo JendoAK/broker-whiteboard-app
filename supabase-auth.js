@@ -18,7 +18,8 @@
     client,
     getCurrentUser: () => currentUser,
     getCurrentSession: () => (client ? client.auth.getSession() : Promise.resolve({ data: { session: null } })),
-    signOut: () => (client ? client.auth.signOut() : Promise.resolve())
+    signOut: () => (client ? client.auth.signOut() : Promise.resolve()),
+    openDialog: () => openAuthDialog()
   };
 
   function ready(fn) {
@@ -63,6 +64,42 @@
       button.title = currentUser ? `Signed in as ${currentUser.email}` : "Sign in to FoodBrokerBase";
       button.classList.toggle("is-signed-in", Boolean(currentUser));
     });
+    updateAuthGate();
+  }
+
+  function ensureAuthGate() {
+    let gate = document.querySelector("#authGate");
+    if (gate) return gate;
+
+    const shell = document.querySelector(".app-shell");
+    const topbar = document.querySelector(".topbar");
+    if (!shell || !topbar) return null;
+
+    gate = document.createElement("section");
+    gate.id = "authGate";
+    gate.className = "auth-gate";
+    gate.innerHTML = `
+      <div class="auth-gate-card">
+        <p class="eyebrow">Team access</p>
+        <h1>Sign in to FoodBrokerBase</h1>
+        <p>Your shared team boards, stock lists, trackers, and reports are stored in Supabase after you sign in.</p>
+        <button class="primary-action" type="button" data-open-auth-gate>Login</button>
+      </div>
+    `;
+    shell.insertBefore(gate, topbar.nextSibling);
+    gate.querySelector("[data-open-auth-gate]").addEventListener("click", openAuthDialog);
+    return gate;
+  }
+
+  function updateAuthGate() {
+    const needsAuth = Boolean(client);
+    const isSignedIn = Boolean(currentUser);
+    document.body.classList.toggle("auth-required", needsAuth);
+    document.body.classList.toggle("auth-signed-in", !needsAuth || isSignedIn);
+    document.body.classList.remove("auth-pending");
+
+    const gate = ensureAuthGate();
+    if (gate) gate.hidden = !needsAuth || isSignedIn;
   }
 
   function notifyAuthChange() {
