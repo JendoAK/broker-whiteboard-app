@@ -65,6 +65,14 @@
     });
   }
 
+  function notifyAuthChange() {
+    window.dispatchEvent(
+      new CustomEvent("foodbrokerbase:auth", {
+        detail: { user: currentUser }
+      })
+    );
+  }
+
   function ensureDialog() {
     let dialog = document.querySelector("#supabaseAuthDialog");
     if (dialog) return dialog;
@@ -81,7 +89,7 @@
           </div>
           <button class="icon-button" id="closeAuthDialog" type="button" aria-label="Close">&times;</button>
         </div>
-        <p class="auth-help">Sign in here first. The next setup step will move shared app data into Supabase.</p>
+        <p class="auth-help">Sign in to sync this browser with the shared FoodBrokerBase database.</p>
         <div class="auth-current-user" id="authCurrentUser"></div>
         <div class="auth-fields">
           <label>
@@ -171,8 +179,9 @@
 
     currentUser = data.user || null;
     updateLoginButtons();
+    notifyAuthChange();
     refreshDialogState();
-    setStatus("Signed in. Shared database sync is the next setup step.", "success");
+    setStatus("Signed in. Cloud sync is ready.", "success");
   }
 
   async function signUp() {
@@ -200,6 +209,7 @@
 
     currentUser = data.user || currentUser;
     updateLoginButtons();
+    notifyAuthChange();
     refreshDialogState();
     setStatus("Account created. If Supabase asks for confirmation, check the email inbox.", "success");
   }
@@ -218,6 +228,7 @@
 
     currentUser = null;
     updateLoginButtons();
+    notifyAuthChange();
     refreshDialogState();
     setStatus("Signed out.", "success");
   }
@@ -235,10 +246,12 @@
     const { data } = await client.auth.getUser();
     currentUser = data.user || null;
     updateLoginButtons();
+    notifyAuthChange();
 
     client.auth.onAuthStateChange((_event, session) => {
       currentUser = session?.user || null;
       updateLoginButtons();
+      notifyAuthChange();
       refreshDialogState();
     });
   }

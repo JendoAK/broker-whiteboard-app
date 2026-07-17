@@ -174,6 +174,49 @@ const statusMap = {
 };
 
 const sampleCards = [];
+const cloudRecordType = "app_section";
+let cloudSyncReady = false;
+let cloudSyncLoading = false;
+let cloudSyncUserId = "";
+let cloudSaveTimer = null;
+let pendingCloudSections = new Set();
+
+const cloudSectionConfigs = [
+  { key: storageKey, label: "Leads", get: () => cards, set: (value) => (cards = Array.isArray(value) ? value.map(normalizeCard) : []) },
+  { key: todoStorageKey, label: "To-Do List", get: () => todos, set: (value) => (todos = Array.isArray(value) ? value.map(normalizeTodo) : []) },
+  {
+    key: manualVendorStorageKey,
+    label: "Vendor Reporting",
+    get: () => manualVendorReports,
+    set: (value) => (manualVendorReports = Array.isArray(value) ? value.map(normalizeManualVendorReport) : [])
+  },
+  {
+    key: addressBookStorageKey,
+    label: "Address Book",
+    get: () => addressBook,
+    set: (value) => (addressBook = Array.isArray(value) ? value.map(normalizeAddressBookEntry) : [])
+  },
+  {
+    key: stockStorageKey,
+    label: "Stock Lists",
+    get: () => stockProducts,
+    set: (value) => (stockProducts = Array.isArray(value) ? value.map(normalizeStockProduct) : [])
+  },
+  { key: sampleStorageKey, label: "Samples", get: () => samples, set: (value) => (samples = Array.isArray(value) ? value.map(normalizeSample) : []) },
+  { key: dotOrderStorageKey, label: "DOT Orders", get: () => dotOrders, set: (value) => (dotOrders = Array.isArray(value) ? value.map(normalizeDotOrder) : []) },
+  {
+    key: nestleMachineStorageKey,
+    label: "Nestle Machines",
+    get: () => nestleMachines,
+    set: (value) => (nestleMachines = Array.isArray(value) ? value.map(normalizeNestleMachine) : [])
+  },
+  {
+    key: marketVisitStorageKey,
+    label: "Market Visits",
+    get: () => marketVisits,
+    set: (value) => (marketVisits = Array.isArray(value) ? value.map(normalizeMarketVisit) : [])
+  }
+];
 
 if (!localStorage.getItem(resetFlagKey)) {
   localStorage.removeItem(storageKey);
@@ -1394,6 +1437,7 @@ function normalizeStatus(status) {
 function persist() {
   try {
     localStorage.setItem(storageKey, JSON.stringify(cards));
+    scheduleCloudSave(storageKey);
     return true;
   } catch (error) {
     alert("This browser could not save the board. One or more attachments may be too large for local storage.");
@@ -1405,6 +1449,7 @@ function persist() {
 function persistTodos() {
   try {
     localStorage.setItem(todoStorageKey, JSON.stringify(todos));
+    scheduleCloudSave(todoStorageKey);
     return true;
   } catch (error) {
     alert("This task could not save because the browser storage is full. Try exporting a backup, then removing a very large attachment or old file.");
@@ -1415,15 +1460,18 @@ function persistTodos() {
 
 function persistManualVendorReports() {
   localStorage.setItem(manualVendorStorageKey, JSON.stringify(manualVendorReports));
+  scheduleCloudSave(manualVendorStorageKey);
 }
 
 function persistAddressBook() {
   localStorage.setItem(addressBookStorageKey, JSON.stringify(addressBook));
+  scheduleCloudSave(addressBookStorageKey);
 }
 
 function persistStockProducts() {
   try {
     localStorage.setItem(stockStorageKey, JSON.stringify(stockProducts));
+    scheduleCloudSave(stockStorageKey);
     return true;
   } catch (error) {
     alert("This product could not save because the browser storage is full. I kept the product window open. Try removing a very large attachment or export a backup before adding more files.");
@@ -1434,19 +1482,191 @@ function persistStockProducts() {
 
 function persistSamples() {
   localStorage.setItem(sampleStorageKey, JSON.stringify(samples));
+  scheduleCloudSave(sampleStorageKey);
 }
 
 function persistDotOrders() {
   localStorage.setItem(dotOrderStorageKey, JSON.stringify(dotOrders));
+  scheduleCloudSave(dotOrderStorageKey);
 }
 
 function persistNestleMachines() {
   localStorage.setItem(nestleMachineStorageKey, JSON.stringify(nestleMachines));
+  scheduleCloudSave(nestleMachineStorageKey);
 }
 
 function persistMarketVisits() {
   localStorage.setItem(marketVisitStorageKey, JSON.stringify(marketVisits));
+  scheduleCloudSave(marketVisitStorageKey);
 }
+
+function getCloudClient() {
+  return window.foodBrokerBaseAuth?.client || null;
+}
+
+function getCloudUser() {
+  return window.foodBrokerBaseAuth?.getCurrentUser?.() || null;
+}
+
+function getCloudConfig(sectionKey) {
+  return cloudSectionConfigs.find((section) => section.key === sectionKey);
+}
+
+function extractCloudValue(row) {
+  if (row?.data && Object.prototype.hasOwnProperty.call(row.data, "value")) return row.data.value;
+  return row?.data;
+}
+
+function hasLocalAppData() {
+  return cloudSectionConfigs.some((section) => {
+    const value = section.get();
+    return Array.isArray(value) && value.length > 0;
+  });
+}
+
+function writeCloudSectionsToLocalStorage(sectionKeys = cloudSectionConfigs.map((section) => section.key)) {
+  sectionKeys.forEach((sectionKey) => {
+    const section = getCloudConfig(sectionKey);
+    if (!section) return;
+    try {
+      localStorage.setItem(section.key, JSON.stringify(section.get()));
+    } catch (error) {
+      console.warn(`Could not refresh local cache for ${section.label}.`, error);
+    }
+  });
+}
+
+function renderAfterCloudSync() {
+  render();
+  renderTodoBoard();
+  renderVendorReport();
+  renderAddressBook();
+  renderStockLists();
+  renderSamples();
+  renderDotOrders();
+  renderNestleMachines();
+  renderMarketVisits();
+  renderCalendar();
+  updateTimelineSearchSuggestions();
+}
+
+function scheduleCloudSave(sectionKey) {
+  if (!cloudSyncReady || !getCloudClient() || !getCloudUser()) return;
+  pendingCloudSections.add(sectionKey);
+  window.clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = window.setTimeout(() => {
+    pushPendingCloudSections();
+  }, 900);
+}
+
+async function pushPendingCloudSections() {
+  if (!pendingCloudSections.size) return;
+  const sectionKeys = Array.from(pendingCloudSections);
+  pendingCloudSections.clear();
+  await saveCloudSections(sectionKeys);
+}
+
+async function saveCloudSections(sectionKeys = cloudSectionConfigs.map((section) => section.key), options = {}) {
+  const client = getCloudClient();
+  const user = getCloudUser();
+  if (!client || !user || (!cloudSyncReady && !options.force)) return false;
+
+  const now = new Date().toISOString();
+  const payload = sectionKeys
+    .map((sectionKey) => getCloudConfig(sectionKey))
+    .filter(Boolean)
+    .map((section) => ({
+      record_type: cloudRecordType,
+      record_key: section.key,
+      owner_id: user.id,
+      created_by: user.id,
+      updated_by: user.id,
+      data: {
+        label: section.label,
+        value: section.get(),
+        backupVersion,
+        savedAt: now
+      }
+    }));
+
+  if (!payload.length) return true;
+
+  try {
+    const { error } = await client.from("app_records").upsert(payload, {
+      onConflict: "owner_id,record_type,record_key"
+    });
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.warn("FoodBrokerBase cloud save failed.", error);
+    pendingCloudSections = new Set([...sectionKeys, ...pendingCloudSections]);
+    return false;
+  }
+}
+
+async function loadCloudSections() {
+  const client = getCloudClient();
+  const user = getCloudUser();
+  if (!client || !user || cloudSyncLoading) return;
+
+  cloudSyncLoading = true;
+  cloudSyncReady = false;
+  cloudSyncUserId = user.id;
+
+  try {
+    const { data, error } = await client
+      .from("app_records")
+      .select("record_key,data,updated_at")
+      .eq("record_type", cloudRecordType)
+      .eq("owner_id", user.id);
+
+    if (error) throw error;
+
+    const rows = Array.isArray(data) ? data : [];
+    if (rows.length) {
+      const rowMap = new Map(rows.map((row) => [row.record_key, row]));
+      const appliedKeys = [];
+      cloudSectionConfigs.forEach((section) => {
+        if (!rowMap.has(section.key)) return;
+        section.set(extractCloudValue(rowMap.get(section.key)));
+        appliedKeys.push(section.key);
+      });
+      writeCloudSectionsToLocalStorage(appliedKeys);
+      renderAfterCloudSync();
+    }
+
+    cloudSyncReady = true;
+    if (!rows.length && hasLocalAppData()) {
+      await saveCloudSections(undefined, { force: true });
+    }
+  } catch (error) {
+    console.warn("FoodBrokerBase cloud load failed.", error);
+  } finally {
+    cloudSyncLoading = false;
+  }
+}
+
+function handleCloudAuthChange(event) {
+  const user = event.detail?.user || getCloudUser();
+  if (!user) {
+    cloudSyncReady = false;
+    cloudSyncUserId = "";
+    pendingCloudSections.clear();
+    return;
+  }
+  if (cloudSyncLoading && cloudSyncUserId === user.id) return;
+  loadCloudSections();
+}
+
+window.addEventListener("foodbrokerbase:auth", handleCloudAuthChange);
+window.setTimeout(() => {
+  if (getCloudUser()) loadCloudSections();
+}, 0);
+window.foodBrokerBaseCloud = {
+  pull: loadCloudSections,
+  pushAll: () => saveCloudSections(undefined, { force: true }),
+  isReady: () => cloudSyncReady
+};
 
 function openStockFileDb() {
   if (!("indexedDB" in window)) return Promise.reject(new Error("IndexedDB is not available."));
