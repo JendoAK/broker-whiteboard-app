@@ -1629,13 +1629,25 @@ async function loadCloudSections() {
     if (rows.length) {
       const rowMap = new Map(rows.map((row) => [row.record_key, row]));
       const appliedKeys = [];
+      const localUploadKeys = [];
       cloudSectionConfigs.forEach((section) => {
-        if (!rowMap.has(section.key)) return;
-        section.set(extractCloudValue(rowMap.get(section.key)));
+        if (!rowMap.has(section.key)) {
+          const localValue = section.get();
+          if (Array.isArray(localValue) && localValue.length) localUploadKeys.push(section.key);
+          return;
+        }
+        const cloudValue = extractCloudValue(rowMap.get(section.key));
+        const localValue = section.get();
+        if (Array.isArray(localValue) && localValue.length && Array.isArray(cloudValue) && !cloudValue.length) {
+          localUploadKeys.push(section.key);
+          return;
+        }
+        section.set(cloudValue);
         appliedKeys.push(section.key);
       });
       writeCloudSectionsToLocalStorage(appliedKeys);
       renderAfterCloudSync();
+      if (localUploadKeys.length) await saveCloudSections(localUploadKeys, { force: true });
     }
 
     cloudSyncReady = true;
