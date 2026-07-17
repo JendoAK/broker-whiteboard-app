@@ -1705,6 +1705,10 @@ async function syncLocalDataToCloud(options = {}) {
     }
     return false;
   }
+  if (!hasLocalAppData()) {
+    if (!options.silent) alert("This browser does not have local FoodBrokerBase data to upload. Use the browser where your imported backup data is visible.");
+    return false;
+  }
 
   setCloudSyncButtonsBusy(true);
   const uploaded = await saveCloudSections(undefined, { force: true });
