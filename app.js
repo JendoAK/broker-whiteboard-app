@@ -1607,10 +1607,25 @@ async function saveCloudSections(sectionKeys = cloudSectionConfigs.map((section)
   }
 }
 
-async function loadCloudSections() {
+async function fetchCloudRowSummary() {
   const client = getCloudClient();
   const user = getCloudUser();
-  if (!client || !user || cloudSyncLoading) return;
+  if (!client || !user) return [];
+
+  const { data, error } = await client
+    .from("app_records")
+    .select("record_key,updated_at")
+    .eq("record_type", cloudRecordType)
+    .eq("owner_id", user.id);
+
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+async function loadCloudSections(options = {}) {
+  const client = getCloudClient();
+  const user = getCloudUser();
+  if (!client || !user || cloudSyncLoading) return false;
 
   cloudSyncLoading = true;
   cloudSyncReady = false;
@@ -1654,8 +1669,16 @@ async function loadCloudSections() {
     if (!rows.length && hasLocalAppData()) {
       await saveCloudSections(undefined, { force: true });
     }
+    if (!rows.length && options.reportIfEmpty) {
+      alert("No FoodBrokerBase cloud data was found for this login yet. Use the browser where your data is visible and click Upload This Browser to Cloud.");
+    }
+    lastCloudError = "";
+    return rows.length > 0;
   } catch (error) {
+    lastCloudError = error?.message || "Unknown cloud load error.";
     console.warn("FoodBrokerBase cloud load failed.", error);
+    if (options.reportErrors) alert(`FoodBrokerBase could not download cloud data yet. ${lastCloudError}`);
+    return false;
   } finally {
     cloudSyncLoading = false;
   }
@@ -1681,6 +1704,7 @@ window.foodBrokerBaseCloud = {
   pull: loadCloudSections,
   pushAll: () => syncLocalDataToCloud({ silent: true }),
   isReady: () => cloudSyncReady,
+  downloadNow: () => loadCloudSections({ reportErrors: true, reportIfEmpty: true }),
   syncNow: syncLocalDataToCloud
 };
 
@@ -1712,17 +1736,28 @@ async function syncLocalDataToCloud(options = {}) {
 
   setCloudSyncButtonsBusy(true);
   const uploaded = await saveCloudSections(undefined, { force: true });
+  let cloudRowCount = 0;
+  if (uploaded) {
+    try {
+      cloudRowCount = (await fetchCloudRowSummary()).length;
+      if (!cloudRowCount) {
+        lastCloudError = "Supabase accepted the upload request, but no cloud rows were found afterward.";
+      }
+    } catch (error) {
+      lastCloudError = error?.message || "The upload finished, but the app could not verify the cloud rows.";
+    }
+  }
   setCloudSyncButtonsBusy(false);
 
   if (!options.silent) {
-    if (uploaded) {
-      alert("Uploaded this browser's FoodBrokerBase data to Supabase. Now sign in on your phone or another browser and the same data should load there.");
+    if (uploaded && cloudRowCount) {
+      alert(`Uploaded this browser's FoodBrokerBase data to Supabase. Supabase now has ${cloudRowCount} app sections. Now sign in on your phone or another browser and the same data should load there.`);
     } else {
       alert(`This browser still has the data, but Supabase did not save it yet. ${lastCloudError || "Please try again."}`);
     }
   }
 
-  return uploaded;
+  return uploaded && Boolean(cloudRowCount);
 }
 
 function setupCloudSyncButtons() {
@@ -1740,6 +1775,18 @@ function setupCloudSyncButtons() {
       if (uploaded) panel.closest("details")?.removeAttribute("open");
     });
     panel.appendChild(button);
+
+    const downloadButton = document.createElement("button");
+    downloadButton.className = "ghost-action cloud-sync-action cloud-download-action";
+    downloadButton.type = "button";
+    downloadButton.textContent = "Download Cloud to This Browser";
+    downloadButton.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      await loadCloudSections({ reportErrors: true, reportIfEmpty: true });
+      panel.closest("details")?.removeAttribute("open");
+    });
+    panel.appendChild(downloadButton);
   });
 }
 

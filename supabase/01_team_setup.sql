@@ -77,6 +77,24 @@ create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_user();
 
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.profiles
+    where id = auth.uid()
+      and role = 'admin'
+  );
+$$;
+
+revoke all on function public.is_admin() from public;
+grant execute on function public.is_admin() to authenticated;
+
 alter table public.profiles enable row level security;
 alter table public.app_records enable row level security;
 
@@ -86,11 +104,7 @@ on public.profiles for select
 to authenticated
 using (
   id = auth.uid()
-  or exists (
-    select 1 from public.profiles admin_profile
-    where admin_profile.id = auth.uid()
-      and admin_profile.role = 'admin'
-  )
+  or public.is_admin()
 );
 
 drop policy if exists "profiles_update_own_or_admin" on public.profiles;
@@ -99,19 +113,11 @@ on public.profiles for update
 to authenticated
 using (
   id = auth.uid()
-  or exists (
-    select 1 from public.profiles admin_profile
-    where admin_profile.id = auth.uid()
-      and admin_profile.role = 'admin'
-  )
+  or public.is_admin()
 )
 with check (
   id = auth.uid()
-  or exists (
-    select 1 from public.profiles admin_profile
-    where admin_profile.id = auth.uid()
-      and admin_profile.role = 'admin'
-  )
+  or public.is_admin()
 );
 
 drop policy if exists "app_records_select_own_or_admin" on public.app_records;
@@ -121,11 +127,7 @@ to authenticated
 using (
   owner_id = auth.uid()
   or created_by = auth.uid()
-  or exists (
-    select 1 from public.profiles admin_profile
-    where admin_profile.id = auth.uid()
-      and admin_profile.role = 'admin'
-  )
+  or public.is_admin()
 );
 
 drop policy if exists "app_records_insert_own" on public.app_records;
@@ -144,19 +146,11 @@ to authenticated
 using (
   owner_id = auth.uid()
   or created_by = auth.uid()
-  or exists (
-    select 1 from public.profiles admin_profile
-    where admin_profile.id = auth.uid()
-      and admin_profile.role = 'admin'
-  )
+  or public.is_admin()
 )
 with check (
   owner_id = auth.uid()
-  or exists (
-    select 1 from public.profiles admin_profile
-    where admin_profile.id = auth.uid()
-      and admin_profile.role = 'admin'
-  )
+  or public.is_admin()
 );
 
 drop policy if exists "app_records_delete_own_or_admin" on public.app_records;
@@ -165,11 +159,7 @@ on public.app_records for delete
 to authenticated
 using (
   owner_id = auth.uid()
-  or exists (
-    select 1 from public.profiles admin_profile
-    where admin_profile.id = auth.uid()
-      and admin_profile.role = 'admin'
-  )
+  or public.is_admin()
 );
 
 -- After your own account is created in the app, run this once with your email:

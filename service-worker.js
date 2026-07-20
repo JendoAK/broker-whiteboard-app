@@ -1,11 +1,11 @@
-const CACHE_NAME = "foodbrokerbase-app-v5";
+const CACHE_NAME = "foodbrokerbase-app-v6";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css?v=20260717-3",
-  "./app.js?v=20260717-3",
+  "./app.js?v=20260720-1",
   "./supabase-config.js",
-  "./supabase-auth.js?v=20260717-3",
+  "./supabase-auth.js?v=20260720-1",
   "./manifest.webmanifest",
   "./broker-whiteboard-logo.png",
   "./pwa-icon-192.png",
@@ -35,13 +35,12 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
+    fetch(event.request)
+      .then((response) => {
         const copy = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         return response;
-      });
-    })
+      })
+      .catch(() => caches.match(event.request))
   );
 });
