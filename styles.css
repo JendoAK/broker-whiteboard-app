@@ -4428,7 +4428,7 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 980px) {
   body {
     overflow-x: hidden;
   }
@@ -4456,6 +4456,8 @@ html {
     position: relative;
     gap: 10px;
     padding: 4px 0 12px;
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .title-block {
@@ -4470,9 +4472,8 @@ html {
   }
 
   .utility-actions {
-    position: absolute;
-    top: max(4px, env(safe-area-inset-top));
-    right: 0;
+    position: static;
+    align-self: flex-end;
     z-index: 90;
     gap: 6px;
     max-width: none;
@@ -4606,6 +4607,8 @@ html {
 
   .board:not(.quick-list-board),
   .todo-board:not(.quick-list-board) {
+    display: flex;
+    gap: 12px;
     margin-right: -10px;
     overflow-x: auto;
     padding-right: 10px;
