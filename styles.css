@@ -4463,17 +4463,20 @@ html {
   .title-block {
     width: 100%;
     gap: 8px;
-    padding-top: 2px;
+    padding-top: 0;
   }
 
   .logo-crop {
-    width: min(220px, 60vw);
+    width: min(210px, calc(100vw - 150px));
+    min-width: 150px;
     margin-bottom: 4px;
   }
 
   .utility-actions {
-    position: static;
-    align-self: flex-end;
+    position: absolute;
+    top: max(4px, env(safe-area-inset-top));
+    right: 0;
+    align-self: auto;
     z-index: 90;
     gap: 6px;
     max-width: none;
@@ -4494,16 +4497,41 @@ html {
     min-width: min(220px, calc(100vw - 20px));
   }
 
-  .global-timeline-search,
+  .global-timeline-search {
+    grid-template-columns: minmax(0, 1fr) auto;
+    max-width: min(100%, 560px);
+    gap: 6px;
+  }
+
   .timeline-search-panel {
     grid-template-columns: 1fr;
     max-width: 100%;
   }
 
-  .global-timeline-search input,
-  .timeline-search-panel input,
+  .global-timeline-search label {
+    gap: 0;
+  }
+
+  .global-timeline-search span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .global-timeline-search input {
+    min-height: 40px;
+    padding: 0 10px;
+  }
+
+  .timeline-search-panel input {
+    min-height: 44px;
+  }
+
   .timeline-search-action {
-    min-height: 46px;
+    min-height: 40px;
+    padding: 0 14px;
   }
 
   .main-nav {
@@ -4551,10 +4579,15 @@ html {
     min-height: 50px;
     min-width: 132px;
     padding: 0 18px;
+    font-size: 1.05rem;
   }
 
   .print-action {
     min-width: 168px;
+  }
+
+  .view-actions .print-action {
+    display: none;
   }
 
   .summary-grid,
@@ -4603,6 +4636,28 @@ html {
   .sample-controls label,
   .market-controls label {
     grid-column: 1 / -1;
+  }
+
+  .lead-controls,
+  .todo-controls,
+  .sample-controls,
+  .market-controls {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+
+  .lead-controls > label:not(.search-box),
+  .todo-controls > label:not(.search-box),
+  .sample-controls > label:not(.search-box),
+  .market-controls > label:not(.search-box) {
+    display: none;
+  }
+
+  .lead-controls .search-box,
+  .todo-controls .search-box,
+  .sample-controls .search-box,
+  .market-controls .search-box {
+    grid-column: auto;
   }
 
   .board:not(.quick-list-board),
@@ -4840,7 +4895,8 @@ html {
 
 @media (max-width: 460px) {
   .logo-crop {
-    width: min(190px, 56vw);
+    width: min(178px, calc(100vw - 132px));
+    min-width: 140px;
   }
 
   .global-timeline-search {
