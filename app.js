@@ -5127,10 +5127,16 @@ function printMarketVisit(id, sections = { schedule: true, products: true }) {
 function renderMarketVisitPrintDocument(visit, sections = { schedule: true, products: true }) {
   const calls = getMarketVisitCalendarCalls(visit).sort((a, b) => `${a.date || ""}${a.startTime || ""}`.localeCompare(`${b.date || ""}${b.startTime || ""}`));
   const products = getMarketVisitProducts(visit);
+  const sortedProducts = [...products].sort((a, b) => {
+    const vendorCompare = String(a.vendor || "").localeCompare(String(b.vendor || ""), undefined, { sensitivity: "base" });
+    if (vendorCompare) return vendorCompare;
+    return String(a.description || "").localeCompare(String(b.description || ""), undefined, { sensitivity: "base" });
+  });
   const titleSuffix = [sections.schedule ? "Schedule" : "", sections.products ? "Product List" : ""].filter(Boolean).join(" + ");
   const printedNumberKey = pcMarketNumberMode === "supc" ? "supc" : "apn";
   const printedNumberLabel = printedNumberKey === "supc" ? "Sysco #" : "US Foods #";
   const visitDateText = formatDateRange(visit.startDate, visit.endDate) || "No date";
+  const printMeta = [visitDateText, visit.location ? `Location: ${visit.location}` : "", titleSuffix].filter(Boolean);
   return `<!doctype html>
     <html>
       <head>
@@ -5150,8 +5156,7 @@ function renderMarketVisitPrintDocument(visit, sections = { schedule: true, prod
       </head>
       <body>
         <h1>Market Visit</h1>
-        <div class="meta">${escapeHtml(visitDateText)}</div>
-        <div class="meta">${escapeHtml(titleSuffix)}</div>
+        ${printMeta.map((line) => `<div class="meta">${escapeHtml(line)}</div>`).join("")}
         ${sections.schedule ? `<h2>Schedule</h2>
         <table>
           <thead><tr><th>Date</th><th>Time</th><th>Operator</th><th>Location</th><th>Sales reps</th><th>Notes</th></tr></thead>
@@ -5159,10 +5164,10 @@ function renderMarketVisitPrintDocument(visit, sections = { schedule: true, prod
             ${calls.map((call) => `<tr><td>${call.date ? formatDate(call.date) : ""}</td><td>${escapeHtml([call.startTime, call.endTime].filter(Boolean).join(" - "))}</td><td>${escapeHtml(call.operatorName || getOperatorName(call.operatorId) || "")}</td><td>${escapeHtml(call.location || visit.location || "")}</td><td>${escapeHtml(call.salesReps.join(", ") || visit.salesReps.join(", "))}</td><td>${escapeHtml(call.notes || "")}</td></tr>`).join("") || `<tr><td colspan="6">No calls scheduled yet.</td></tr>`}
           </tbody>
         </table>` : ""}
-        ${sections.products ? `<h2>Products</h2>
+        ${sections.products ? `
         <table>
           <thead><tr><th>Vendor</th><th>Product</th><th>${escapeHtml(printedNumberLabel)}</th><th>Packaging</th><th>Storage</th></tr></thead>
-          <tbody>${products.map((product) => `<tr><td>${escapeHtml(product.vendor || "")}</td><td>${escapeHtml(product.description || "")}</td><td>${escapeHtml(product[printedNumberKey] || "")}</td><td>${escapeHtml(product.packaging || "")}</td><td>${escapeHtml(product.storage || "")}</td></tr>`).join("") || `<tr><td colspan="5">No products selected.</td></tr>`}</tbody>
+          <tbody>${sortedProducts.map((product) => `<tr><td>${escapeHtml(product.vendor || "")}</td><td>${escapeHtml(product.description || "")}</td><td>${escapeHtml(product[printedNumberKey] || "")}</td><td>${escapeHtml(product.packaging || "")}</td><td>${escapeHtml(product.storage || "")}</td></tr>`).join("") || `<tr><td colspan="5">No products selected.</td></tr>`}</tbody>
         </table>` : ""}
         ${visit.notes ? `<h2>General notes</h2><p>${escapeHtml(visit.notes)}</p>` : ""}
         <div class="footer">Represented by Pierce Cartwright</div>
