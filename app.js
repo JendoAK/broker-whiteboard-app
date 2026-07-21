@@ -4317,13 +4317,14 @@ function renderMarketOverview(visit) {
 }
 
 function renderMarketOperatorsSection(visit, operators) {
+  const sortedOperators = [...operators].sort((a, b) => getMarketOperatorDisplayName(a).localeCompare(getMarketOperatorDisplayName(b), undefined, { sensitivity: "base" }));
   return `
-    <div class="market-inline-add">
-      <select data-add-operator-select><option value="">Choose existing operator</option>${addressBook.filter((entry) => !entry.archivedAt).map((entry) => `<option value="${escapeAttribute(entry.id)}">${escapeHtml(entry.operation)}</option>`).join("")}</select>
-      <input data-add-operator-name placeholder="Or type new operator" />
+    <div class="market-inline-add market-operator-add">
+      <input data-add-operator-name list="marketOperatorSuggestions" placeholder="Type operator name..." autocomplete="off" />
       <button class="small-action" type="button" data-add-market-operator="${escapeAttribute(visit.id)}">+ Operator</button>
+      <datalist id="marketOperatorSuggestions">${renderMarketOperatorSuggestionOptions()}</datalist>
     </div>
-    ${operators.length ? operators.map((operator) => renderMarketOperator(visit, operator)).join("") : `<div class="empty-state">No operators attached yet</div>`}
+    ${sortedOperators.length ? sortedOperators.map((operator) => renderMarketOperator(visit, operator)).join("") : `<div class="empty-state">No operators attached yet</div>`}
   `;
 }
 
@@ -4462,8 +4463,7 @@ function renderMarketCallsSection(visit, includeCalendar = visit.type === "pc") 
       <input data-call-date type="date" value="${escapeAttribute(visit.startDate || "")}" />
       <select data-call-start>${renderMarketTimeOptions("8:00 AM")}</select>
       <select data-call-end>${renderMarketTimeOptions("9:00 AM")}</select>
-      <select data-call-operator><option value="">Choose operator</option>${addressBook.filter((entry) => !entry.archivedAt).map((entry) => `<option value="${escapeAttribute(entry.id)}">${escapeHtml(entry.operation)}</option>`).join("")}</select>
-      <input data-call-operator-name placeholder="Or type new operator" />
+      <input data-call-operator-name list="marketOperatorSuggestions" placeholder="Operator" autocomplete="off" />
       <input data-call-reps placeholder="Sales reps" value="${escapeAttribute(visit.salesReps.join(", "))}" />
       <button class="small-action" type="button" data-add-market-call="${escapeAttribute(visit.id)}">+ Call</button>
     </div>
@@ -4693,11 +4693,28 @@ function bindMarketDetailActions(panel, visit) {
     });
   });
   panel.querySelector("[data-add-market-operator]")?.addEventListener("click", () => {
-    const operatorId = panel.querySelector("[data-add-operator-select]")?.value || "";
-    const typedName = panel.querySelector("[data-add-operator-name]")?.value.trim() || "";
-    const operatorName = operatorId ? getOperatorName(operatorId) : typedName;
-    if (!operatorName) return;
-    updateMarketVisit(visit.id, { operatorLinks: [...visit.operatorLinks, normalizeMarketOperatorLink({ operatorId, operatorName, productIds: [...visit.productIds] })] });
+    const input = panel.querySelector("[data-add-operator-name]");
+    const operator = findOrCreateMarketOperator(input?.value || "");
+    if (!operator) return;
+    if (isMarketOperatorAlreadyAttached(visit, operator.operatorId, operator.operatorName)) {
+      input.value = "";
+      return;
+    }
+    updateMarketVisit(visit.id, {
+      operatorLinks: [
+        ...visit.operatorLinks,
+        normalizeMarketOperatorLink({
+          operatorId: operator.operatorId,
+          operatorName: operator.operatorName,
+          productIds: [...visit.productIds]
+        })
+      ]
+    });
+  });
+  panel.querySelector("[data-add-operator-name]")?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    panel.querySelector("[data-add-market-operator]")?.click();
   });
   panel.querySelectorAll("[data-remove-market-operator]").forEach((button) =>
     button.addEventListener("click", (event) => {
@@ -4736,15 +4753,13 @@ function bindMarketDetailActions(panel, visit) {
     });
   });
   panel.querySelector("[data-add-market-call]")?.addEventListener("click", () => {
-    const operatorId = panel.querySelector("[data-call-operator]")?.value || "";
-    const typedOperator = panel.querySelector("[data-call-operator-name]")?.value.trim() || "";
-    const operatorName = operatorId ? getOperatorName(operatorId) : typedOperator;
+    const operator = findOrCreateMarketOperator(panel.querySelector("[data-call-operator-name]")?.value || "");
     const call = normalizeMarketCall({
       date: panel.querySelector("[data-call-date]")?.value || visit.startDate,
       startTime: panel.querySelector("[data-call-start]")?.value || "",
       endTime: panel.querySelector("[data-call-end]")?.value || "",
-      operatorId,
-      operatorName,
+      operatorId: operator?.operatorId || "",
+      operatorName: operator?.operatorName || "",
       location: visit.location,
       salesReps: normalizeStringList(panel.querySelector("[data-call-reps]")?.value || visit.salesReps.join(", ")),
       manufacturerContact: visit.visitorName,
@@ -4752,6 +4767,11 @@ function bindMarketDetailActions(panel, visit) {
       status: "Planned"
     });
     updateMarketVisit(visit.id, { calls: [...visit.calls, call] });
+  });
+  panel.querySelector("[data-call-operator-name]")?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    panel.querySelector("[data-add-market-call]")?.click();
   });
   panel.querySelectorAll("[data-remove-market-call]").forEach((button) => button.addEventListener("click", () => updateMarketVisit(visit.id, { calls: visit.calls.filter((call) => call.id !== button.dataset.removeMarketCall) })));
   panel.querySelectorAll("[data-call-note]").forEach((input) => input.addEventListener("change", () => updateMarketVisit(visit.id, { calls: visit.calls.map((call) => (call.id === input.dataset.callNote ? { ...call, notes: input.value } : call)) })));
@@ -5032,6 +5052,42 @@ function getMarketVisitOperators(visit) {
     keyed.set(key, operator);
   });
   return [...keyed.values()];
+}
+
+function getMarketOperatorOptions() {
+  return addressBook
+    .filter((entry) => !entry.archivedAt && String(entry.operation || "").trim())
+    .sort((a, b) => a.operation.localeCompare(b.operation, undefined, { sensitivity: "base" }));
+}
+
+function renderMarketOperatorSuggestionOptions() {
+  return getMarketOperatorOptions().map((entry) => `<option value="${escapeAttribute(entry.operation)}"></option>`).join("");
+}
+
+function getMarketOperatorDisplayName(operator) {
+  return operator.operatorName || getOperatorName(operator.operatorId) || "";
+}
+
+function isMarketOperatorAlreadyAttached(visit, operatorId, operatorName) {
+  const nameKey = String(operatorName || "").trim().toLowerCase();
+  return getMarketVisitOperators(visit).some((operator) => {
+    const existingName = getMarketOperatorDisplayName(operator).trim().toLowerCase();
+    return (operatorId && operator.operatorId === operatorId) || (nameKey && existingName === nameKey);
+  });
+}
+
+function findOrCreateMarketOperator(value) {
+  const operatorName = String(value || "").trim();
+  if (!operatorName) return null;
+  const existing = getMarketOperatorOptions().find((entry) => entry.operation.trim().toLowerCase() === operatorName.toLowerCase());
+  if (existing) return { operatorId: existing.id, operatorName: existing.operation };
+  const now = new Date().toISOString();
+  const entry = normalizeAddressBookEntry({ operation: operatorName, createdAt: now, updatedAt: now });
+  addressBook = [entry, ...addressBook];
+  persistAddressBook();
+  updateAccountSuggestions();
+  updateTimelineSearchSuggestions();
+  return { operatorId: entry.id, operatorName: entry.operation };
 }
 
 function getOperatorName(operatorId) {
