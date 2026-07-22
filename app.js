@@ -118,6 +118,10 @@ const vendorNameRenames = {
   johnsoulesfood: "Soules Foods",
   johnsoulesfoods: "Soules Foods"
 };
+const printBrandLogos = {
+  pierceCartwright: "vendor-logos/pierce-cartwright.png",
+  usFoods: "https://commons.wikimedia.org/wiki/Special:FilePath/US_Foods_logo.svg"
+};
 const stockCategoryRenames = {
   beverage: "Beverage",
   beverages: "Beverage",
@@ -2523,6 +2527,7 @@ function renderCalendarPrintDocument({ isWeekView, isDayView, title, days }) {
         <meta charset="utf-8" />
         <title>Broker Whiteboard Calendar - ${escapeHtml(title)}</title>
         <style>
+          ${renderPrintBrandStyles()}
           body { margin: 0; padding: 20px; color: #211d18; font: 12px Arial, sans-serif; }
           h1 { margin: 0 0 4px; font-size: 24px; }
           .muted { margin-bottom: 14px; color: #5d554b; font-weight: 700; }
@@ -2537,6 +2542,7 @@ function renderCalendarPrintDocument({ isWeekView, isDayView, title, days }) {
         </style>
       </head>
       <body>
+        ${renderPrintBrandHeader()}
         <h1>Broker Whiteboard Calendar</h1>
         <div class="muted">${escapeHtml(title)} &middot; Printed ${escapeHtml(new Date().toLocaleDateString())}</div>
         <div class="weekdays">${isDayView ? `<span>${escapeHtml(days[0].date.toLocaleDateString(undefined, { weekday: "long" }))}</span>` : "<span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>"}</div>
@@ -5199,6 +5205,7 @@ function renderMarketVisitPrintDocument(visit, sections = { schedule: true, prod
         <meta charset="utf-8" />
         <title>Market Visit</title>
         <style>
+          ${renderPrintBrandStyles()}
           @page { size: landscape; margin: 0.35in; }
           body { font: 12px Arial, sans-serif; color: #211d18; }
           h1 { margin: 0 0 4px; font-size: 24px; }
@@ -5211,6 +5218,7 @@ function renderMarketVisitPrintDocument(visit, sections = { schedule: true, prod
         </style>
       </head>
       <body>
+        ${renderPrintBrandHeader()}
         <h1>Market Visit</h1>
         ${printMeta.map((line) => `<div class="meta">${escapeHtml(line)}</div>`).join("")}
         ${sections.schedule ? `<h2>Schedule</h2>
@@ -7696,6 +7704,7 @@ function renderLeadPrintDocument(card, mode) {
         <meta charset="utf-8" />
         <title>${escapeHtml(title)}</title>
         <style>
+          ${renderPrintBrandStyles()}
           body { margin: 0; padding: 28px; color: #211d18; font: 14px Arial, sans-serif; }
           h1 { margin: 0 0 4px; font-size: 26px; }
           h2 { margin: 24px 0 8px; font-size: 16px; }
@@ -7713,6 +7722,7 @@ function renderLeadPrintDocument(card, mode) {
         </style>
       </head>
       <body>
+        ${renderPrintBrandHeader()}
         <h1>${escapeHtml(title)}</h1>
         <div class="muted">Printed ${escapeHtml(new Date().toLocaleDateString())}</div>
         ${isProductsOnly ? "" : renderLeadPrintMeta(card)}
@@ -7809,6 +7819,7 @@ function renderWeeklyLeadRecapPrintDocument(leadCards, rangeKeys = ["this"]) {
         <meta charset="utf-8" />
         <title>FoodBrokerBase - ${escapeHtml(title)}</title>
         <style>
+          ${renderPrintBrandStyles()}
           @page { size: landscape; margin: 0.35in; }
           body { margin: 0; color: #211d18; font: 12px Arial, sans-serif; }
           h1 { margin: 0 0 4px; font-size: 25px; }
@@ -7830,6 +7841,7 @@ function renderWeeklyLeadRecapPrintDocument(leadCards, rangeKeys = ["this"]) {
         </style>
       </head>
       <body>
+        ${renderPrintBrandHeader()}
         <h1>${escapeHtml(title)}</h1>
         <div class="muted">Printed ${escapeHtml(new Date().toLocaleDateString())}</div>
         ${sections.map(renderWeeklyLeadRecapSection).join("")}
@@ -7914,6 +7926,30 @@ function getVendorLogo(vendor) {
   return src ? { src, absoluteSrc: new URL(src, window.location.href).href, alt: `${vendor} logo` } : null;
 }
 
+function getPrintAssetUrl(src) {
+  return new URL(src, window.location.href).href;
+}
+
+function renderPrintBrandHeader() {
+  const pierceLogo = getPrintAssetUrl(printBrandLogos.pierceCartwright);
+  const usFoodsLogo = getPrintAssetUrl(printBrandLogos.usFoods);
+  return `
+    <div class="print-brand-header">
+      <img class="print-brand-logo print-brand-pc" src="${escapeAttribute(pierceLogo)}" alt="Pierce Cartwright" />
+      <img class="print-brand-logo print-brand-usf" src="${escapeAttribute(usFoodsLogo)}" alt="US Foods" />
+    </div>
+  `;
+}
+
+function renderPrintBrandStyles() {
+  return `
+    .print-brand-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid #d8cdbc; break-inside: avoid; }
+    .print-brand-logo { display: block; object-fit: contain; }
+    .print-brand-pc { max-width: 175px; max-height: 34px; }
+    .print-brand-usf { max-width: 82px; max-height: 38px; }
+  `;
+}
+
 function renderStockPrintDocument(products, selectedColumnKeys, selectedVendor = "", printLayout = "continuous") {
   const columns = stockPrintColumns.filter((column) => selectedColumnKeys.includes(column.key));
   const selectedVendorLogo = selectedVendor ? getVendorLogo(selectedVendor) : null;
@@ -7931,6 +7967,7 @@ function renderStockPrintDocument(products, selectedColumnKeys, selectedVendor =
         <meta charset="utf-8" />
         <title>${escapeHtml(title)}</title>
         <style>
+          ${renderPrintBrandStyles()}
           @page { size: landscape; margin: 0.32in 0.35in 0.72in; }
           body { margin: 0; color: #211d18; font: 10px Arial, sans-serif; }
           h1 { margin: 0 0 2px; font-size: 18px; }
@@ -7952,6 +7989,7 @@ function renderStockPrintDocument(products, selectedColumnKeys, selectedVendor =
         </style>
       </head>
       <body>
+        ${renderPrintBrandHeader()}
         <h1>${escapeHtml(title)}</h1>
         <div class="muted">Printed ${escapeHtml(new Date().toLocaleDateString())}</div>
         ${[...groups.entries()]
@@ -7989,6 +8027,7 @@ function renderLeadListPrintDocument(leadCards, title) {
         <meta charset="utf-8" />
         <title>Broker Whiteboard - ${escapeHtml(title)}</title>
         <style>
+          ${renderPrintBrandStyles()}
           @page { size: landscape; margin: 0.35in; }
           body { margin: 0; padding: 0; color: #211d18; font: 11px Arial, sans-serif; }
           h1 { margin: 0 0 4px; font-size: 24px; }
@@ -8012,6 +8051,7 @@ function renderLeadListPrintDocument(leadCards, title) {
         </style>
       </head>
       <body>
+        ${renderPrintBrandHeader()}
         <div class="print-wrap">
           <h1>${escapeHtml(title)}</h1>
           <div class="muted">${leadCards.length} lead${leadCards.length === 1 ? "" : "s"} &middot; Printed ${escapeHtml(new Date().toLocaleDateString())}</div>
@@ -8059,7 +8099,21 @@ function openPrintWindow(html) {
   printWindow.document.write(html);
   printWindow.document.close();
   printWindow.focus();
-  setTimeout(() => printWindow.print(), 300);
+  const waitForImages = [...printWindow.document.images].map(
+    (image) =>
+      new Promise((resolve) => {
+        if (image.complete) {
+          resolve();
+          return;
+        }
+        image.addEventListener("load", resolve, { once: true });
+        image.addEventListener("error", resolve, { once: true });
+      })
+  );
+  Promise.race([Promise.all(waitForImages), new Promise((resolve) => setTimeout(resolve, 1200))]).then(() => {
+    printWindow.focus();
+    printWindow.print();
+  });
 }
 
 function getAccountDirectory() {

@@ -1,9 +1,9 @@
-const CACHE_NAME = "foodbrokerbase-app-v11";
+const CACHE_NAME = "foodbrokerbase-app-v12";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=20260721-2",
-  "./app.js?v=20260721-2",
+  "./styles.css?v=20260721-3",
+  "./app.js?v=20260721-3",
   "./supabase-config.js",
   "./supabase-auth.js?v=20260720-1",
   "./manifest.webmanifest",
@@ -11,7 +11,8 @@ const APP_SHELL = [
   "./pwa-icon-192.png",
   "./pwa-icon-512.png",
   "./linford-logo.svg",
-  "./sysco-logo.svg"
+  "./sysco-logo.svg",
+  "./vendor-logos/pierce-cartwright.png"
 ];
 
 self.addEventListener("install", (event) => {
