@@ -722,11 +722,13 @@ document.querySelector("#closeMarketVisitForm").addEventListener("click", closeM
 document.querySelector("#cancelMarketVisitForm").addEventListener("click", closeMarketVisitForm);
 document.querySelector("#clearTodoFilters").addEventListener("click", clearTodoFilters);
 document.querySelector("#clearMarketFilters").addEventListener("click", clearMarketFilters);
+document.querySelector("#calendarPrevious").addEventListener("click", showPreviousCalendarRange);
 document.querySelector("#calendarThisMonth").addEventListener("click", showThisCalendarMonth);
 document.querySelector("#calendarNextMonth").addEventListener("click", showNextCalendarMonth);
 document.querySelector("#calendarThisWeek").addEventListener("click", showThisCalendarWeek);
 document.querySelector("#calendarNextWeek").addEventListener("click", showNextCalendarWeek);
 document.querySelector("#calendarToday").addEventListener("click", showTodayInCalendar);
+document.querySelector("#calendarNext").addEventListener("click", showNextCalendarRange);
 document.querySelector("#printCalendar").addEventListener("click", printCalendarView);
 document.querySelector("#cancelForm").addEventListener("click", closeForm);
 document.querySelector("#clearFilters").addEventListener("click", clearFilters);
@@ -2486,10 +2488,39 @@ function showTodayInCalendar() {
   renderCalendar();
 }
 
+function getCalendarGridStart() {
+  if (calendarView === "day" || calendarView === "week") return new Date(calendarRangeStart);
+  return startOfCalendarWeek(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1));
+}
+
+function moveCalendarRange(direction) {
+  activeCalendarControl = "";
+  if (calendarView === "month") {
+    calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + direction, 1);
+    calendarRangeStart = startOfCalendarWeek(calendarMonth);
+    renderCalendar();
+    return;
+  }
+
+  const dayStep = calendarView === "week" ? 7 : 1;
+  calendarRangeStart = new Date(calendarRangeStart);
+  calendarRangeStart.setDate(calendarRangeStart.getDate() + direction * dayStep);
+  calendarMonth = new Date(calendarRangeStart.getFullYear(), calendarRangeStart.getMonth(), 1);
+  renderCalendar();
+}
+
+function showPreviousCalendarRange() {
+  moveCalendarRange(-1);
+}
+
+function showNextCalendarRange() {
+  moveCalendarRange(1);
+}
+
 function renderCalendar() {
   const isWeekView = calendarView === "week";
   const isDayView = calendarView === "day";
-  const gridStart = isDayView ? startOfToday() : isWeekView ? new Date(calendarRangeStart) : startOfCalendarWeek(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1));
+  const gridStart = getCalendarGridStart();
   const dayTotal = isDayView ? 1 : isWeekView ? 7 : 42;
   const rangeEnd = new Date(gridStart);
   rangeEnd.setDate(gridStart.getDate() + dayTotal - 1);
@@ -2615,7 +2646,7 @@ function setActiveCalendarButton() {
 function getCalendarViewData() {
   const isWeekView = calendarView === "week";
   const isDayView = calendarView === "day";
-  const gridStart = isDayView ? startOfToday() : isWeekView ? new Date(calendarRangeStart) : startOfCalendarWeek(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1));
+  const gridStart = getCalendarGridStart();
   const dayTotal = isDayView ? 1 : isWeekView ? 7 : 42;
   const rangeEnd = new Date(gridStart);
   rangeEnd.setDate(gridStart.getDate() + dayTotal - 1);
@@ -4306,6 +4337,13 @@ function renderMarketVisits() {
       exportMarketVisitIcs(button.dataset.marketIcs);
     });
   });
+  elements.marketContent.querySelectorAll("[data-market-status-card]").forEach((select) => {
+    select.addEventListener("click", (event) => event.stopPropagation());
+    select.addEventListener("change", (event) => {
+      event.stopPropagation();
+      updateMarketVisit(select.dataset.marketStatusCard, { status: select.value });
+    });
+  });
   if (activeMarketDetailId) {
     const visit = marketVisits.find((item) => item.id === activeMarketDetailId);
     if (visit) renderMarketVisitDetail(visit);
@@ -4331,11 +4369,19 @@ function renderMarketVisitCard(visit) {
         <h3>${escapeHtml(getMarketVisitDisplayName(visit))}</h3>
         ${dateText ? `<p class="market-card-date">${escapeHtml(dateText)}</p>` : `<p class="market-card-date">No date</p>`}
       </div>
+      <div class="market-card-status-row">
+        <label>
+          <span>Status</span>
+          <select data-market-status-card="${escapeAttribute(visit.id)}">
+            ${marketStatuses.map((status) => `<option value="${escapeAttribute(status)}" ${visit.status === status ? "selected" : ""}>${escapeHtml(status)}</option>`).join("")}
+          </select>
+        </label>
+      </div>
       <div class="table-actions">
         <button class="edit-card market-card-action" type="button" data-market-view-detail="${escapeAttribute(visit.id)}">View</button>
         <button class="edit-card market-card-action" type="button" data-market-edit="${escapeAttribute(visit.id)}">Edit</button>
         <button class="edit-card market-card-action" type="button" data-market-print="${escapeAttribute(visit.id)}">Print Schedule</button>
-        <button class="edit-card market-card-action" type="button" data-market-ics="${escapeAttribute(visit.id)}">Add to calendar</button>
+        <button class="edit-card market-card-action" type="button" data-market-ics="${escapeAttribute(visit.id)}">Download .ics</button>
       </div>
     </article>
   `;
@@ -5080,10 +5126,6 @@ function getVisibleMarketVisits() {
   return marketVisits
     .filter((visit) => {
       if (visit.type !== activeMarketType) return false;
-      if (elements.marketManufacturerFilter.value && visit.vendor !== elements.marketManufacturerFilter.value) return false;
-      if (elements.marketStatusFilter.value && visit.status !== elements.marketStatusFilter.value) return false;
-      if (elements.marketRepFilter.value && !visit.salesReps.join(" ").toLowerCase().includes(elements.marketRepFilter.value.trim().toLowerCase())) return false;
-      if (elements.marketDateFilter.value && !matchesMarketDateFilter(visit, elements.marketDateFilter.value)) return false;
       if (!query) return true;
       const products = getMarketVisitProducts(visit).map((product) => product.description).join(" ");
       const operators = getMarketVisitOperators(visit).map((operator) => operator.operatorName || getOperatorName(operator.operatorId)).join(" ");

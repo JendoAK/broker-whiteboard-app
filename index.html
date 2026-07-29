@@ -384,11 +384,13 @@
           <button class="icon-button" id="closeCalendarDialog" type="button" aria-label="Close">&times;</button>
         </div>
         <div class="calendar-controls">
+          <button class="ghost-action calendar-step-control" id="calendarPrevious" type="button" aria-label="Previous calendar range">&larr;</button>
           <button class="ghost-action" id="calendarThisMonth" type="button">This Month</button>
           <button class="ghost-action" id="calendarNextMonth" type="button">Next Month</button>
           <button class="ghost-action" id="calendarThisWeek" type="button">This Week</button>
           <button class="ghost-action" id="calendarNextWeek" type="button">Next Week</button>
           <button class="ghost-action" id="calendarToday" type="button">Today</button>
+          <button class="ghost-action calendar-step-control" id="calendarNext" type="button" aria-label="Next calendar range">&rarr;</button>
           <button class="ghost-action print-action" id="printCalendar" type="button">Print Calendar</button>
         </div>
         <div class="calendar-weekdays" aria-hidden="true">
@@ -770,11 +772,11 @@
         </section>
 
         <section class="controls market-controls" aria-label="Market visit filters">
-          <label class="search-box"><span>Search</span><input id="marketSearch" type="search" placeholder="Visit, manufacturer, operator, sales rep, product..." /></label>
-          <label><span>Manufacturer</span><select id="marketManufacturerFilter"><option value="">All</option></select></label>
-          <label><span>Sales rep</span><input id="marketRepFilter" autocomplete="off" /></label>
-          <label><span>Status</span><select id="marketStatusFilter"><option value="">All</option><option>Planned</option><option>In Progress</option><option>Completed</option><option>Follow Up Needed</option></select></label>
-          <label><span>Date range</span><select id="marketDateFilter"><option value="">Any date</option><option value="today">Today</option><option value="week">This week</option><option value="nextWeek">Next week</option><option value="month">This month</option></select></label>
+          <label class="search-box"><span>Search</span><input id="marketSearch" type="search" placeholder="Search market visits..." /></label>
+          <label class="market-extra-filter"><span>Manufacturer</span><select id="marketManufacturerFilter"><option value="">All</option></select></label>
+          <label class="market-extra-filter"><span>Sales rep</span><input id="marketRepFilter" autocomplete="off" /></label>
+          <label class="market-extra-filter"><span>Status</span><select id="marketStatusFilter"><option value="">All</option><option>Planned</option><option>In Progress</option><option>Completed</option><option>Follow Up Needed</option></select></label>
+          <label class="market-extra-filter"><span>Date range</span><select id="marketDateFilter"><option value="">Any date</option><option value="today">Today</option><option value="week">This week</option><option value="nextWeek">Next week</option><option value="month">This month</option></select></label>
           <button class="ghost-action" id="clearMarketFilters" type="button">Clear</button>
         </section>
 
