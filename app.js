@@ -179,6 +179,9 @@ const statusMap = {
 
 const sampleCards = [];
 const cloudRecordType = "app_section";
+const teamCloudRecordType = "team_section";
+const pcMarketVisitCloudKey = `${marketVisitStorageKey}-pc`;
+const vendorMarketVisitCloudKey = `${marketVisitStorageKey}-vendor`;
 let cloudSyncReady = false;
 let cloudSyncLoading = false;
 let cloudSyncUserId = "";
@@ -186,41 +189,87 @@ let cloudSaveTimer = null;
 let pendingCloudSections = new Set();
 let lastCloudError = "";
 
+function getMarketVisitsByCloudType(type) {
+  return marketVisits.filter((visit) => normalizeMarketVisit(visit).type === type);
+}
+
+function replaceMarketVisitsByCloudType(type, value) {
+  const normalized = Array.isArray(value)
+    ? value.map(normalizeMarketVisit).map((visit) => ({ ...visit, type }))
+    : [];
+  const otherVisits = marketVisits.filter((visit) => normalizeMarketVisit(visit).type !== type);
+  marketVisits = [...otherVisits, ...normalized].sort((a, b) => {
+    const aDate = a.startDate || a.date || "";
+    const bDate = b.startDate || b.date || "";
+    return aDate.localeCompare(bDate) || (a.name || "").localeCompare(b.name || "");
+  });
+}
+
 const cloudSectionConfigs = [
-  { key: storageKey, label: "Leads", get: () => cards, set: (value) => (cards = Array.isArray(value) ? value.map(normalizeCard) : []) },
-  { key: todoStorageKey, label: "To-Do List", get: () => todos, set: (value) => (todos = Array.isArray(value) ? value.map(normalizeTodo) : []) },
+  { key: storageKey, label: "Leads", scope: "personal", get: () => cards, set: (value) => (cards = Array.isArray(value) ? value.map(normalizeCard) : []) },
+  { key: todoStorageKey, label: "To-Do List", scope: "personal", get: () => todos, set: (value) => (todos = Array.isArray(value) ? value.map(normalizeTodo) : []) },
   {
     key: manualVendorStorageKey,
-    label: "Vendor Reporting",
+    label: "My Vendor Reports",
+    scope: "personal",
     get: () => manualVendorReports,
     set: (value) => (manualVendorReports = Array.isArray(value) ? value.map(normalizeManualVendorReport) : [])
   },
   {
     key: addressBookStorageKey,
     label: "Address Book",
+    scope: "team",
     get: () => addressBook,
     set: (value) => (addressBook = Array.isArray(value) ? value.map(normalizeAddressBookEntry) : [])
   },
   {
     key: stockStorageKey,
     label: "Stock Lists",
+    scope: "team",
     get: () => stockProducts,
     set: (value) => (stockProducts = Array.isArray(value) ? value.map(normalizeStockProduct) : [])
   },
-  { key: sampleStorageKey, label: "Samples", get: () => samples, set: (value) => (samples = Array.isArray(value) ? value.map(normalizeSample) : []) },
-  { key: dotOrderStorageKey, label: "DOT Orders", get: () => dotOrders, set: (value) => (dotOrders = Array.isArray(value) ? value.map(normalizeDotOrder) : []) },
+  { key: sampleStorageKey, label: "Samples", scope: "team", get: () => samples, set: (value) => (samples = Array.isArray(value) ? value.map(normalizeSample) : []) },
+  { key: dotOrderStorageKey, label: "DOT Orders", scope: "team", get: () => dotOrders, set: (value) => (dotOrders = Array.isArray(value) ? value.map(normalizeDotOrder) : []) },
   {
     key: nestleMachineStorageKey,
     label: "Nestle Machines",
+    scope: "team",
     get: () => nestleMachines,
     set: (value) => (nestleMachines = Array.isArray(value) ? value.map(normalizeNestleMachine) : [])
   },
   {
-    key: marketVisitStorageKey,
-    label: "Market Visits",
-    get: () => marketVisits,
-    set: (value) => (marketVisits = Array.isArray(value) ? value.map(normalizeMarketVisit) : [])
+    key: pcMarketVisitCloudKey,
+    localKey: marketVisitStorageKey,
+    legacyKey: marketVisitStorageKey,
+    legacyTransform: (value) => (Array.isArray(value) ? value.map(normalizeMarketVisit).filter((visit) => visit.type === "pc") : []),
+    label: "P. C. Market Visits",
+    scope: "personal",
+    get: () => getMarketVisitsByCloudType("pc"),
+    set: (value) => replaceMarketVisitsByCloudType("pc", value)
+  },
+  {
+    key: vendorMarketVisitCloudKey,
+    localKey: marketVisitStorageKey,
+    legacyKey: marketVisitStorageKey,
+    legacyTransform: (value) => (Array.isArray(value) ? value.map(normalizeMarketVisit).filter((visit) => visit.type === "manufacturer") : []),
+    label: "Vendor Market Visits",
+    scope: "team",
+    get: () => getMarketVisitsByCloudType("manufacturer"),
+    set: (value) => replaceMarketVisitsByCloudType("manufacturer", value)
   }
+];
+
+const localCloudCacheConfigs = [
+  { key: storageKey, get: () => cards },
+  { key: todoStorageKey, get: () => todos },
+  { key: manualVendorStorageKey, get: () => manualVendorReports },
+  { key: addressBookStorageKey, get: () => addressBook },
+  { key: stockStorageKey, get: () => stockProducts },
+  { key: sampleStorageKey, get: () => samples },
+  { key: dotOrderStorageKey, get: () => dotOrders },
+  { key: nestleMachineStorageKey, get: () => nestleMachines },
+  { key: marketVisitStorageKey, get: () => marketVisits }
 ];
 
 if (!localStorage.getItem(resetFlagKey)) {
@@ -1517,6 +1566,28 @@ function getCloudConfig(sectionKey) {
   return cloudSectionConfigs.find((section) => section.key === sectionKey);
 }
 
+function getCloudConfigsForKey(sectionKey) {
+  const matches = cloudSectionConfigs.filter((section) => section.key === sectionKey || section.localKey === sectionKey || section.legacyKey === sectionKey);
+  return matches.length ? matches : [];
+}
+
+function expandCloudSectionKeys(sectionKeys = cloudSectionConfigs.map((section) => section.key)) {
+  const expanded = new Set();
+  sectionKeys.forEach((sectionKey) => {
+    const matches = getCloudConfigsForKey(sectionKey);
+    if (matches.length) {
+      matches.forEach((section) => expanded.add(section.key));
+    } else {
+      expanded.add(sectionKey);
+    }
+  });
+  return Array.from(expanded);
+}
+
+function getLocalCloudCacheConfig(sectionKey) {
+  return localCloudCacheConfigs.find((section) => section.key === sectionKey);
+}
+
 function extractCloudValue(row) {
   if (row?.data && Object.prototype.hasOwnProperty.call(row.data, "value")) return row.data.value;
   return row?.data;
@@ -1530,8 +1601,14 @@ function hasLocalAppData() {
 }
 
 function writeCloudSectionsToLocalStorage(sectionKeys = cloudSectionConfigs.map((section) => section.key)) {
-  sectionKeys.forEach((sectionKey) => {
+  const localKeys = new Set();
+  expandCloudSectionKeys(sectionKeys).forEach((sectionKey) => {
     const section = getCloudConfig(sectionKey);
+    if (!section) return;
+    localKeys.add(section.localKey || section.key);
+  });
+  localKeys.forEach((sectionKey) => {
+    const section = getLocalCloudCacheConfig(sectionKey) || getCloudConfig(sectionKey);
     if (!section) return;
     try {
       localStorage.setItem(section.key, JSON.stringify(section.get()));
@@ -1557,7 +1634,7 @@ function renderAfterCloudSync() {
 
 function scheduleCloudSave(sectionKey) {
   if (!cloudSyncReady || !getCloudClient() || !getCloudUser()) return;
-  pendingCloudSections.add(sectionKey);
+  expandCloudSectionKeys([sectionKey]).forEach((key) => pendingCloudSections.add(key));
   window.clearTimeout(cloudSaveTimer);
   cloudSaveTimer = window.setTimeout(() => {
     pushPendingCloudSections();
@@ -1577,9 +1654,11 @@ async function saveCloudSections(sectionKeys = cloudSectionConfigs.map((section)
   if (!client || !user || (!cloudSyncReady && !options.force)) return false;
 
   const now = new Date().toISOString();
-  const payload = sectionKeys
+  const sections = expandCloudSectionKeys(sectionKeys)
     .map((sectionKey) => getCloudConfig(sectionKey))
-    .filter(Boolean)
+    .filter(Boolean);
+  const personalPayload = sections
+    .filter((section) => section.scope !== "team")
     .map((section) => ({
       record_type: cloudRecordType,
       record_key: section.key,
@@ -1593,20 +1672,41 @@ async function saveCloudSections(sectionKeys = cloudSectionConfigs.map((section)
         savedAt: now
       }
     }));
+  const teamPayload = sections
+    .filter((section) => section.scope === "team")
+    .map((section) => ({
+      record_type: teamCloudRecordType,
+      record_key: section.key,
+      updated_by: user.id,
+      data: {
+        label: section.label,
+        value: section.get(),
+        backupVersion,
+        savedAt: now
+      }
+    }));
 
-  if (!payload.length) return true;
+  if (!personalPayload.length && !teamPayload.length) return true;
 
   try {
-    const { error } = await client.from("app_records").upsert(payload, {
-      onConflict: "owner_id,record_type,record_key"
-    });
-    if (error) throw error;
+    if (personalPayload.length) {
+      const { error } = await client.from("app_records").upsert(personalPayload, {
+        onConflict: "owner_id,record_type,record_key"
+      });
+      if (error) throw error;
+    }
+    if (teamPayload.length) {
+      const { error } = await client.from("team_app_records").upsert(teamPayload, {
+        onConflict: "record_type,record_key"
+      });
+      if (error) throw error;
+    }
     lastCloudError = "";
     return true;
   } catch (error) {
     lastCloudError = error?.message || "Unknown cloud save error.";
     console.warn("FoodBrokerBase cloud save failed.", error);
-    pendingCloudSections = new Set([...sectionKeys, ...pendingCloudSections]);
+    pendingCloudSections = new Set([...sections.map((section) => section.key), ...pendingCloudSections]);
     return false;
   }
 }
@@ -1616,14 +1716,21 @@ async function fetchCloudRowSummary() {
   const user = getCloudUser();
   if (!client || !user) return [];
 
-  const { data, error } = await client
+  const { data: personalData, error: personalError } = await client
     .from("app_records")
     .select("record_key,updated_at")
     .eq("record_type", cloudRecordType)
     .eq("owner_id", user.id);
 
-  if (error) throw error;
-  return Array.isArray(data) ? data : [];
+  if (personalError) throw personalError;
+
+  const { data: teamData, error: teamError } = await client
+    .from("team_app_records")
+    .select("record_key,updated_at")
+    .eq("record_type", teamCloudRecordType);
+
+  if (teamError) throw teamError;
+  return [...(Array.isArray(personalData) ? personalData : []), ...(Array.isArray(teamData) ? teamData : [])];
 }
 
 async function loadCloudSections(options = {}) {
@@ -1636,26 +1743,44 @@ async function loadCloudSections(options = {}) {
   cloudSyncUserId = user.id;
 
   try {
-    const { data, error } = await client
+    const { data: personalData, error: personalError } = await client
       .from("app_records")
       .select("record_key,data,updated_at")
       .eq("record_type", cloudRecordType)
       .eq("owner_id", user.id);
 
-    if (error) throw error;
+    if (personalError) throw personalError;
 
-    const rows = Array.isArray(data) ? data : [];
+    const { data: teamData, error: teamError } = await client
+      .from("team_app_records")
+      .select("record_key,data,updated_at")
+      .eq("record_type", teamCloudRecordType);
+
+    if (teamError) throw teamError;
+
+    const personalRows = Array.isArray(personalData) ? personalData : [];
+    const teamRows = Array.isArray(teamData) ? teamData : [];
+    const rows = [...personalRows, ...teamRows];
     if (rows.length) {
-      const rowMap = new Map(rows.map((row) => [row.record_key, row]));
+      const personalRowMap = new Map(personalRows.map((row) => [row.record_key, row]));
+      const teamRowMap = new Map(teamRows.map((row) => [row.record_key, row]));
       const appliedKeys = [];
       const localUploadKeys = [];
       cloudSectionConfigs.forEach((section) => {
-        if (!rowMap.has(section.key)) {
+        const rowMap = section.scope === "team" ? teamRowMap : personalRowMap;
+        let row = rowMap.get(section.key);
+        let usedLegacyRow = false;
+        if (!row && section.legacyKey) {
+          row = personalRowMap.get(section.legacyKey);
+          usedLegacyRow = Boolean(row);
+        }
+        if (!row) {
           const localValue = section.get();
           if (Array.isArray(localValue) && localValue.length) localUploadKeys.push(section.key);
           return;
         }
-        const cloudValue = extractCloudValue(rowMap.get(section.key));
+        const rawCloudValue = extractCloudValue(row);
+        const cloudValue = usedLegacyRow && section.legacyTransform ? section.legacyTransform(rawCloudValue) : rawCloudValue;
         const localValue = section.get();
         if (Array.isArray(localValue) && localValue.length && Array.isArray(cloudValue) && !cloudValue.length) {
           localUploadKeys.push(section.key);
@@ -1663,6 +1788,7 @@ async function loadCloudSections(options = {}) {
         }
         section.set(cloudValue);
         appliedKeys.push(section.key);
+        if (usedLegacyRow) localUploadKeys.push(section.key);
       });
       writeCloudSectionsToLocalStorage(appliedKeys);
       renderAfterCloudSync();
@@ -2199,14 +2325,14 @@ function turnLeadIntoVendorReport(id) {
   });
 
   if (!changed) {
-    alert("Add at least one product with a Vendor / Brand before turning this lead into Vendor Reporting.");
+    alert("Add at least one product with a Vendor / Brand before turning this lead into My Vendor Reports.");
     return;
   }
 
   if (!persist()) return;
   render();
   if (activeView === "vendor") renderVendorReport();
-  alert(`${leadName} is ready in Vendor Reporting with ${productCount} product${productCount === 1 ? "" : "s"}.`);
+  alert(`${leadName} is ready in My Vendor Reports with ${productCount} product${productCount === 1 ? "" : "s"}.`);
 }
 
 function archiveCard(id) {

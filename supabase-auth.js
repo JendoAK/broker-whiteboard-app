@@ -82,7 +82,7 @@
       <div class="auth-gate-card">
         <p class="eyebrow">Team access</p>
         <h1>Sign in to FoodBrokerBase</h1>
-        <p>Your shared team boards, stock lists, trackers, and reports are stored in Supabase after you sign in.</p>
+        <p>Your personal work and shared team sections are stored in Supabase after you sign in.</p>
         <button class="primary-action" type="button" data-open-auth-gate>Login</button>
       </div>
     `;
@@ -126,7 +126,7 @@
           </div>
           <button class="icon-button" id="closeAuthDialog" type="button" aria-label="Close">&times;</button>
         </div>
-        <p class="auth-help">Sign in to sync this browser with the shared FoodBrokerBase database.</p>
+        <p class="auth-help">Sign in to sync this browser with FoodBrokerBase.</p>
         <div class="auth-current-user" id="authCurrentUser"></div>
         <div class="auth-fields">
           <label>
