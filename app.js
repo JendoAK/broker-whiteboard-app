@@ -114,9 +114,27 @@ const vendorLogoFiles = {
   wheatmontana: "vendor-logos/wheat-montana.png"
 };
 const vendorNameRenames = {
+  aquastarfoods: "AquaStar",
+  campbell: "Campbell's Foodservice",
+  campbells: "Campbell's Foodservice",
+  campbellsfoodservice: "Campbell's Foodservice",
+  cjschwans: "CJ Schwan's",
+  cjschwansfoodservice: "CJ Schwan's",
+  generalmillsfoodservice: "General Mills",
   johnsoules: "Soules Foods",
   johnsoulesfood: "Soules Foods",
-  johnsoulesfoods: "Soules Foods"
+  johnsoulesfoods: "Soules Foods",
+  kingscommandfoods: "King's Command",
+  michaelfoods: "Michael Foods",
+  mountfranklin: "Mount Franklin Foods",
+  nestleprofessional: "Nestle",
+  schwans: "CJ Schwan's",
+  schwansfoodservice: "CJ Schwan's",
+  soules: "Soules Foods",
+  soulesfoods: "Soules Foods",
+  trident: "Trident Seafoods",
+  ventura: "Ventura Foods",
+  venturafoods: "Ventura Foods"
 };
 const printBrandLogos = {
   pierceCartwright: "vendor-logos/pierce-cartwright.png",
@@ -490,6 +508,7 @@ const elements = {
   deleteNestleMachine: document.querySelector("#deleteNestleMachine"),
   vendorReportDialog: document.querySelector("#vendorReportDialog"),
   vendorReportVendorFilter: document.querySelector("#vendorReportVendorFilter"),
+  vendorReportVendorSuggestions: document.querySelector("#vendorReportVendorSuggestions"),
   vendorReportMonthFilter: document.querySelector("#vendorReportMonthFilter"),
   vendorReportYearFilter: document.querySelector("#vendorReportYearFilter"),
   vendorReportSubmittedFilter: document.querySelector("#vendorReportSubmittedFilter"),
@@ -3044,7 +3063,7 @@ function renderVendorReport() {
     <table class="quick-table vendor-report-table">
       <thead>
         <tr>
-          <th>Vendor / Brand</th>
+          <th>Vendor</th>
           <th>Account name</th>
           <th>Product</th>
           <th>Opportunity / target note</th>
@@ -3060,7 +3079,7 @@ function renderVendorReport() {
 }
 
 function getVendorReportRows() {
-  const vendorFilter = elements.vendorReportVendorFilter.value;
+  const vendorFilter = elements.vendorReportVendorFilter.value.trim();
   const monthFilter = elements.vendorReportMonthFilter.value;
   const yearFilter = elements.vendorReportYearFilter?.value || "";
   const submittedFilter = elements.vendorReportSubmittedFilter.value;
@@ -3071,24 +3090,55 @@ function getVendorReportRows() {
         .filter((product) => product.vendor)
         .map((product) => {
           const report = getVendorReport(card, product);
-          return { type: "lead", card, product, report };
+          const reportVendor = getVendorReportMainVendor(product);
+          return { type: "lead", card, product, report, reportVendor };
         })
     );
   const manualRows = manualVendorReports.map((manual) => ({
     type: "manual",
     manual,
     product: { id: manual.id, vendor: manual.vendor, description: manual.productShown },
-    report: manual
+    report: manual,
+    reportVendor: normalizeVendorName(manual.vendor)
   }));
   return [...leadRows, ...manualRows]
-    .filter(({ card, product, report }) => {
-      if (vendorFilter && product.vendor !== vendorFilter) return false;
+    .filter(({ card, report, reportVendor }) => {
+      if (vendorFilter && !vendorReportVendorMatches(reportVendor, vendorFilter)) return false;
       if (submittedFilter === "submitted" && !report.submitted) return false;
       if (submittedFilter === "not-submitted" && report.submitted) return false;
       if ((monthFilter || yearFilter) && !vendorRowMatchesReportPeriod(card, report, monthFilter, yearFilter)) return false;
       return true;
     })
-    .sort((a, b) => a.product.vendor.localeCompare(b.product.vendor) || compareVendorReportDate(a, b));
+    .sort((a, b) => a.reportVendor.localeCompare(b.reportVendor) || compareVendorReportDate(a, b));
+}
+
+function getVendorReportMainVendor(product = {}) {
+  const stockMatch = findStockProductForVendorReport(product);
+  return normalizeVendorName(stockMatch?.vendor || product.vendor || "");
+}
+
+function findStockProductForVendorReport(product = {}) {
+  const apn = String(product.apn || "").trim().toLowerCase();
+  const supc = String(product.supc || "").trim().toLowerCase();
+  const description = String(product.description || "").trim().toLowerCase();
+  const vendorKey = normalizeVendorLogoKey(product.vendor);
+  return stockProducts.find((stockProduct) => {
+    const stockApn = String(stockProduct.apn || "").trim().toLowerCase();
+    const stockSupc = String(stockProduct.supc || "").trim().toLowerCase();
+    if (apn && stockApn === apn) return true;
+    if (supc && stockSupc === supc) return true;
+    const stockDescription = String(stockProduct.description || "").trim().toLowerCase();
+    if (!description || stockDescription !== description) return false;
+    const stockVendorKey = normalizeVendorLogoKey(stockProduct.vendor);
+    const stockBrandKey = normalizeVendorLogoKey(stockProduct.brandName);
+    return !vendorKey || vendorKey === stockVendorKey || vendorKey === stockBrandKey;
+  });
+}
+
+function vendorReportVendorMatches(vendor, filter) {
+  const vendorText = normalizeVendorLogoKey(vendor);
+  const filterText = normalizeVendorLogoKey(filter);
+  return !filterText || vendorText.includes(filterText);
 }
 
 function compareVendorReportDate(a, b) {
@@ -3101,13 +3151,13 @@ function compareVendorReportDate(a, b) {
 }
 
 function renderVendorReportRow(row) {
-  const { card, product, report, manual, type } = row;
+  const { card, product, report, manual, type, reportVendor } = row;
   const rowId = type === "manual" ? `manual::${manual.id}` : getVendorReportRowId(card.id, product.id);
   const accountName = type === "manual" ? manual.account : card.account;
   const accountNumber = type === "manual" ? "" : card.accountNumber;
   return `
     <tr data-report-row="${escapeAttribute(rowId)}">
-      <td class="vendor-name-cell">${escapeHtml(product.vendor)}</td>
+      <td class="vendor-name-cell">${escapeHtml(reportVendor || product.vendor)}</td>
       <td class="vendor-account-cell">${type === "manual" ? `<button class="table-link" type="button" data-edit-manual-report="${escapeAttribute(manual.id)}">${escapeHtml(accountName)}</button><small>Report only</small>` : `<button class="table-link" type="button" data-vendor-open-lead="${escapeAttribute(card.id)}">${escapeHtml(accountName)}</button>${accountNumber ? `<small>${escapeHtml(accountNumber)}</small>` : ""}`}</td>
       <td class="vendor-product-cell">${escapeHtml(report.productShown || product.description)}</td>
       <td><textarea class="vendor-report-textarea" data-report-field="opportunityNote" rows="2">${escapeHtml(report.opportunityNote)}</textarea></td>
@@ -8550,6 +8600,22 @@ function getVendorNames() {
   ].sort((a, b) => a.localeCompare(b));
 }
 
+function getVendorReportVendorNames() {
+  return [
+    ...new Set(
+      stockProducts
+        .map((product) => product.vendor)
+        .concat(cards.flatMap((card) => normalizeProducts(card).map(getVendorReportMainVendor)))
+        .concat(manualVendorReports.map((report) => report.vendor))
+        .concat(marketVisits.map((visit) => visit.vendor))
+        .filter(Boolean)
+        .map(normalizeVendorName)
+        .map((vendor) => String(vendor || "").trim())
+        .filter(Boolean)
+    )
+  ].sort((a, b) => a.localeCompare(b));
+}
+
 function getMatchedVendorName(value) {
   const typed = String(value || "").trim().toLowerCase();
   if (!typed) return "";
@@ -8561,6 +8627,7 @@ function updateVendorControls() {
   const selectedReportVendor = elements.vendorReportVendorFilter?.value || "";
   const selectedReportYear = elements.vendorReportYearFilter?.value || "";
   const vendors = getVendorNames();
+  const reportVendors = getVendorReportVendorNames();
   elements.vendorSuggestions.innerHTML = vendors.map((vendor) => `<option value="${escapeAttribute(vendor)}"></option>`).join("");
   elements.apnSuggestions.innerHTML = getProductDirectory(elements.leadDistributor?.value || "US Foods")
     .map((product) => {
@@ -8575,11 +8642,13 @@ function updateVendorControls() {
     .map((vendor) => `<option value="${escapeAttribute(vendor)}">${escapeHtml(vendor)}</option>`)
     .join("")}`;
   if (selected && vendors.includes(selected)) elements.vendorFilter.value = selected;
+  if (elements.vendorReportVendorSuggestions) {
+    elements.vendorReportVendorSuggestions.innerHTML = reportVendors
+      .map((vendor) => `<option value="${escapeAttribute(vendor)}"></option>`)
+      .join("");
+  }
   if (elements.vendorReportVendorFilter) {
-    elements.vendorReportVendorFilter.innerHTML = `<option value="">All</option>${vendors
-      .map((vendor) => `<option value="${escapeAttribute(vendor)}">${escapeHtml(vendor)}</option>`)
-      .join("")}`;
-    if (selectedReportVendor && vendors.includes(selectedReportVendor)) elements.vendorReportVendorFilter.value = selectedReportVendor;
+    elements.vendorReportVendorFilter.value = selectedReportVendor;
   }
   updateVendorReportYearOptions(selectedReportYear);
 }
