@@ -2423,7 +2423,7 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
 }
 
 .vendor-controls {
-  grid-template-columns: repeat(3, minmax(150px, 1fr)) auto;
+  grid-template-columns: minmax(170px, 1.2fr) minmax(120px, 0.7fr) minmax(105px, 0.6fr) minmax(150px, 1fr) auto;
   border: 2px solid rgba(155, 126, 168, 0.46);
   background: linear-gradient(180deg, #f1e7f0 0%, #dfcbdc 100%);
   box-shadow:

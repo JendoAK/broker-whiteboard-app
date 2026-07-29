@@ -491,6 +491,7 @@ const elements = {
   vendorReportDialog: document.querySelector("#vendorReportDialog"),
   vendorReportVendorFilter: document.querySelector("#vendorReportVendorFilter"),
   vendorReportMonthFilter: document.querySelector("#vendorReportMonthFilter"),
+  vendorReportYearFilter: document.querySelector("#vendorReportYearFilter"),
   vendorReportSubmittedFilter: document.querySelector("#vendorReportSubmittedFilter"),
   vendorReportTable: document.querySelector("#vendorReportTable"),
   vendorReportCount: document.querySelector("#vendorReportCount"),
@@ -1013,8 +1014,12 @@ document.querySelectorAll(".summary-grid:not(.todo-summary-grid) .summary-tile")
 [
   elements.vendorReportVendorFilter,
   elements.vendorReportMonthFilter,
+  elements.vendorReportYearFilter,
   elements.vendorReportSubmittedFilter
-].forEach((control) => control.addEventListener("input", renderVendorReport));
+].filter(Boolean).forEach((control) => {
+  control.addEventListener("input", renderVendorReport);
+  control.addEventListener("change", renderVendorReport);
+});
 
 elements.form.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -3022,6 +3027,7 @@ function showLeadsWorkflow() {
 function clearVendorReportFilters() {
   elements.vendorReportVendorFilter.value = "";
   elements.vendorReportMonthFilter.value = "";
+  if (elements.vendorReportYearFilter) elements.vendorReportYearFilter.value = "";
   elements.vendorReportSubmittedFilter.value = "";
   renderVendorReport();
 }
@@ -3056,6 +3062,7 @@ function renderVendorReport() {
 function getVendorReportRows() {
   const vendorFilter = elements.vendorReportVendorFilter.value;
   const monthFilter = elements.vendorReportMonthFilter.value;
+  const yearFilter = elements.vendorReportYearFilter?.value || "";
   const submittedFilter = elements.vendorReportSubmittedFilter.value;
   const leadRows = cards
     .filter((card) => !card.deletedAt)
@@ -3078,7 +3085,7 @@ function getVendorReportRows() {
       if (vendorFilter && product.vendor !== vendorFilter) return false;
       if (submittedFilter === "submitted" && !report.submitted) return false;
       if (submittedFilter === "not-submitted" && report.submitted) return false;
-      if (monthFilter && !vendorRowMatchesMonth(card, report, monthFilter)) return false;
+      if ((monthFilter || yearFilter) && !vendorRowMatchesReportPeriod(card, report, monthFilter, yearFilter)) return false;
       return true;
     })
     .sort((a, b) => a.product.vendor.localeCompare(b.product.vendor) || compareVendorReportDate(a, b));
@@ -3225,10 +3232,17 @@ function getVendorReportRowId(cardId, productId) {
   return `${cardId}::${productId}`;
 }
 
-function vendorRowMatchesMonth(card, report, month) {
+function vendorRowMatchesReportPeriod(card, report, month, year) {
   return [card?.due, report.submittedDate, card?.createdAt, report.createdAt]
     .filter(Boolean)
-    .some((value) => String(value).slice(0, 7) === month);
+    .some((value) => {
+      const text = String(value);
+      const valueYear = text.slice(0, 4);
+      const valueMonth = text.slice(5, 7);
+      if (year && valueYear !== year) return false;
+      if (month && valueMonth !== month) return false;
+      return true;
+    });
 }
 
 function openManualVendorForm(report) {
@@ -8545,6 +8559,7 @@ function getMatchedVendorName(value) {
 function updateVendorControls() {
   const selected = elements.vendorFilter.value;
   const selectedReportVendor = elements.vendorReportVendorFilter?.value || "";
+  const selectedReportYear = elements.vendorReportYearFilter?.value || "";
   const vendors = getVendorNames();
   elements.vendorSuggestions.innerHTML = vendors.map((vendor) => `<option value="${escapeAttribute(vendor)}"></option>`).join("");
   elements.apnSuggestions.innerHTML = getProductDirectory(elements.leadDistributor?.value || "US Foods")
@@ -8565,6 +8580,33 @@ function updateVendorControls() {
       .map((vendor) => `<option value="${escapeAttribute(vendor)}">${escapeHtml(vendor)}</option>`)
       .join("")}`;
     if (selectedReportVendor && vendors.includes(selectedReportVendor)) elements.vendorReportVendorFilter.value = selectedReportVendor;
+  }
+  updateVendorReportYearOptions(selectedReportYear);
+}
+
+function updateVendorReportYearOptions(selectedYear = "") {
+  if (!elements.vendorReportYearFilter) return;
+  const startYear = 2026;
+  const currentYear = startOfToday().getFullYear();
+  const dates = [
+    ...cards.flatMap((card) => [
+      card.due,
+      card.createdAt,
+      ...Object.values(normalizeVendorReports(card.vendorReports)).flatMap((report) => [report.submittedDate, report.createdAt])
+    ]),
+    ...manualVendorReports.flatMap((report) => [report.submittedDate, report.createdAt])
+  ];
+  const dataYears = dates
+    .map((value) => Number(String(value || "").slice(0, 4)))
+    .filter((year) => Number.isInteger(year) && year >= startYear);
+  const endYear = Math.max(startYear, currentYear + 5, ...dataYears);
+  const years = [];
+  for (let year = startYear; year <= endYear; year += 1) years.push(year);
+  elements.vendorReportYearFilter.innerHTML = `<option value="">All years</option>${years
+    .map((year) => `<option value="${year}">${year}</option>`)
+    .join("")}`;
+  if (selectedYear && years.includes(Number(selectedYear))) {
+    elements.vendorReportYearFilter.value = selectedYear;
   }
 }
 

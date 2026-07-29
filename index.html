@@ -564,7 +564,22 @@
 
         <section class="controls vendor-controls" aria-label="Vendor report filters">
           <label><span>Vendor / Brand</span><select id="vendorReportVendorFilter"><option value="">All</option></select></label>
-          <label><span>Month</span><input id="vendorReportMonthFilter" type="month" /></label>
+          <label><span>Month</span><select id="vendorReportMonthFilter">
+            <option value="">All months</option>
+            <option value="01">January</option>
+            <option value="02">February</option>
+            <option value="03">March</option>
+            <option value="04">April</option>
+            <option value="05">May</option>
+            <option value="06">June</option>
+            <option value="07">July</option>
+            <option value="08">August</option>
+            <option value="09">September</option>
+            <option value="10">October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+          </select></label>
+          <label><span>Year</span><select id="vendorReportYearFilter"><option value="">All years</option><option value="2026">2026</option></select></label>
           <label><span>Submitted</span><select id="vendorReportSubmittedFilter"><option value="">All</option><option value="submitted">Submitted</option><option value="not-submitted">Not Submitted</option></select></label>
           <button class="ghost-action" id="clearVendorReportFilters" type="button">Clear</button>
         </section>
