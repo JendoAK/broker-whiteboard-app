@@ -3252,9 +3252,10 @@ function closeManualVendorForm() {
 function saveManualVendorReport() {
   const id = elements.manualVendorId.value || crypto.randomUUID();
   const existing = manualVendorReports.find((report) => report.id === id);
+  const operatorMatch = syncOperatorToAddressBook(elements.manualVendorAccount.value);
   const next = normalizeManualVendorReport({
     id,
-    account: elements.manualVendorAccount.value.trim(),
+    account: operatorMatch?.operatorName || elements.manualVendorAccount.value.trim(),
     vendor: elements.manualVendorVendor.value.trim(),
     productShown: elements.manualVendorProduct.value.trim(),
     opportunityNote: elements.manualVendorOpportunity.value.trim(),
@@ -5242,6 +5243,82 @@ function getMarketOperatorDisplayName(operator) {
   return operator.operatorName || getOperatorName(operator.operatorId) || "";
 }
 
+const distributorOnlyOperatorNames = new Set([
+  "dot",
+  "dot foods",
+  "linford",
+  "linford of alaska",
+  "sysco",
+  "us foods",
+  "us foods anchorage",
+  "us foods southeast"
+]);
+
+function normalizeOperatorKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function shouldSyncOperatorName(value) {
+  const name = String(value || "").trim();
+  if (name.length < 2) return false;
+  return !distributorOnlyOperatorNames.has(normalizeOperatorKey(name));
+}
+
+function syncOperatorToAddressBook(value, details = {}) {
+  const operatorName = String(value || "").trim();
+  if (!shouldSyncOperatorName(operatorName)) return null;
+
+  const existing = getMarketOperatorOptions().find((entry) => normalizeOperatorKey(entry.operation) === normalizeOperatorKey(operatorName));
+  const patch = {
+    accountNumber: details.accountNumber || "",
+    syscoAccountNumber: details.syscoAccountNumber || "",
+    usfSalesRep: details.usfSalesRep || "",
+    syscoSalesRep: details.syscoSalesRep || ""
+  };
+
+  if (existing) {
+    const updatedEntry = normalizeAddressBookEntry({
+      ...existing,
+      accountNumber: existing.accountNumber || patch.accountNumber,
+      syscoAccountNumber: existing.syscoAccountNumber || patch.syscoAccountNumber,
+      usfSalesRep: existing.usfSalesRep || patch.usfSalesRep,
+      syscoSalesRep: existing.syscoSalesRep || patch.syscoSalesRep,
+      updatedAt: new Date().toISOString()
+    });
+    const changed =
+      updatedEntry.accountNumber !== existing.accountNumber ||
+      updatedEntry.syscoAccountNumber !== existing.syscoAccountNumber ||
+      updatedEntry.usfSalesRep !== existing.usfSalesRep ||
+      updatedEntry.syscoSalesRep !== existing.syscoSalesRep;
+    if (changed) {
+      addressBook = addressBook.map((entry) => (entry.id === existing.id ? updatedEntry : entry));
+      persistAddressBook();
+      updateAccountSuggestions();
+      updateTimelineSearchSuggestions();
+    }
+    return { operatorId: updatedEntry.id, operatorName: updatedEntry.operation, entry: updatedEntry };
+  }
+
+  const now = new Date().toISOString();
+  const entry = normalizeAddressBookEntry({
+    operation: operatorName,
+    accountNumber: patch.accountNumber,
+    syscoAccountNumber: patch.syscoAccountNumber,
+    usfSalesRep: patch.usfSalesRep,
+    syscoSalesRep: patch.syscoSalesRep,
+    createdAt: now,
+    updatedAt: now
+  });
+  addressBook = [entry, ...addressBook].sort((a, b) => a.operation.localeCompare(b.operation, undefined, { sensitivity: "base" }));
+  persistAddressBook();
+  updateAccountSuggestions();
+  updateTimelineSearchSuggestions();
+  return { operatorId: entry.id, operatorName: entry.operation, entry };
+}
+
 function isMarketOperatorAlreadyAttached(visit, operatorId, operatorName) {
   const nameKey = String(operatorName || "").trim().toLowerCase();
   return getMarketVisitOperators(visit).some((operator) => {
@@ -5251,17 +5328,7 @@ function isMarketOperatorAlreadyAttached(visit, operatorId, operatorName) {
 }
 
 function findOrCreateMarketOperator(value) {
-  const operatorName = String(value || "").trim();
-  if (!operatorName) return null;
-  const existing = getMarketOperatorOptions().find((entry) => entry.operation.trim().toLowerCase() === operatorName.toLowerCase());
-  if (existing) return { operatorId: existing.id, operatorName: existing.operation };
-  const now = new Date().toISOString();
-  const entry = normalizeAddressBookEntry({ operation: operatorName, createdAt: now, updatedAt: now });
-  addressBook = [entry, ...addressBook];
-  persistAddressBook();
-  updateAccountSuggestions();
-  updateTimelineSearchSuggestions();
-  return { operatorId: entry.id, operatorName: entry.operation };
+  return syncOperatorToAddressBook(value);
 }
 
 function getOperatorName(operatorId) {
@@ -6127,13 +6194,14 @@ function saveSample() {
   const id = elements.sampleId.value || crypto.randomUUID();
   const existing = samples.find((sample) => sample.id === id);
   const status = elements.sampleStatus.value;
+  const operatorMatch = syncOperatorToAddressBook(elements.sampleRequestedFor.value);
   const sample = normalizeSample({
     id,
     product: elements.sampleProduct.value.trim(),
     orderedBy: elements.sampleOrderedBy.value.trim(),
     expected: elements.sampleExpected.value,
     orderType: elements.sampleOrderType.value,
-    requestedFor: elements.sampleRequestedFor.value.trim(),
+    requestedFor: operatorMatch?.operatorName || elements.sampleRequestedFor.value.trim(),
     status,
     note: elements.sampleNote.value.trim(),
     attachments: currentSampleAttachments.map(normalizeAttachment),
@@ -6521,7 +6589,7 @@ function saveTodo() {
   const id = elements.todoId.value || crypto.randomUUID();
   const existing = todos.find((todo) => todo.id === id);
   const status = elements.todoStatus.value;
-  const operatorMatch = getMatchedAccountDirectoryEntry(elements.todoAccount.value);
+  const operatorMatch = syncOperatorToAddressBook(elements.todoAccount.value);
   const vendorMatch = getMatchedVendorName(elements.todoVendor.value);
   const next = normalizeTodo({
     id,
@@ -6529,7 +6597,7 @@ function saveTodo() {
     priority: elements.todoPriority.value,
     due: elements.todoDue.value,
     assignedBy: elements.todoAssignedBy.value.trim(),
-    account: operatorMatch?.name || elements.todoAccount.value.trim(),
+    account: operatorMatch?.operatorName || elements.todoAccount.value.trim(),
     vendor: vendorMatch || elements.todoVendor.value.trim(),
     notes: elements.todoNotes.value.trim(),
     subtasks: readSubtasks(),
@@ -6573,7 +6641,7 @@ function convertCurrentTodoToLead() {
   const existing = todos.find((todo) => todo.id === id);
   if (!existing) return;
   const status = elements.todoStatus.value;
-  const operatorMatch = getMatchedAccountDirectoryEntry(elements.todoAccount.value);
+  const operatorMatch = syncOperatorToAddressBook(elements.todoAccount.value);
   const vendorMatch = getMatchedVendorName(elements.todoVendor.value);
   const updatedTodo = normalizeTodo({
     ...existing,
@@ -6581,7 +6649,7 @@ function convertCurrentTodoToLead() {
     priority: elements.todoPriority.value,
     due: elements.todoDue.value,
     assignedBy: elements.todoAssignedBy.value.trim(),
-    account: operatorMatch?.name || elements.todoAccount.value.trim(),
+    account: operatorMatch?.operatorName || elements.todoAccount.value.trim(),
     vendor: vendorMatch || elements.todoVendor.value.trim(),
     notes: elements.todoNotes.value.trim(),
     subtasks: readSubtasks(),
@@ -7233,9 +7301,15 @@ function saveCard() {
   const id = elements.cardId.value || crypto.randomUUID();
   const existing = cards.find((card) => card.id === id);
   const noteHistory = buildLeadNoteHistoryForSave();
+  const operatorMatch = syncOperatorToAddressBook(elements.account.value, {
+    accountNumber: elements.accountNumber.value.trim(),
+    syscoAccountNumber: elements.syscoAccountNumber.value.trim(),
+    usfSalesRep: elements.salesRep.value.trim(),
+    syscoSalesRep: elements.syscoSalesRep.value.trim()
+  });
   const next = {
     id,
-    account: elements.account.value.trim(),
+    account: operatorMatch?.operatorName || elements.account.value.trim(),
     accountNumber: elements.accountNumber.value.trim(),
     syscoAccountNumber: elements.syscoAccountNumber.value.trim(),
     distributor: elements.leadDistributor.value || "US Foods",
@@ -7429,6 +7503,7 @@ function saveDotOrder() {
   const id = elements.dotId.value || crypto.randomUUID();
   const existing = dotOrders.find((order) => order.id === id);
   const status = elements.dotStatus.value;
+  const operatorMatch = syncOperatorToAddressBook(elements.dotRequestedFor.value);
   const order = normalizeDotOrder({
     id,
     product: elements.dotProduct.value.trim(),
@@ -7439,7 +7514,7 @@ function saveDotOrder() {
     orderedBy: elements.dotOrderedBy.value.trim(),
     expected: elements.dotExpected.value,
     storageType: elements.dotStorageType.value,
-    requestedFor: elements.dotRequestedFor.value.trim(),
+    requestedFor: operatorMatch?.operatorName || elements.dotRequestedFor.value.trim(),
     status,
     note: elements.dotNote.value.trim(),
     attachments: currentDotAttachments.map(normalizeAttachment),
@@ -7670,10 +7745,11 @@ function saveNestleMachine() {
   const id = elements.nestleId.value || crypto.randomUUID();
   const existing = nestleMachines.find((machine) => machine.id === id);
   const status = elements.nestleStatus.value;
+  const operatorMatch = syncOperatorToAddressBook(elements.nestleAccount.value);
   const machine = normalizeNestleMachine({
     id,
     machine: elements.nestleMachine.value.trim(),
-    account: elements.nestleAccount.value.trim(),
+    account: operatorMatch?.operatorName || elements.nestleAccount.value.trim(),
     location: elements.nestleLocation.value.trim(),
     contact: elements.nestleContact.value.trim(),
     serial: elements.nestleSerial.value.trim(),
