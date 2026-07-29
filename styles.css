@@ -3479,6 +3479,9 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
 
 .vendor-add-row {
   display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
   justify-content: flex-start;
   margin: 12px 0;
 }
@@ -3508,6 +3511,15 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
   background: #b49ac6;
   box-shadow: 3px 3px 0 rgba(84, 62, 96, 0.18);
   color: #281936;
+}
+
+.vendor-print-action {
+  min-height: 40px;
+  border-color: #8f6f9f;
+  background: #f4e9f2;
+  box-shadow: 3px 3px 0 rgba(84, 62, 96, 0.14);
+  color: #352341;
+  font-weight: 900;
 }
 
 .promote-report {

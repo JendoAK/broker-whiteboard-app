@@ -515,6 +515,7 @@ const elements = {
   vendorReportTable: document.querySelector("#vendorReportTable"),
   vendorReportCount: document.querySelector("#vendorReportCount"),
   addManualVendorReport: document.querySelector("#addManualVendorReport"),
+  printVendorReport: document.querySelector("#printVendorReport"),
   manualVendorDialog: document.querySelector("#manualVendorDialog"),
   manualVendorForm: document.querySelector("#manualVendorForm"),
   manualVendorId: document.querySelector("#manualVendorId"),
@@ -723,6 +724,7 @@ document.querySelector("#openAddressBookMarket").addEventListener("click", openA
 document.querySelector("#openStockListsMarket").addEventListener("click", openStockListsWindow);
 document.querySelector("#openSampleTrackerMarket").addEventListener("click", openSampleTrackerWindow);
 document.querySelector("#clearVendorReportFilters").addEventListener("click", clearVendorReportFilters);
+elements.printVendorReport?.addEventListener("click", printVendorReport);
 document.querySelector("#closeManualVendorForm").addEventListener("click", closeManualVendorForm);
 document.querySelector("#cancelManualVendorForm").addEventListener("click", closeManualVendorForm);
 document.querySelector("#closeAddressBookForm").addEventListener("click", closeAddressBookForm);
@@ -3076,6 +3078,138 @@ function renderVendorReport() {
     </table>
   `;
   bindVendorReportActions();
+}
+
+function printVendorReport() {
+  const activeField = document.activeElement;
+  if (activeField?.matches?.("[data-report-field]")) saveVendorReportField(activeField);
+  const rows = getVendorReportRows();
+  if (!rows.length) {
+    alert("No vendor report rows to print for these filters.");
+    return;
+  }
+  openPrintWindow(renderVendorReportPrintDocument(rows));
+}
+
+function renderVendorReportPrintDocument(rows) {
+  const summary = getVendorReportPrintSummary(rows);
+  return `<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>FoodBrokerBase - Vendor Report</title>
+        <style>
+          ${renderPrintBrandStyles()}
+          @page { size: landscape; margin: 0.35in; }
+          body { margin: 0; color: #211d18; font: 11px Arial, sans-serif; }
+          h1 { margin: 0 0 4px; font-size: 24px; }
+          .muted { margin-bottom: 12px; color: #5d554b; font-weight: 700; }
+          .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0 0 12px; }
+          .summary div { border: 1px solid #d8cdbc; padding: 7px 8px; background: #fbf6ef; }
+          .summary span { display: block; color: #5d554b; font-size: 9px; font-weight: 900; text-transform: uppercase; }
+          .summary strong { display: block; margin-top: 2px; font-size: 12px; line-height: 1.25; }
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          th, td { border: 1px solid #d8cdbc; padding: 6px; text-align: left; vertical-align: top; }
+          th { background: #e7d6e3; color: #352341; font-size: 10px; text-transform: uppercase; }
+          th:nth-child(1), td:nth-child(1) { width: 13%; }
+          th:nth-child(2), td:nth-child(2) { width: 9%; }
+          th:nth-child(3), td:nth-child(3) { width: 14%; }
+          th:nth-child(4), td:nth-child(4) { width: 19%; }
+          th:nth-child(5), td:nth-child(5) { width: 24%; }
+          th:nth-child(6), td:nth-child(6) { width: 8%; }
+          th:nth-child(7), td:nth-child(7) { width: 7%; }
+          th:nth-child(8), td:nth-child(8) { width: 8%; }
+          .vendor { font-weight: 900; }
+          .account, .product { font-weight: 800; }
+          .note { white-space: pre-wrap; line-height: 1.28; }
+          .submitted { color: #2f663c; font-weight: 900; }
+          .not-submitted { color: #7a3434; font-weight: 900; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        ${renderPrintBrandHeader({ title: "Vendor Report", lines: [summary.period, summary.vendors] })}
+        <h1>Vendor Report</h1>
+        <div class="muted">Printed ${escapeHtml(new Date().toLocaleDateString())}</div>
+        <div class="summary">
+          <div><span>Vendors</span><strong>${escapeHtml(summary.vendors)}</strong></div>
+          <div><span>Month</span><strong>${escapeHtml(summary.period)}</strong></div>
+          <div><span>Submitted</span><strong>${escapeHtml(summary.submitted)}</strong></div>
+          <div><span>Rows</span><strong>${rows.length}</strong></div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Vendor</th>
+              <th>Month</th>
+              <th>Account</th>
+              <th>Product</th>
+              <th>Opportunity / Target Note</th>
+              <th>Won / Lost / Unsure</th>
+              <th>Submitted</th>
+              <th>Submitted Date</th>
+            </tr>
+          </thead>
+          <tbody>${rows.map(renderVendorReportPrintRow).join("")}</tbody>
+        </table>
+      </body>
+    </html>`;
+}
+
+function renderVendorReportPrintRow(row) {
+  const { card, product, report, manual, type, reportVendor } = row;
+  const accountName = type === "manual" ? manual.account : card.account;
+  const submitted = Boolean(report.submitted || report.submittedDate);
+  return `<tr>
+    <td class="vendor">${escapeHtml(reportVendor || product.vendor || "No vendor")}</td>
+    <td>${escapeHtml(formatVendorReportPrintMonth(getVendorReportRowDateValue(row)))}</td>
+    <td class="account">${escapeHtml(accountName || "No account")}</td>
+    <td class="product">${escapeHtml(report.productShown || product.description || "")}</td>
+    <td class="note">${escapeHtml(report.opportunityNote || "")}</td>
+    <td>${escapeHtml(report.outcome || "Unsure")}</td>
+    <td class="${submitted ? "submitted" : "not-submitted"}">${submitted ? "Yes" : "No"}</td>
+    <td>${escapeHtml(formatVendorReportPrintDate(report.submittedDate))}</td>
+  </tr>`;
+}
+
+function getVendorReportPrintSummary(rows) {
+  const vendorFilter = elements.vendorReportVendorFilter?.value.trim() || "";
+  const vendors = [...new Set(rows.map((row) => row.reportVendor || row.product?.vendor).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const monthValue = elements.vendorReportMonthFilter?.value || "";
+  const yearValue = elements.vendorReportYearFilter?.value || "";
+  const monthLabel = monthValue ? elements.vendorReportMonthFilter.selectedOptions?.[0]?.textContent || monthValue : "All months";
+  const period = monthValue && yearValue ? `${monthLabel} ${yearValue}` : monthValue ? `${monthLabel}, all years` : yearValue ? `All months ${yearValue}` : "All months";
+  const submitted = elements.vendorReportSubmittedFilter?.selectedOptions?.[0]?.textContent || "All";
+  let vendorLabel = "All vendors";
+  if (vendorFilter) {
+    vendorLabel = vendors.length === 1 ? vendors[0] : `${vendorFilter} (${vendors.length} vendor matches)`;
+  } else if (vendors.length && vendors.length <= 4) {
+    vendorLabel = vendors.join(", ");
+  } else if (vendors.length > 4) {
+    vendorLabel = `All vendors (${vendors.length})`;
+  }
+  return { vendors: vendorLabel, period, submitted };
+}
+
+function getVendorReportRowDateValue(row) {
+  return row.report?.submittedDate || row.card?.due || row.card?.createdAt || row.report?.createdAt || "";
+}
+
+function formatVendorReportPrintMonth(value) {
+  const date = parsePrintDate(value);
+  return date ? date.toLocaleDateString(undefined, { month: "short", year: "numeric" }) : "No date";
+}
+
+function formatVendorReportPrintDate(value) {
+  const date = parsePrintDate(value);
+  return date ? date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "";
+}
+
+function parsePrintDate(value) {
+  const text = String(value || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+  const date = parseLocalDate(text);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function getVendorReportRows() {
