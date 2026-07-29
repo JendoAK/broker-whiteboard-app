@@ -4510,14 +4510,17 @@ function renderMarketOperatorsSection(visit, operators) {
 function renderMarketOperator(visit, operator) {
   const products = getMarketVisitProducts(visit);
   const operatorName = operator.operatorName || getOperatorName(operator.operatorId) || "Operator";
+  const selectedProductIds = new Set(operator.productIds || []);
+  const selectedProductCount = products.filter((product) => selectedProductIds.has(product.id)).length;
   return `
     <details class="market-nested-card market-operator-card">
       <summary class="market-operator-summary">
         <span>
           <strong>${escapeHtml(operatorName)}</strong>
-          <small>${products.length} ${products.length === 1 ? "product" : "products"} planned</small>
+          <small>${selectedProductCount} of ${products.length} ${products.length === 1 ? "product" : "products"} planned</small>
         </span>
         <span class="market-operator-actions">
+          <button class="edit-card market-save-operator" type="button" data-save-market-operator="${escapeAttribute(operator.id)}">Save Operator</button>
           <button class="edit-card market-convert-lead" type="button" data-convert-market-operator="${escapeAttribute(operator.id)}">Convert to Lead</button>
           <button class="remove-product" type="button" data-remove-market-operator="${escapeAttribute(operator.id)}" data-remove-market-operator-id="${escapeAttribute(operator.operatorId || "")}" data-remove-market-operator-name="${escapeAttribute(operatorName)}">Remove</button>
         </span>
@@ -4533,10 +4536,11 @@ function renderMarketOperator(visit, operator) {
 function renderOperatorProductNote(operator, product) {
   const number = product.apn || product.supc || product.manufacturerNumber || "";
   const note = operator.productNotes?.[product.id]?.note || "";
+  const checked = (operator.productIds || []).includes(product.id);
   return `
     <div class="operator-product-note-row">
       <label class="operator-product-select">
-        <input type="checkbox" data-operator-lead-product="${escapeAttribute(operator.id)}" value="${escapeAttribute(product.id)}" checked />
+        <input type="checkbox" data-operator-lead-product="${escapeAttribute(operator.id)}" value="${escapeAttribute(product.id)}" ${checked ? "checked" : ""} />
       </label>
       <div>
         <strong>${escapeHtml(product.description || "Product")}</strong>
@@ -4921,6 +4925,13 @@ function bindMarketDetailActions(panel, visit) {
       convertMarketOperatorToLead(visit, button.dataset.convertMarketOperator, panel);
     })
   );
+  panel.querySelectorAll("[data-save-market-operator]").forEach((button) =>
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      saveMarketOperatorDetails(visit.id, button.dataset.saveMarketOperator, panel);
+    })
+  );
   panel.querySelectorAll("[data-market-operator-notes]").forEach((textarea) => {
     textarea.addEventListener("input", () => saveMarketOperatorDataWithoutRender(visit.id, textarea.dataset.marketOperatorNotes, { notes: textarea.value }));
   });
@@ -5070,6 +5081,60 @@ function saveMarketOperatorProductNoteWithoutRender(visitId, operatorId, product
     });
   });
   persistMarketVisits();
+}
+
+function saveMarketOperatorDetails(visitId, operatorId, panel) {
+  const currentVisit = marketVisits.find((visit) => visit.id === visitId);
+  if (!currentVisit) return;
+  const operators = getMarketVisitOperators(currentVisit);
+  const operator = currentVisit.operatorLinks.find((link) => link.id === operatorId) || operators.find((link) => link.id === operatorId);
+  if (!operator) return;
+
+  const operatorName = operator.operatorName || getOperatorName(operator.operatorId) || "";
+  const selectedProductIds = [...panel.querySelectorAll("[data-operator-lead-product]")]
+    .filter((input) => input.dataset.operatorLeadProduct === operatorId && input.checked)
+    .map((input) => input.value);
+  const noteInput = [...panel.querySelectorAll("[data-market-operator-notes]")].find((input) => input.dataset.marketOperatorNotes === operatorId);
+  const productNotes = { ...(operator.productNotes || {}) };
+
+  panel.querySelectorAll("[data-market-operator-product-note]").forEach((input) => {
+    if (input.dataset.marketOperatorProductNote !== operatorId) return;
+    const productId = input.dataset.productId;
+    const note = input.value.trim();
+    if (note) productNotes[productId] = { ...(productNotes[productId] || {}), note };
+    else delete productNotes[productId];
+  });
+
+  let matchedExistingOperator = false;
+  const operatorLinks = currentVisit.operatorLinks.map((link) => {
+    const sameOperator = operator.operatorId
+      ? link.operatorId === operator.operatorId
+      : normalizeOperatorKey(link.operatorName || getOperatorName(link.operatorId)) === normalizeOperatorKey(operatorName);
+    if (link.id !== operatorId && !sameOperator) return link;
+    matchedExistingOperator = true;
+    return normalizeMarketOperatorLink({
+      ...link,
+      operatorId: link.operatorId || operator.operatorId || "",
+      operatorName: link.operatorName || operatorName,
+      productIds: selectedProductIds,
+      notes: noteInput?.value || "",
+      productNotes
+    });
+  });
+
+  if (!matchedExistingOperator) {
+    operatorLinks.push(
+      normalizeMarketOperatorLink({
+        operatorId: operator.operatorId || "",
+        operatorName,
+        productIds: selectedProductIds,
+        notes: noteInput?.value || operator.notes || "",
+        productNotes
+      })
+    );
+  }
+
+  updateMarketVisit(visitId, { operatorLinks });
 }
 
 function convertMarketOperatorToLead(visit, operatorId, panel) {

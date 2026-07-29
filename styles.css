@@ -3063,7 +3063,9 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
 .market-operator-actions {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  justify-content: flex-end;
 }
 
 .market-operator-summary strong {
@@ -3124,6 +3126,14 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
   background: #ead0c8;
   color: #44221e;
   box-shadow: 2px 2px 0 rgba(128, 68, 61, 0.14);
+  font-weight: 950;
+}
+
+.market-save-operator {
+  border-color: #6d7b3c;
+  background: #eef2d2;
+  color: #253018;
+  box-shadow: 2px 2px 0 rgba(78, 91, 45, 0.16);
   font-weight: 950;
 }
 
