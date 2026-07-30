@@ -204,8 +204,11 @@ let cloudSyncReady = false;
 let cloudSyncLoading = false;
 let cloudSyncUserId = "";
 let cloudSaveTimer = null;
+let cloudAutoRefreshTimer = null;
+let cloudLastRowFingerprint = "";
 let pendingCloudSections = new Set();
 let lastCloudError = "";
+const cloudAutoRefreshMs = 30000;
 
 function getMarketVisitsByCloudType(type) {
   return marketVisits.filter((visit) => normalizeMarketVisit(visit).type === type);
@@ -1661,8 +1664,8 @@ function renderAfterCloudSync() {
 }
 
 function scheduleCloudSave(sectionKey) {
-  if (!cloudSyncReady || !getCloudClient() || !getCloudUser()) return;
   expandCloudSectionKeys([sectionKey]).forEach((key) => pendingCloudSections.add(key));
+  if (!cloudSyncReady || !getCloudClient() || !getCloudUser()) return;
   window.clearTimeout(cloudSaveTimer);
   cloudSaveTimer = window.setTimeout(() => {
     pushPendingCloudSections();
@@ -1671,9 +1674,11 @@ function scheduleCloudSave(sectionKey) {
 
 async function pushPendingCloudSections() {
   if (!pendingCloudSections.size) return;
+  if (!cloudSyncReady || !getCloudClient() || !getCloudUser()) return;
   const sectionKeys = Array.from(pendingCloudSections);
   pendingCloudSections.clear();
-  await saveCloudSections(sectionKeys);
+  const saved = await saveCloudSections(sectionKeys);
+  if (!saved) sectionKeys.forEach((key) => pendingCloudSections.add(key));
 }
 
 async function saveCloudSections(sectionKeys = cloudSectionConfigs.map((section) => section.key), options = {}) {
@@ -1730,6 +1735,7 @@ async function saveCloudSections(sectionKeys = cloudSectionConfigs.map((section)
       if (error) throw error;
     }
     lastCloudError = "";
+    refreshCloudRowFingerprint();
     return true;
   } catch (error) {
     lastCloudError = error?.message || "Unknown cloud save error.";
@@ -1758,7 +1764,57 @@ async function fetchCloudRowSummary() {
     .eq("record_type", teamCloudRecordType);
 
   if (teamError) throw teamError;
-  return [...(Array.isArray(personalData) ? personalData : []), ...(Array.isArray(teamData) ? teamData : [])];
+  const personalRows = (Array.isArray(personalData) ? personalData : []).map((row) => ({ ...row, scope: "personal" }));
+  const teamRows = (Array.isArray(teamData) ? teamData : []).map((row) => ({ ...row, scope: "team" }));
+  return [...personalRows, ...teamRows];
+}
+
+function getCloudRowFingerprint(rows = []) {
+  return rows
+    .map((row) => `${row.scope || ""}:${row.record_key || ""}:${row.updated_at || ""}`)
+    .sort()
+    .join("|");
+}
+
+async function refreshCloudRowFingerprint() {
+  try {
+    cloudLastRowFingerprint = getCloudRowFingerprint(await fetchCloudRowSummary());
+  } catch (error) {
+    console.warn("FoodBrokerBase cloud status check failed.", error);
+  }
+}
+
+async function refreshCloudSectionsIfChanged(options = {}) {
+  if (!getCloudClient() || !getCloudUser() || cloudSyncLoading) return false;
+  if (pendingCloudSections.size && cloudSyncReady) await pushPendingCloudSections();
+  if (pendingCloudSections.size) return false;
+  if (!cloudSyncReady && !options.force) return false;
+
+  try {
+    const rows = await fetchCloudRowSummary();
+    const nextFingerprint = getCloudRowFingerprint(rows);
+    if (!options.force && nextFingerprint === cloudLastRowFingerprint) return false;
+    const loaded = await loadCloudSections();
+    if (!loaded && !rows.length) cloudLastRowFingerprint = nextFingerprint;
+    return loaded;
+  } catch (error) {
+    lastCloudError = error?.message || "Unknown cloud status error.";
+    console.warn("FoodBrokerBase cloud refresh failed.", error);
+    return false;
+  }
+}
+
+function startCloudAutoRefresh() {
+  window.clearInterval(cloudAutoRefreshTimer);
+  cloudAutoRefreshTimer = window.setInterval(() => {
+    refreshCloudSectionsIfChanged();
+  }, cloudAutoRefreshMs);
+}
+
+function stopCloudAutoRefresh() {
+  window.clearInterval(cloudAutoRefreshTimer);
+  cloudAutoRefreshTimer = null;
+  cloudLastRowFingerprint = "";
 }
 
 async function loadCloudSections(options = {}) {
@@ -1786,15 +1842,20 @@ async function loadCloudSections(options = {}) {
 
     if (teamError) throw teamError;
 
-    const personalRows = Array.isArray(personalData) ? personalData : [];
-    const teamRows = Array.isArray(teamData) ? teamData : [];
+    const personalRows = (Array.isArray(personalData) ? personalData : []).map((row) => ({ ...row, scope: "personal" }));
+    const teamRows = (Array.isArray(teamData) ? teamData : []).map((row) => ({ ...row, scope: "team" }));
     const rows = [...personalRows, ...teamRows];
+    cloudLastRowFingerprint = getCloudRowFingerprint(rows);
     if (rows.length) {
       const personalRowMap = new Map(personalRows.map((row) => [row.record_key, row]));
       const teamRowMap = new Map(teamRows.map((row) => [row.record_key, row]));
       const appliedKeys = [];
       const localUploadKeys = [];
       cloudSectionConfigs.forEach((section) => {
+        if (pendingCloudSections.has(section.key)) {
+          localUploadKeys.push(section.key);
+          return;
+        }
         const rowMap = section.scope === "team" ? teamRowMap : personalRowMap;
         let row = rowMap.get(section.key);
         let usedLegacyRow = false;
@@ -1820,13 +1881,18 @@ async function loadCloudSections(options = {}) {
       });
       writeCloudSectionsToLocalStorage(appliedKeys);
       renderAfterCloudSync();
-      if (localUploadKeys.length) await saveCloudSections(localUploadKeys, { force: true });
+      if (localUploadKeys.length) {
+        const uploaded = await saveCloudSections(localUploadKeys, { force: true });
+        if (uploaded) localUploadKeys.forEach((key) => pendingCloudSections.delete(key));
+      }
     }
 
     cloudSyncReady = true;
     if (!rows.length && hasLocalAppData()) {
-      await saveCloudSections(undefined, { force: true });
+      const uploaded = await saveCloudSections(undefined, { force: true });
+      if (uploaded) pendingCloudSections.clear();
     }
+    if (pendingCloudSections.size) await pushPendingCloudSections();
     if (!rows.length && options.reportIfEmpty) {
       alert("No FoodBrokerBase cloud data was found for this login yet. Use the browser where your data is visible and click Upload This Browser to Cloud.");
     }
@@ -1848,15 +1914,25 @@ function handleCloudAuthChange(event) {
     cloudSyncReady = false;
     cloudSyncUserId = "";
     pendingCloudSections.clear();
+    stopCloudAutoRefresh();
     return;
   }
+  startCloudAutoRefresh();
   if (cloudSyncLoading && cloudSyncUserId === user.id) return;
   loadCloudSections();
 }
 
 window.addEventListener("foodbrokerbase:auth", handleCloudAuthChange);
+window.addEventListener("focus", () => refreshCloudSectionsIfChanged({ force: true }));
+window.addEventListener("online", () => refreshCloudSectionsIfChanged({ force: true }));
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) refreshCloudSectionsIfChanged({ force: true });
+});
 window.setTimeout(() => {
-  if (getCloudUser()) loadCloudSections();
+  if (getCloudUser()) {
+    startCloudAutoRefresh();
+    loadCloudSections();
+  }
 }, 0);
 window.foodBrokerBaseCloud = {
   pull: loadCloudSections,
