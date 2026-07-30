@@ -200,13 +200,14 @@ const cloudRecordType = "app_section";
 const teamCloudRecordType = "team_section";
 const pcMarketVisitCloudKey = `${marketVisitStorageKey}-pc`;
 const vendorMarketVisitCloudKey = `${marketVisitStorageKey}-vendor`;
+const cloudPendingStorageKey = "foodBrokerBasePendingCloudSections";
 let cloudSyncReady = false;
 let cloudSyncLoading = false;
 let cloudSyncUserId = "";
 let cloudSaveTimer = null;
 let cloudAutoRefreshTimer = null;
 let cloudLastRowFingerprint = "";
-let pendingCloudSections = new Set();
+let pendingCloudSections = readPendingCloudSections();
 let lastCloudError = "";
 const cloudAutoRefreshMs = 30000;
 
@@ -1619,6 +1620,24 @@ function getLocalCloudCacheConfig(sectionKey) {
   return localCloudCacheConfigs.find((section) => section.key === sectionKey);
 }
 
+function readPendingCloudSections() {
+  try {
+    const value = JSON.parse(localStorage.getItem(cloudPendingStorageKey) || "[]");
+    return new Set(Array.isArray(value) ? value : []);
+  } catch (error) {
+    console.warn("Could not read pending FoodBrokerBase sync queue.", error);
+    return new Set();
+  }
+}
+
+function storePendingCloudSections() {
+  try {
+    localStorage.setItem(cloudPendingStorageKey, JSON.stringify(Array.from(pendingCloudSections)));
+  } catch (error) {
+    console.warn("Could not save pending FoodBrokerBase sync queue.", error);
+  }
+}
+
 function extractCloudValue(row) {
   if (row?.data && Object.prototype.hasOwnProperty.call(row.data, "value")) return row.data.value;
   return row?.data;
@@ -1665,6 +1684,7 @@ function renderAfterCloudSync() {
 
 function scheduleCloudSave(sectionKey) {
   expandCloudSectionKeys([sectionKey]).forEach((key) => pendingCloudSections.add(key));
+  storePendingCloudSections();
   if (!cloudSyncReady || !getCloudClient() || !getCloudUser()) return;
   window.clearTimeout(cloudSaveTimer);
   cloudSaveTimer = window.setTimeout(() => {
@@ -1677,8 +1697,12 @@ async function pushPendingCloudSections() {
   if (!cloudSyncReady || !getCloudClient() || !getCloudUser()) return;
   const sectionKeys = Array.from(pendingCloudSections);
   pendingCloudSections.clear();
+  storePendingCloudSections();
   const saved = await saveCloudSections(sectionKeys);
-  if (!saved) sectionKeys.forEach((key) => pendingCloudSections.add(key));
+  if (!saved) {
+    sectionKeys.forEach((key) => pendingCloudSections.add(key));
+    storePendingCloudSections();
+  }
 }
 
 async function saveCloudSections(sectionKeys = cloudSectionConfigs.map((section) => section.key), options = {}) {
@@ -1741,6 +1765,7 @@ async function saveCloudSections(sectionKeys = cloudSectionConfigs.map((section)
     lastCloudError = error?.message || "Unknown cloud save error.";
     console.warn("FoodBrokerBase cloud save failed.", error);
     pendingCloudSections = new Set([...sections.map((section) => section.key), ...pendingCloudSections]);
+    storePendingCloudSections();
     return false;
   }
 }
@@ -1883,14 +1908,20 @@ async function loadCloudSections(options = {}) {
       renderAfterCloudSync();
       if (localUploadKeys.length) {
         const uploaded = await saveCloudSections(localUploadKeys, { force: true });
-        if (uploaded) localUploadKeys.forEach((key) => pendingCloudSections.delete(key));
+        if (uploaded) {
+          localUploadKeys.forEach((key) => pendingCloudSections.delete(key));
+          storePendingCloudSections();
+        }
       }
     }
 
     cloudSyncReady = true;
     if (!rows.length && hasLocalAppData()) {
       const uploaded = await saveCloudSections(undefined, { force: true });
-      if (uploaded) pendingCloudSections.clear();
+      if (uploaded) {
+        pendingCloudSections.clear();
+        storePendingCloudSections();
+      }
     }
     if (pendingCloudSections.size) await pushPendingCloudSections();
     if (!rows.length && options.reportIfEmpty) {
@@ -1913,7 +1944,6 @@ function handleCloudAuthChange(event) {
   if (!user) {
     cloudSyncReady = false;
     cloudSyncUserId = "";
-    pendingCloudSections.clear();
     stopCloudAutoRefresh();
     return;
   }
@@ -1972,6 +2002,8 @@ async function syncLocalDataToCloud(options = {}) {
   const uploaded = await saveCloudSections(undefined, { force: true });
   let cloudRowCount = 0;
   if (uploaded) {
+    pendingCloudSections.clear();
+    storePendingCloudSections();
     try {
       cloudRowCount = (await fetchCloudRowSummary()).length;
       if (!cloudRowCount) {
