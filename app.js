@@ -1643,6 +1643,35 @@ function extractCloudValue(row) {
   return row?.data;
 }
 
+function mergeCloudSectionValues(localValue, cloudValue) {
+  if (!Array.isArray(localValue)) return cloudValue;
+  if (!Array.isArray(cloudValue)) return localValue;
+
+  const getItemKey = (item) => {
+    if (!item || typeof item !== "object") return "";
+    return String(item.id || item.key || item.recordId || "").trim();
+  };
+  const merged = [];
+  const positions = new Map();
+
+  cloudValue.forEach((item) => {
+    const key = getItemKey(item);
+    if (key) positions.set(key, merged.length);
+    merged.push(item);
+  });
+  localValue.forEach((item) => {
+    const key = getItemKey(item);
+    if (key && positions.has(key)) {
+      merged[positions.get(key)] = item;
+      return;
+    }
+    if (key) positions.set(key, merged.length);
+    if (key || !merged.some((existing) => JSON.stringify(existing) === JSON.stringify(item))) merged.push(item);
+  });
+
+  return merged;
+}
+
 function hasLocalAppData() {
   return cloudSectionConfigs.some((section) => {
     const value = section.get();
@@ -1811,13 +1840,16 @@ async function refreshCloudRowFingerprint() {
 
 async function refreshCloudSectionsIfChanged(options = {}) {
   if (!getCloudClient() || !getCloudUser() || cloudSyncLoading) return false;
-  if (pendingCloudSections.size && cloudSyncReady) await pushPendingCloudSections();
-  if (pendingCloudSections.size) return false;
   if (!cloudSyncReady && !options.force) return false;
 
   try {
     const rows = await fetchCloudRowSummary();
     const nextFingerprint = getCloudRowFingerprint(rows);
+    if (pendingCloudSections.size && nextFingerprint !== cloudLastRowFingerprint) {
+      return loadCloudSections();
+    }
+    if (pendingCloudSections.size && cloudSyncReady) await pushPendingCloudSections();
+    if (pendingCloudSections.size) return false;
     if (!options.force && nextFingerprint === cloudLastRowFingerprint) return false;
     const loaded = await loadCloudSections();
     if (!loaded && !rows.length) cloudLastRowFingerprint = nextFingerprint;
@@ -1877,10 +1909,6 @@ async function loadCloudSections(options = {}) {
       const appliedKeys = [];
       const localUploadKeys = [];
       cloudSectionConfigs.forEach((section) => {
-        if (pendingCloudSections.has(section.key)) {
-          localUploadKeys.push(section.key);
-          return;
-        }
         const rowMap = section.scope === "team" ? teamRowMap : personalRowMap;
         let row = rowMap.get(section.key);
         let usedLegacyRow = false;
@@ -1896,6 +1924,12 @@ async function loadCloudSections(options = {}) {
         const rawCloudValue = extractCloudValue(row);
         const cloudValue = usedLegacyRow && section.legacyTransform ? section.legacyTransform(rawCloudValue) : rawCloudValue;
         const localValue = section.get();
+        if (pendingCloudSections.has(section.key)) {
+          section.set(mergeCloudSectionValues(localValue, cloudValue));
+          appliedKeys.push(section.key);
+          localUploadKeys.push(section.key);
+          return;
+        }
         if (Array.isArray(localValue) && localValue.length && Array.isArray(cloudValue) && !cloudValue.length) {
           localUploadKeys.push(section.key);
           return;
