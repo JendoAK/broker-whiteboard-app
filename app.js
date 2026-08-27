@@ -1959,7 +1959,7 @@ async function loadCloudSections(options = {}) {
     }
     if (pendingCloudSections.size) await pushPendingCloudSections();
     if (!rows.length && options.reportIfEmpty) {
-      alert("No FoodBrokerBase cloud data was found for this login yet. Use the browser where your data is visible and click Upload This Browser to Cloud.");
+      alert("No FoodBrokerBase cloud data was found for this login yet. Use the browser where your data is visible and click Merge This Browser with Cloud.");
     }
     lastCloudError = "";
     return rows.length > 0;
@@ -2009,8 +2009,53 @@ window.foodBrokerBaseCloud = {
 function setCloudSyncButtonsBusy(isBusy) {
   document.querySelectorAll("[data-cloud-sync-action]").forEach((button) => {
     button.disabled = isBusy;
-    button.textContent = isBusy ? "Uploading..." : "Upload This Browser to Cloud";
+    button.textContent = isBusy ? "Merging..." : "Merge This Browser with Cloud";
   });
+}
+
+async function mergeCloudDataIntoThisBrowser() {
+  const client = getCloudClient();
+  const user = getCloudUser();
+  if (!client || !user) return false;
+
+  const { data: personalData, error: personalError } = await client
+    .from("app_records")
+    .select("record_key,data")
+    .eq("record_type", cloudRecordType)
+    .eq("owner_id", user.id);
+  if (personalError) throw personalError;
+
+  const { data: teamData, error: teamError } = await client
+    .from("team_app_records")
+    .select("record_key,data")
+    .eq("record_type", teamCloudRecordType);
+  if (teamError) throw teamError;
+
+  const personalRows = new Map((personalData || []).map((row) => [row.record_key, row]));
+  const teamRows = new Map((teamData || []).map((row) => [row.record_key, row]));
+  const mergedKeys = [];
+
+  cloudSectionConfigs.forEach((section) => {
+    const rowMap = section.scope === "team" ? teamRows : personalRows;
+    let row = rowMap.get(section.key);
+    let usedLegacyRow = false;
+    if (!row && section.legacyKey) {
+      row = personalRows.get(section.legacyKey);
+      usedLegacyRow = Boolean(row);
+    }
+    if (!row) return;
+
+    const rawCloudValue = extractCloudValue(row);
+    const cloudValue = usedLegacyRow && section.legacyTransform
+      ? section.legacyTransform(rawCloudValue)
+      : rawCloudValue;
+    section.set(mergeCloudSectionValues(section.get(), cloudValue));
+    mergedKeys.push(section.key);
+  });
+
+  writeCloudSectionsToLocalStorage(mergedKeys);
+  renderAfterCloudSync();
+  return true;
 }
 
 async function syncLocalDataToCloud(options = {}) {
@@ -2022,7 +2067,7 @@ async function syncLocalDataToCloud(options = {}) {
   }
   if (!user) {
     if (!options.silent) {
-      alert("Please sign in first. Then open Settings and click Upload This Browser to Cloud again.");
+      alert("Please sign in first. Then open Settings and click Merge This Browser with Cloud again.");
       window.foodBrokerBaseAuth?.openDialog?.();
     }
     return false;
@@ -2033,25 +2078,29 @@ async function syncLocalDataToCloud(options = {}) {
   }
 
   setCloudSyncButtonsBusy(true);
-  const uploaded = await saveCloudSections(undefined, { force: true });
+  let uploaded = false;
   let cloudRowCount = 0;
-  if (uploaded) {
-    pendingCloudSections.clear();
-    storePendingCloudSections();
-    try {
+  try {
+    await mergeCloudDataIntoThisBrowser();
+    uploaded = await saveCloudSections(undefined, { force: true });
+    if (uploaded) {
+      pendingCloudSections.clear();
+      storePendingCloudSections();
       cloudRowCount = (await fetchCloudRowSummary()).length;
       if (!cloudRowCount) {
         lastCloudError = "Supabase accepted the upload request, but no cloud rows were found afterward.";
       }
-    } catch (error) {
-      lastCloudError = error?.message || "The upload finished, but the app could not verify the cloud rows.";
     }
+  } catch (error) {
+    uploaded = false;
+    lastCloudError = error?.message || "The browser data could not be merged with Supabase.";
+    console.warn("FoodBrokerBase cloud merge failed.", error);
   }
   setCloudSyncButtonsBusy(false);
 
   if (!options.silent) {
     if (uploaded && cloudRowCount) {
-      alert(`Uploaded this browser's FoodBrokerBase data to Supabase. Supabase now has ${cloudRowCount} app sections. Now sign in on your phone or another browser and the same data should load there.`);
+      alert(`Merged this browser's FoodBrokerBase data with Supabase. Supabase now has ${cloudRowCount} app sections. Other signed-in devices can now load the combined data.`);
     } else {
       alert(`This browser still has the data, but Supabase did not save it yet. ${lastCloudError || "Please try again."}`);
     }
@@ -2067,7 +2116,7 @@ function setupCloudSyncButtons() {
     button.className = "ghost-action cloud-sync-action";
     button.type = "button";
     button.dataset.cloudSyncAction = "upload";
-    button.textContent = "Upload This Browser to Cloud";
+    button.textContent = "Merge This Browser with Cloud";
     button.addEventListener("click", async (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -2222,10 +2271,10 @@ function importBackup(event) {
         alert(
           uploaded
             ? "Backup imported and uploaded to Supabase."
-            : `Backup imported into this browser, but Supabase did not save it yet. ${lastCloudError || "Open Settings and try Upload This Browser to Cloud."}`
+            : `Backup imported into this browser, but Supabase did not save it yet. ${lastCloudError || "Open Settings and try Merge This Browser with Cloud."}`
         );
       } else {
-        alert("Backup imported into this browser. Sign in, then open Settings and click Upload This Browser to Cloud so your phone and other browsers can see it.");
+        alert("Backup imported into this browser. Sign in, then open Settings and click Merge This Browser with Cloud so your phone and other browsers can see it.");
       }
     } catch {
       alert("That file does not look like a Broker Whiteboard backup.");
