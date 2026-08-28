@@ -12,6 +12,7 @@
         })
       : null;
 
+  const COMPANY_EMAIL_DOMAIN = "piercecartwright.com";
   const approvedRoles = new Set(["member", "admin"]);
   let currentUser = null;
   let currentProfile = null;
@@ -41,6 +42,12 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
+  }
+
+  function isCompanyEmail(email) {
+    const normalized = String(email || "").trim().toLowerCase();
+    const parts = normalized.split("@");
+    return parts.length === 2 && Boolean(parts[0]) && parts[1] === COMPANY_EMAIL_DOMAIN;
   }
 
   function getDisplayName(user) {
@@ -184,12 +191,12 @@
           </div>
           <button class="icon-button" id="closeAuthDialog" type="button" aria-label="Close">&times;</button>
         </div>
-        <p class="auth-help">Sign in to sync this browser with FoodBrokerBase.</p>
+        <p class="auth-help">Use your @piercecartwright.com email. New accounts stay pending until an administrator approves them.</p>
         <div class="auth-current-user" id="authCurrentUser"></div>
         <div class="auth-fields">
           <label>
             <span>Email</span>
-            <input id="authEmail" type="email" autocomplete="email" placeholder="name@company.com" />
+            <input id="authEmail" type="email" autocomplete="email" placeholder="name@piercecartwright.com" />
           </label>
           <label>
             <span>Password</span>
@@ -404,7 +411,7 @@
       return;
     }
 
-    const email = document.querySelector("#authEmail")?.value.trim();
+    const email = document.querySelector("#authEmail")?.value.trim().toLowerCase();
     const password = document.querySelector("#authPassword")?.value;
     if (!email || !password) {
       setStatus("Enter an email and password first.", "error");
@@ -431,10 +438,15 @@
       return;
     }
 
-    const email = document.querySelector("#authEmail")?.value.trim();
+    const email = document.querySelector("#authEmail")?.value.trim().toLowerCase();
     const password = document.querySelector("#authPassword")?.value;
     if (!email || !password) {
       setStatus("Enter an email and password first.", "error");
+      return;
+    }
+
+    if (!isCompanyEmail(email)) {
+      setStatus("Only @piercecartwright.com email addresses can create an account.", "error");
       return;
     }
 
