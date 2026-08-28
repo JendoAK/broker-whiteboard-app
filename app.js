@@ -23,7 +23,7 @@ const stockFileStoreName = "files";
 const sampleStatuses = ["Requested", "Ordered", "Added to PO", "Received", "Delivered / Shown", "Cancelled"];
 const dotOrderStatuses = ["Need to Order", "Ordered", "In Transit", "Received", "Delivered", "Cancelled"];
 const nestleMachineStatuses = ["Requested", "Approved", "Ordered", "Installed", "Needs Service", "Returned", "Cancelled"];
-const marketVisitTypes = { pc: "P. C. Market Visit", manufacturer: "Vendor Market Visit" };
+const marketVisitTypes = { personal: "Personal Market Visit", pc: "P. C. Market Visit", manufacturer: "Vendor Market Visit" };
 const marketStatuses = ["Planned", "In Progress", "Completed", "Follow Up Needed"];
 const stockListGroups = {
   usFoods: {
@@ -198,7 +198,9 @@ const statusMap = {
 const sampleCards = [];
 const cloudRecordType = "app_section";
 const teamCloudRecordType = "team_section";
-const pcMarketVisitCloudKey = `${marketVisitStorageKey}-pc`;
+const legacyPcMarketVisitCloudKey = `${marketVisitStorageKey}-pc`;
+const personalMarketVisitCloudKey = `${marketVisitStorageKey}-personal`;
+const pcMarketVisitCloudKey = `${marketVisitStorageKey}-pc-shared`;
 const vendorMarketVisitCloudKey = `${marketVisitStorageKey}-vendor`;
 const cloudPendingStorageKey = "foodBrokerBasePendingCloudSections";
 let cloudSyncReady = false;
@@ -261,12 +263,23 @@ const cloudSectionConfigs = [
     set: (value) => (nestleMachines = Array.isArray(value) ? value.map(normalizeNestleMachine) : [])
   },
   {
+    key: personalMarketVisitCloudKey,
+    localKey: marketVisitStorageKey,
+    legacyKey: legacyPcMarketVisitCloudKey,
+    legacyTransform: (value) =>
+      Array.isArray(value)
+        ? value.map((visit) => normalizeMarketVisit({ ...visit, type: "personal" }))
+        : [],
+    label: "Personal Market Visits",
+    scope: "personal",
+    get: () => getMarketVisitsByCloudType("personal"),
+    set: (value) => replaceMarketVisitsByCloudType("personal", value)
+  },
+  {
     key: pcMarketVisitCloudKey,
     localKey: marketVisitStorageKey,
-    legacyKey: marketVisitStorageKey,
-    legacyTransform: (value) => (Array.isArray(value) ? value.map(normalizeMarketVisit).filter((visit) => visit.type === "pc") : []),
     label: "P. C. Market Visits",
-    scope: "personal",
+    scope: "team",
     get: () => getMarketVisitsByCloudType("pc"),
     set: (value) => replaceMarketVisitsByCloudType("pc", value)
   },
@@ -309,6 +322,12 @@ let samples = loadSamples();
 let dotOrders = loadDotOrders();
 let nestleMachines = loadNestleMachines();
 let marketVisits = loadMarketVisits();
+const pcVisitMigrationKey = "foodBrokerBasePcVisitsMigratedToPersonal";
+if (!localStorage.getItem(pcVisitMigrationKey)) {
+  marketVisits = marketVisits.map((visit) => (visit.type === "pc" ? { ...visit, type: "personal" } : visit));
+  localStorage.setItem(marketVisitStorageKey, JSON.stringify(marketVisits));
+  localStorage.setItem(pcVisitMigrationKey, "1");
+}
 let draggedId = null;
 let draggedTodoId = null;
 let leadQuickListMode = false;
@@ -319,7 +338,7 @@ let activeSampleQuickFilter = "";
 let activeTrackerTab = "samples";
 let activeDotQuickFilter = "";
 let activeNestleQuickFilter = "";
-let activeMarketType = "pc";
+let activeMarketType = "personal";
 let activeMarketView = "list";
 let activeMarketDetailId = "";
 let pcMarketNumberMode = "apn";
@@ -848,6 +867,7 @@ document.querySelectorAll("[data-market-view]").forEach((button) => {
     renderMarketVisits();
   });
 });
+document.querySelector("#addPersonalMarketVisit").addEventListener("click", () => openMarketVisitForm(null, "personal"));
 document.querySelector("#addPcMarketVisit").addEventListener("click", () => openMarketVisitForm(null, "pc"));
 document.querySelector("#addManufacturerMarketVisit").addEventListener("click", () => openMarketVisitForm(null, "manufacturer"));
 elements.marketVisitVendor.addEventListener("change", () => {
@@ -1197,7 +1217,7 @@ function loadMarketVisits() {
 }
 
 function normalizeMarketVisit(visit) {
-  const type = visit.type === "manufacturer" ? "manufacturer" : "pc";
+  const type = ["personal", "pc", "manufacturer"].includes(visit.type) ? visit.type : "personal";
   return {
     id: visit.id || crypto.randomUUID(),
     type,
@@ -1975,7 +1995,8 @@ async function loadCloudSections(options = {}) {
 
 function handleCloudAuthChange(event) {
   const user = event.detail?.user || getCloudUser();
-  if (!user) {
+  const profile = event.detail?.profile || window.foodBrokerBaseAuth?.getCurrentProfile?.();
+  if (!user || !["member", "admin"].includes(profile?.role)) {
     cloudSyncReady = false;
     cloudSyncUserId = "";
     stopCloudAutoRefresh();
@@ -1993,7 +2014,8 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden) refreshCloudSectionsIfChanged({ force: true });
 });
 window.setTimeout(() => {
-  if (getCloudUser()) {
+  const profile = window.foodBrokerBaseAuth?.getCurrentProfile?.();
+  if (getCloudUser() && ["member", "admin"].includes(profile?.role)) {
     startCloudAutoRefresh();
     loadCloudSections();
   }
@@ -5376,7 +5398,7 @@ function openMarketVisitForm(visit, typeOverride) {
   elements.marketSalesReps.value = existing?.salesReps?.join(", ") || "";
   elements.marketStatus.value = existing?.status || "Planned";
   elements.marketNotes.value = existing?.notes || "";
-  document.querySelectorAll(".market-pc-field").forEach((field) => (field.hidden = type !== "pc"));
+  document.querySelectorAll(".market-pc-field").forEach((field) => (field.hidden = type === "manufacturer"));
   document.querySelectorAll(".market-mfr-field").forEach((field) => (field.hidden = type !== "manufacturer"));
   elements.deleteMarketVisit.hidden = !existing;
   elements.marketVisitFormDialog.showModal();

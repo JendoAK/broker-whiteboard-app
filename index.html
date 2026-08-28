@@ -11,7 +11,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="pwa-icon-192.png" />
     <link rel="apple-touch-icon" href="pwa-icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=20260721-4" />
+    <link rel="stylesheet" href="styles.css?v=20260827-1" />
   </head>
   <body class="auth-pending">
     <datalist id="timelineSearchSuggestions"></datalist>
@@ -771,13 +771,15 @@
 
         <section class="market-header-row">
           <div class="market-subtabs" role="tablist" aria-label="Market visit type">
-            <button class="market-subtab active-market-subtab" id="marketPcTab" type="button" data-market-type="pc">P. C. Market Visit</button>
+            <button class="market-subtab active-market-subtab" id="marketPersonalTab" type="button" data-market-type="personal">Personal Market Visit</button>
+            <button class="market-subtab" id="marketPcTab" type="button" data-market-type="pc">P. C. Market Visit</button>
             <button class="market-subtab" id="marketManufacturerTab" type="button" data-market-type="manufacturer">Vendor Market Visit</button>
           </div>
         </section>
 
         <section class="market-action-row">
           <div class="market-create-actions">
+            <button class="primary-action market-add-action" id="addPersonalMarketVisit" type="button">+ Add Personal Market Visit</button>
             <button class="primary-action market-add-action" id="addPcMarketVisit" type="button">+ Add P.C. Market Visit</button>
             <button class="primary-action market-add-action" id="addManufacturerMarketVisit" type="button">+ Add Vendor Market Visit</button>
           </div>
@@ -1336,8 +1338,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
-    <script src="supabase-auth.js?v=20260720-1"></script>
-    <script src="app.js?v=20260812-1"></script>
+    <script src="supabase-auth.js?v=20260827-1"></script>
+    <script src="app.js?v=20260827-1"></script>
     <script>
       if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
         window.addEventListener("load", () => {
