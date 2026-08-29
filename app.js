@@ -23,8 +23,8 @@ const stockFileStoreName = "files";
 const sampleStatuses = ["Requested", "Ordered", "Added to PO", "Received", "Delivered / Shown", "Cancelled"];
 const dotOrderStatuses = ["Need to Order", "Ordered", "In Transit", "Received", "Delivered", "Cancelled"];
 const nestleMachineStatuses = ["Requested", "Approved", "Ordered", "Installed", "Needs Service", "Returned", "Cancelled"];
-const marketVisitTypes = { personal: "Personal Market Visit", pc: "P. C. Market Visit", manufacturer: "Vendor Market Visit" };
-const marketStatuses = ["Planned", "In Progress", "Completed", "Follow Up Needed"];
+const marketVisitTypes = { personal: "P. C. Market Visit", manufacturer: "Vendor Market Visit" };
+const marketStatuses = ["Planned", "In Progress", "Completed", "Follow Up Needed", "Canceled"];
 const stockListGroups = {
   usFoods: {
     label: "US Foods Stock List",
@@ -270,18 +270,20 @@ const cloudSectionConfigs = [
       Array.isArray(value)
         ? value.map((visit) => normalizeMarketVisit({ ...visit, type: "personal" }))
         : [],
-    label: "Personal Market Visits",
+    legacySources: [
+      {
+        key: pcMarketVisitCloudKey,
+        scope: "team",
+        transform: (value) =>
+          Array.isArray(value)
+            ? value.map((visit) => normalizeMarketVisit({ ...visit, type: "personal" }))
+            : []
+      }
+    ],
+    label: "P. C. Market Visits",
     scope: "personal",
     get: () => getMarketVisitsByCloudType("personal"),
     set: (value) => replaceMarketVisitsByCloudType("personal", value)
-  },
-  {
-    key: pcMarketVisitCloudKey,
-    localKey: marketVisitStorageKey,
-    label: "P. C. Market Visits",
-    scope: "team",
-    get: () => getMarketVisitsByCloudType("pc"),
-    set: (value) => replaceMarketVisitsByCloudType("pc", value)
   },
   {
     key: vendorMarketVisitCloudKey,
@@ -868,7 +870,6 @@ document.querySelectorAll("[data-market-view]").forEach((button) => {
   });
 });
 document.querySelector("#addPersonalMarketVisit").addEventListener("click", () => openMarketVisitForm(null, "personal"));
-document.querySelector("#addPcMarketVisit").addEventListener("click", () => openMarketVisitForm(null, "pc"));
 document.querySelector("#addManufacturerMarketVisit").addEventListener("click", () => openMarketVisitForm(null, "manufacturer"));
 elements.marketVisitVendor.addEventListener("change", () => {
   if (!elements.marketVisitName.value && activeMarketType === "manufacturer") {
@@ -1217,7 +1218,8 @@ function loadMarketVisits() {
 }
 
 function normalizeMarketVisit(visit) {
-  const type = ["personal", "pc", "manufacturer"].includes(visit.type) ? visit.type : "personal";
+  const requestedType = visit.type === "pc" ? "personal" : visit.type;
+  const type = ["personal", "manufacturer"].includes(requestedType) ? requestedType : "personal";
   return {
     id: visit.id || crypto.randomUUID(),
     type,
@@ -1692,6 +1694,37 @@ function mergeCloudSectionValues(localValue, cloudValue) {
   return merged;
 }
 
+function getCloudSectionValue(section, personalRowMap, teamRowMap) {
+  const rowMap = section.scope === "team" ? teamRowMap : personalRowMap;
+  let row = rowMap.get(section.key);
+  let value;
+  let usedLegacyRow = false;
+
+  if (row) {
+    value = extractCloudValue(row);
+  } else if (section.legacyKey) {
+    row = personalRowMap.get(section.legacyKey);
+    if (row) {
+      const rawValue = extractCloudValue(row);
+      value = section.legacyTransform ? section.legacyTransform(rawValue) : rawValue;
+      usedLegacyRow = true;
+    }
+  }
+
+  (section.legacySources || []).forEach((source) => {
+    const legacyRowMap = source.scope === "team" ? teamRowMap : personalRowMap;
+    const legacyRow = legacyRowMap.get(source.key);
+    if (!legacyRow) return;
+    const rawLegacyValue = extractCloudValue(legacyRow);
+    const legacyValue = source.transform ? source.transform(rawLegacyValue) : rawLegacyValue;
+    const mergedValue = value === undefined ? legacyValue : mergeCloudSectionValues(value, legacyValue);
+    if (JSON.stringify(mergedValue) !== JSON.stringify(value)) usedLegacyRow = true;
+    value = mergedValue;
+  });
+
+  return { found: value !== undefined, value, usedLegacyRow };
+}
+
 function hasLocalAppData() {
   return cloudSectionConfigs.some((section) => {
     const value = section.get();
@@ -1929,20 +1962,13 @@ async function loadCloudSections(options = {}) {
       const appliedKeys = [];
       const localUploadKeys = [];
       cloudSectionConfigs.forEach((section) => {
-        const rowMap = section.scope === "team" ? teamRowMap : personalRowMap;
-        let row = rowMap.get(section.key);
-        let usedLegacyRow = false;
-        if (!row && section.legacyKey) {
-          row = personalRowMap.get(section.legacyKey);
-          usedLegacyRow = Boolean(row);
-        }
-        if (!row) {
+        const cloudResult = getCloudSectionValue(section, personalRowMap, teamRowMap);
+        if (!cloudResult.found) {
           const localValue = section.get();
           if (Array.isArray(localValue) && localValue.length) localUploadKeys.push(section.key);
           return;
         }
-        const rawCloudValue = extractCloudValue(row);
-        const cloudValue = usedLegacyRow && section.legacyTransform ? section.legacyTransform(rawCloudValue) : rawCloudValue;
+        const cloudValue = cloudResult.value;
         const localValue = section.get();
         if (pendingCloudSections.has(section.key)) {
           section.set(mergeCloudSectionValues(localValue, cloudValue));
@@ -1956,7 +1982,7 @@ async function loadCloudSections(options = {}) {
         }
         section.set(cloudValue);
         appliedKeys.push(section.key);
-        if (usedLegacyRow) localUploadKeys.push(section.key);
+        if (cloudResult.usedLegacyRow) localUploadKeys.push(section.key);
       });
       writeCloudSectionsToLocalStorage(appliedKeys);
       renderAfterCloudSync();
@@ -2058,19 +2084,9 @@ async function mergeCloudDataIntoThisBrowser() {
   const mergedKeys = [];
 
   cloudSectionConfigs.forEach((section) => {
-    const rowMap = section.scope === "team" ? teamRows : personalRows;
-    let row = rowMap.get(section.key);
-    let usedLegacyRow = false;
-    if (!row && section.legacyKey) {
-      row = personalRows.get(section.legacyKey);
-      usedLegacyRow = Boolean(row);
-    }
-    if (!row) return;
-
-    const rawCloudValue = extractCloudValue(row);
-    const cloudValue = usedLegacyRow && section.legacyTransform
-      ? section.legacyTransform(rawCloudValue)
-      : rawCloudValue;
+    const cloudResult = getCloudSectionValue(section, personalRows, teamRows);
+    if (!cloudResult.found) return;
+    const cloudValue = cloudResult.value;
     section.set(mergeCloudSectionValues(section.get(), cloudValue));
     mergedKeys.push(section.key);
   });
@@ -4822,8 +4838,12 @@ function renderMarketVisitDetail(visit) {
     <div class="market-detail-tabs">
       <section><h3>Overview</h3>${renderMarketOverview(visit)}</section>
       <section><h3>Products</h3>${renderMarketProductsSection(visit, products)}</section>
-      <section><h3>Calendar / Schedule</h3>${renderMarketCallsSection(visit)}</section>
-      <section><h3>Operators</h3>${renderMarketOperatorsSection(visit, operators)}</section>
+      <section><h3>Schedule Calls</h3>${renderMarketCallsSection(visit)}</section>
+      <section>
+        <h3>Operator Products & Notes</h3>
+        <p class="market-section-help">Choose which visit products apply to each operator and keep product or follow-up notes here.</p>
+        ${renderMarketOperatorsSection(visit, operators)}
+      </section>
       <section><h3>Notes</h3><textarea class="market-notes-editor" data-market-notes="${escapeAttribute(visit.id)}">${escapeHtml(visit.notes)}</textarea></section>
     </div>
   `;
@@ -4860,8 +4880,12 @@ function renderManufacturerVisitDetail(panel, visit, products, operators) {
     <div class="manufacturer-detail-grid">
       <section class="market-detail-tabs">
         <section><h3>Products</h3>${renderMarketProductsSection(visit, products)}</section>
-        <section><h3>Schedule</h3>${renderMarketCallsSection(visit, false)}</section>
-        <section><h3>Operators</h3>${renderMarketOperatorsSection(visit, operators)}</section>
+        <section><h3>Schedule Calls</h3>${renderMarketCallsSection(visit, false)}</section>
+        <section>
+          <h3>Operator Products & Notes</h3>
+          <p class="market-section-help">Scheduled calls appear here automatically so you can choose products and keep operator notes.</p>
+          ${renderMarketOperatorsSection(visit, operators)}
+        </section>
         <section><h3>Notes</h3><textarea class="market-notes-editor" data-market-notes="${escapeAttribute(visit.id)}">${escapeHtml(visit.notes)}</textarea></section>
       </section>
       <section class="manufacturer-week-panel">
@@ -4963,7 +4987,7 @@ function renderOperatorProductNote(operator, product) {
 }
 
 function renderMarketProductsSection(visit, products) {
-  if (visit.type === "pc") return renderPcMarketProductsSection(visit, products);
+  if (visit.type === "personal") return renderPcMarketProductsSection(visit, products);
   return `
     <div class="section-label-row market-product-actions-row">
       <span>Products</span>
@@ -5041,7 +5065,7 @@ function renderMarketProductChip(product) {
   `;
 }
 
-function renderMarketCallsSection(visit, includeCalendar = visit.type === "pc") {
+function renderMarketCallsSection(visit, includeCalendar = visit.type === "personal") {
   const calls = getMarketVisitCalendarCalls(visit);
   const selectedCall = calls[0] || null;
   return `
@@ -5059,7 +5083,7 @@ function renderMarketCallsSection(visit, includeCalendar = visit.type === "pc") 
       <select data-call-end>${renderMarketTimeOptions("9:00 AM")}</select>
       <input data-call-operator-name list="marketOperatorSuggestions" placeholder="Operator" autocomplete="off" />
       <input data-call-reps placeholder="Sales reps" value="${escapeAttribute(visit.salesReps.join(", "))}" />
-      <button class="small-action" type="button" data-add-market-call="${escapeAttribute(visit.id)}">+ Call</button>
+      <button class="small-action save-market-call" type="button" data-add-market-call="${escapeAttribute(visit.id)}">Save Call</button>
     </div>
     ${
       includeCalendar
@@ -5110,7 +5134,7 @@ function renderMarketCallRow(visit, call) {
 }
 
 function renderManufacturerWeekGrid(visit, selectedCallId = "") {
-  const weekStart = startOfCalendarWeek(visit.startDate ? parseLocalDate(visit.startDate) : startOfToday());
+  const weekStart = startOfMarketVisitWorkWeek(visit);
   const days = Array.from({ length: 5 }, (_, index) => {
     const date = new Date(weekStart);
     date.setDate(weekStart.getDate() + index);
@@ -5355,19 +5379,32 @@ function bindMarketDetailActions(panel, visit) {
   });
   panel.querySelector("[data-add-market-call]")?.addEventListener("click", () => {
     const operator = findOrCreateMarketOperator(panel.querySelector("[data-call-operator-name]")?.value || "");
+    const operatorName = operator?.operatorName || "";
     const call = normalizeMarketCall({
       date: panel.querySelector("[data-call-date]")?.value || visit.startDate,
       startTime: panel.querySelector("[data-call-start]")?.value || "",
       endTime: panel.querySelector("[data-call-end]")?.value || "",
       operatorId: operator?.operatorId || "",
-      operatorName: operator?.operatorName || "",
+      operatorName,
       location: visit.location,
       salesReps: normalizeStringList(panel.querySelector("[data-call-reps]")?.value || visit.salesReps.join(", ")),
       manufacturerContact: visit.visitorName,
       productIds: [...visit.productIds],
       status: "Planned"
     });
-    updateMarketVisit(visit.id, { calls: [...visit.calls, call] });
+    const normalizedOperatorName = operatorName.trim().toLowerCase();
+    const operatorAlreadyLinked = Boolean(operatorName) && visit.operatorLinks.some((link) => (
+      (operator?.operatorId && link.operatorId === operator.operatorId)
+      || getMarketOperatorDisplayName(link).trim().toLowerCase() === normalizedOperatorName
+    ));
+    const operatorLinks = operatorName && !operatorAlreadyLinked
+      ? [...visit.operatorLinks, normalizeMarketOperatorLink({
+          operatorId: operator?.operatorId || "",
+          operatorName,
+          productIds: [...visit.productIds]
+        })]
+      : visit.operatorLinks;
+    updateMarketVisit(visit.id, { calls: [...visit.calls, call], operatorLinks });
   });
   panel.querySelector("[data-call-operator-name]")?.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return;
@@ -5383,12 +5420,15 @@ function bindMarketDetailActions(panel, visit) {
 function openMarketVisitForm(visit, typeOverride) {
   const existing = visit || null;
   const type = existing?.type || typeOverride || activeMarketType;
+  const vendorIsLocked = Boolean(existing && type === "manufacturer");
   if (!existing) activeMarketType = type;
   elements.marketVisitFormTitle.textContent = existing ? "Edit Market Visit" : `Create ${marketVisitTypes[type]}`;
   elements.marketVisitId.value = existing?.id || "";
   elements.marketVisitType.value = type;
   elements.marketVisitName.value = existing?.name || "";
   elements.marketVisitVendor.value = existing?.vendor || "";
+  elements.marketVisitVendor.disabled = vendorIsLocked;
+  elements.marketVisitVendor.title = vendorIsLocked ? "The vendor is locked after a Vendor Market Visit is created." : "";
   elements.marketVisitorName.value = existing?.visitorName || "";
   elements.marketStartDate.value = existing?.startDate || "";
   elements.marketEndDate.value = existing?.endDate || existing?.startDate || "";
@@ -5405,6 +5445,8 @@ function openMarketVisitForm(visit, typeOverride) {
 }
 
 function closeMarketVisitForm() {
+  elements.marketVisitVendor.disabled = false;
+  elements.marketVisitVendor.title = "";
   elements.marketVisitFormDialog.close();
 }
 
@@ -5412,7 +5454,7 @@ function saveMarketVisit() {
   const id = elements.marketVisitId.value || crypto.randomUUID();
   const existing = marketVisits.find((visit) => visit.id === id);
   const type = elements.marketVisitType.value || activeMarketType;
-  const vendor = elements.marketVisitVendor.value.trim();
+  const vendor = existing && type === "manufacturer" ? existing.vendor : elements.marketVisitVendor.value.trim();
   const visit = normalizeMarketVisit({
     ...(existing || {}),
     id,
@@ -9743,6 +9785,14 @@ function startOfCalendarWeek(date) {
   const daysSinceMonday = day === 0 ? 6 : day - 1;
   start.setDate(start.getDate() - daysSinceMonday);
   return start;
+}
+
+function startOfMarketVisitWorkWeek(visit) {
+  const start = visit?.startDate ? parseLocalDate(visit.startDate) : startOfToday();
+  const day = start.getDay();
+  if (day === 0) start.setDate(start.getDate() + 1);
+  if (day === 6) start.setDate(start.getDate() + 2);
+  return startOfCalendarWeek(start);
 }
 
 function toDateKey(date) {

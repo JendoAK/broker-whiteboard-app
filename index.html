@@ -11,7 +11,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="pwa-icon-192.png" />
     <link rel="apple-touch-icon" href="pwa-icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=20260828-1" />
+    <link rel="stylesheet" href="styles.css?v=20260828-4" />
   </head>
   <body class="auth-pending">
     <datalist id="timelineSearchSuggestions"></datalist>
@@ -771,16 +771,14 @@
 
         <section class="market-header-row">
           <div class="market-subtabs" role="tablist" aria-label="Market visit type">
-            <button class="market-subtab active-market-subtab" id="marketPersonalTab" type="button" data-market-type="personal">Personal Market Visit</button>
-            <button class="market-subtab" id="marketPcTab" type="button" data-market-type="pc">P. C. Market Visit</button>
+            <button class="market-subtab active-market-subtab" id="marketPersonalTab" type="button" data-market-type="personal">P. C. Market Visit</button>
             <button class="market-subtab" id="marketManufacturerTab" type="button" data-market-type="manufacturer">Vendor Market Visit</button>
           </div>
         </section>
 
         <section class="market-action-row">
           <div class="market-create-actions">
-            <button class="primary-action market-add-action" id="addPersonalMarketVisit" type="button">+ Add Personal Market Visit</button>
-            <button class="primary-action market-add-action" id="addPcMarketVisit" type="button">+ Add P.C. Market Visit</button>
+            <button class="primary-action market-add-action" id="addPersonalMarketVisit" type="button">+ Add P. C. Market Visit</button>
             <button class="primary-action market-add-action" id="addManufacturerMarketVisit" type="button">+ Add Vendor Market Visit</button>
           </div>
           <div class="market-view-toggle">
@@ -815,7 +813,7 @@
         <input id="marketVisitType" type="hidden" />
         <div class="field-grid">
           <label class="market-pc-field wide"><span>Visit name</span><input id="marketVisitName" autocomplete="off" /></label>
-          <label class="market-mfr-field"><span>Manufacturer / vendor</span><select id="marketVisitVendor"><option value="">Choose vendor</option></select></label>
+          <label class="market-mfr-field"><span>Manufacturer / vendor</span><select id="marketVisitVendor"><option value="">Choose vendor</option></select><small class="market-vendor-lock-note">Vendor is locked after the visit is created.</small></label>
           <label class="market-mfr-field"><span>Regional manager / visitor</span><input id="marketVisitorName" autocomplete="off" /></label>
           <label><span>Start date</span><input id="marketStartDate" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
           <label><span>End date</span><input id="marketEndDate" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
@@ -1338,8 +1336,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
-    <script src="supabase-auth.js?v=20260828-1"></script>
-    <script src="app.js?v=20260828-1"></script>
+    <script src="supabase-auth.js?v=20260828-2"></script>
+    <script src="app.js?v=20260828-4"></script>
     <script>
       if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
         window.addEventListener("load", () => {

@@ -2693,6 +2693,25 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.market-vendor-lock-note {
+  display: none;
+  margin-top: 5px;
+  color: #75584b;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+#marketVisitVendor:disabled {
+  cursor: not-allowed;
+  background: #ebe7e1;
+  color: #47423e;
+  opacity: 1;
+}
+
+#marketVisitVendor:disabled + .market-vendor-lock-note {
+  display: block;
+}
+
 .market-print-dialog {
   width: min(460px, calc(100vw - 24px));
 }
@@ -3246,6 +3265,13 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
 .market-call-add .small-action {
   justify-self: start;
   min-width: 180px;
+}
+
+.market-call-add .save-market-call {
+  background: #d17a68;
+  border-color: #9e5145;
+  color: #251816;
+  font-weight: 800;
 }
 
 .market-product-mini-list {
@@ -4174,6 +4200,13 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
 .market-section-actions {
   justify-content: flex-end;
   flex-wrap: wrap;
+}
+
+.market-section-help {
+  margin: -2px 0 10px;
+  color: #675f58;
+  font-size: 0.92rem;
+  font-weight: 600;
 }
 
 .market-section-action {
