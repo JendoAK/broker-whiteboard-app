@@ -5401,3 +5401,41 @@ html {
     flex: 1 1 100%;
   }
 }
+
+@media (min-width: 901px) {
+  .topbar {
+    display: grid;
+    grid-template-columns: minmax(220px, 340px) minmax(280px, 600px) 1fr auto;
+    align-items: start;
+    column-gap: 16px;
+  }
+
+  .topbar > .title-block {
+    display: contents;
+  }
+
+  .topbar .logo-crop {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    margin-bottom: 0;
+  }
+
+  .topbar .global-timeline-search {
+    grid-column: 2 / 4;
+    grid-row: 1;
+    align-self: center;
+    width: 100%;
+    max-width: 760px;
+  }
+
+  .topbar .main-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .topbar .utility-actions {
+    grid-column: 4;
+    grid-row: 1;
+  }
+}

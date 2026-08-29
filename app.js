@@ -6804,7 +6804,6 @@ function getTimelineItems() {
     ...getNestleTimelineItems(terms),
     ...getVendorReportTimelineItems(terms),
     ...getMarketVisitTimelineItems(terms),
-    ...getStockTimelineItems(terms),
     ...getAddressTimelineItems(terms)
   ]
     .sort((a, b) => timelineDateValue(b) - timelineDateValue(a))
