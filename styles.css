@@ -1511,6 +1511,37 @@ body.lead-drag-suppressed .note-card .card-details {
   min-height: 42px;
 }
 
+.team-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.team-delete-user {
+  min-height: 40px;
+  border: 1px solid #a54b50;
+  border-radius: 7px;
+  background: #f4d6d2;
+  color: #752e34;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.team-delete-user:hover {
+  background: #edc2bd;
+}
+
+.team-delete-user:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.team-current-account {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: right;
+}
+
 body.auth-pending .app-shell > :not(.topbar):not(.auth-gate),
 body.auth-required:not(.auth-signed-in) .app-shell > :not(.topbar):not(.auth-gate) {
   display: none !important;
@@ -4933,6 +4964,10 @@ html {
   .team-row {
     grid-template-columns: 1fr;
     gap: 10px;
+  }
+
+  .team-current-account {
+    text-align: left;
   }
 
   .form-header {

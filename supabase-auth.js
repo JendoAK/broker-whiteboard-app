@@ -291,7 +291,7 @@
           </div>
           <button class="icon-button" type="button" data-close-team aria-label="Close">&times;</button>
         </div>
-        <p class="auth-help">Approve new coworkers and choose who can manage team access.</p>
+        <p class="auth-help">Approve coworkers, choose who can manage team access, or permanently remove an account.</p>
         <p class="team-state" id="teamManagementStatus"></p>
         <div class="team-list" id="teamManagementList"></div>
       </div>
@@ -373,7 +373,53 @@
         setTeamStatus(`Saved access for ${profile.email || profile.display_name}.`, "success");
       });
 
-      row.append(identity, select);
+      const actions = document.createElement("div");
+      actions.className = "team-actions";
+      actions.appendChild(select);
+
+      if (profile.user_id === currentUser?.id) {
+        const currentLabel = document.createElement("span");
+        currentLabel.className = "team-current-account";
+        currentLabel.textContent = "Your account";
+        actions.appendChild(currentLabel);
+      } else {
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "team-delete-user";
+        deleteButton.type = "button";
+        deleteButton.textContent = "Delete User";
+        deleteButton.addEventListener("click", async () => {
+          const label = profile.display_name || profile.email || "this user";
+          const confirmed = window.confirm(
+            `Permanently delete ${label}?\n\n` +
+              "This removes their sign-in and their private leads, to-dos, vendor reports, personal market visits, and calendar data. Shared team records remain.\n\n" +
+              "This cannot be undone."
+          );
+          if (!confirmed) return;
+
+          select.disabled = true;
+          deleteButton.disabled = true;
+          setTeamStatus(`Deleting ${label}...`);
+          const { error } = await client.rpc("delete_team_user", {
+            target_user: profile.user_id
+          });
+
+          if (error) {
+            select.disabled = false;
+            deleteButton.disabled = false;
+            setTeamStatus(error.message, "error");
+            return;
+          }
+
+          row.remove();
+          setTeamStatus(`Deleted ${label}.`, "success");
+          if (!list.querySelector(".team-row")) {
+            list.innerHTML = '<p class="team-empty">No team accounts found yet.</p>';
+          }
+        });
+        actions.appendChild(deleteButton);
+      }
+
+      row.append(identity, actions);
       list.appendChild(row);
     });
   }
