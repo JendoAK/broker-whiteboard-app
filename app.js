@@ -788,6 +788,7 @@ setupDatePicker(elements.dotExpected);
 setupDatePicker(elements.nestleExpected);
 setupDatePicker(elements.marketStartDate);
 setupDatePicker(elements.marketEndDate);
+setupSuggestionMenus();
 elements.addProduct.addEventListener("click", () => addProductRow());
 elements.addProductFromSearch.addEventListener("click", addProductFromSearch);
 elements.productSearch.addEventListener("keydown", (event) => {
@@ -3134,6 +3135,167 @@ function renderCalendarTodo(todo) {
 
 function closeCalendarDayWindow() {
   elements.calendarDayDialog.close();
+}
+
+function setupSuggestionMenus() {
+  const menu = document.createElement("div");
+  menu.className = "app-suggestion-menu";
+  menu.setAttribute("role", "listbox");
+  document.body.appendChild(menu);
+
+  let activeInput = null;
+  let activeIndex = -1;
+  let visibleValues = [];
+
+  const enhanceInput = (input) => {
+    if (!(input instanceof HTMLInputElement) || input.dataset.suggestionList) return;
+    const listId = input.getAttribute("list");
+    if (!listId) return;
+    input.dataset.suggestionList = listId;
+    input.removeAttribute("list");
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-autocomplete", "list");
+    input.setAttribute("aria-expanded", "false");
+  };
+
+  const enhanceWithin = (root) => {
+    if (root instanceof HTMLInputElement && root.hasAttribute("list")) enhanceInput(root);
+    root.querySelectorAll?.("input[list]").forEach(enhanceInput);
+  };
+
+  const getValues = (input) => {
+    const listId = input?.dataset.suggestionList;
+    const list = listId ? document.getElementById(listId) : null;
+    if (!list) return [];
+    return Array.from(list.querySelectorAll("option"))
+      .map((option) => (option.value || option.textContent || "").trim())
+      .filter((value, index, values) => value && values.indexOf(value) === index);
+  };
+
+  const positionMenu = () => {
+    if (!activeInput || !menu.classList.contains("is-open")) return;
+    const rect = activeInput.getBoundingClientRect();
+    const pageGutter = 12;
+    const availableWidth = Math.max(280, window.innerWidth - pageGutter * 2);
+    const preferredWidth = window.innerWidth >= 760 ? Math.max(rect.width, 680) : rect.width;
+    const width = Math.min(preferredWidth, availableWidth);
+    const left = Math.min(
+      Math.max(pageGutter, rect.left),
+      Math.max(pageGutter, window.innerWidth - width - pageGutter)
+    );
+    menu.style.width = `${width}px`;
+    menu.style.left = `${left}px`;
+    menu.style.top = `${rect.bottom + 5}px`;
+  };
+
+  const setActiveIndex = (index) => {
+    const options = Array.from(menu.querySelectorAll(".app-suggestion-option"));
+    if (!options.length) return;
+    activeIndex = Math.max(0, Math.min(index, options.length - 1));
+    options.forEach((option, optionIndex) => {
+      const isActive = optionIndex === activeIndex;
+      option.classList.toggle("is-active", isActive);
+      option.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+    options[activeIndex]?.scrollIntoView({ block: "nearest" });
+  };
+
+  const hideMenu = () => {
+    if (activeInput) activeInput.setAttribute("aria-expanded", "false");
+    menu.classList.remove("is-open");
+    menu.replaceChildren();
+    activeInput = null;
+    activeIndex = -1;
+    visibleValues = [];
+  };
+
+  const commitValue = (value) => {
+    if (!activeInput || !value) return;
+    const input = activeInput;
+    input.value = value;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    hideMenu();
+    input.focus();
+  };
+
+  const showMenu = (input) => {
+    enhanceInput(input);
+    const allValues = getValues(input);
+    const terms = input.value
+      .trim()
+      .toLocaleLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+    visibleValues = allValues
+      .filter((value) => {
+        const normalizedValue = value.toLocaleLowerCase();
+        return terms.every((term) => normalizedValue.includes(term));
+      })
+      .slice(0, 12);
+
+    if (!visibleValues.length) {
+      hideMenu();
+      return;
+    }
+
+    activeInput = input;
+    activeIndex = -1;
+    menu.replaceChildren();
+    visibleValues.forEach((value, index) => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "app-suggestion-option";
+      option.setAttribute("role", "option");
+      option.setAttribute("aria-selected", "false");
+      option.textContent = value;
+      option.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        commitValue(visibleValues[index]);
+      });
+      menu.appendChild(option);
+    });
+    input.setAttribute("aria-expanded", "true");
+    menu.classList.add("is-open");
+    positionMenu();
+  };
+
+  enhanceWithin(document);
+  new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => mutation.addedNodes.forEach((node) => {
+      if (node instanceof Element) enhanceWithin(node);
+    }));
+  }).observe(document.body, { childList: true, subtree: true });
+
+  document.addEventListener("focusin", (event) => {
+    const input = event.target.closest?.("input[list], input[data-suggestion-list]");
+    if (input) showMenu(input);
+  });
+  document.addEventListener("input", (event) => {
+    const input = event.target.closest?.("input[data-suggestion-list]");
+    if (input) showMenu(input);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.target !== activeInput || !menu.classList.contains("is-open")) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex(activeIndex < 0 ? 0 : activeIndex + 1);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex(activeIndex < 0 ? visibleValues.length - 1 : activeIndex - 1);
+    } else if (event.key === "Enter" && visibleValues.length) {
+      event.preventDefault();
+      const value = visibleValues[activeIndex >= 0 ? activeIndex : 0];
+      commitValue(value);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      hideMenu();
+    }
+  }, true);
+  document.addEventListener("pointerdown", (event) => {
+    if (!menu.contains(event.target) && event.target !== activeInput) hideMenu();
+  });
+  window.addEventListener("resize", positionMenu);
+  window.addEventListener("scroll", positionMenu, true);
 }
 
 function setupDatePicker(input) {
