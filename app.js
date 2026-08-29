@@ -2271,6 +2271,39 @@ function setupCloudSyncButtons() {
 
 setupCloudSyncButtons();
 
+function setupDismissibleSettingsMenus() {
+  document.addEventListener("click", (event) => {
+    document.querySelectorAll("details.settings-menu[open]").forEach((menu) => {
+      if (!menu.contains(event.target)) {
+        menu.removeAttribute("open");
+      }
+    });
+  });
+
+  document.addEventListener(
+    "toggle",
+    (event) => {
+      const openedMenu = event.target;
+      if (
+        !(openedMenu instanceof HTMLDetailsElement) ||
+        !openedMenu.classList.contains("settings-menu") ||
+        !openedMenu.open
+      ) {
+        return;
+      }
+
+      document.querySelectorAll("details.settings-menu[open]").forEach((menu) => {
+        if (menu !== openedMenu) {
+          menu.removeAttribute("open");
+        }
+      });
+    },
+    true
+  );
+}
+
+setupDismissibleSettingsMenus();
+
 function openStockFileDb() {
   if (!("indexedDB" in window)) return Promise.reject(new Error("IndexedDB is not available."));
   return new Promise((resolve, reject) => {

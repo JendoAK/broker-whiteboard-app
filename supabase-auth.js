@@ -198,6 +198,20 @@
     refreshDialogState();
   }
 
+  function closeDialogOnBackdropClick(dialog) {
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) {
+        dialog.close();
+      }
+    });
+  }
+
+  function closeOpenSettingsMenus() {
+    document.querySelectorAll("details.settings-menu[open]").forEach((menu) => {
+      menu.removeAttribute("open");
+    });
+  }
+
   function ensureDialog() {
     let dialog = document.querySelector("#supabaseAuthDialog");
     if (dialog) return dialog;
@@ -236,6 +250,7 @@
       </form>
     `;
     document.body.appendChild(dialog);
+    closeDialogOnBackdropClick(dialog);
 
     dialog.querySelector("#closeAuthDialog").addEventListener("click", () => dialog.close());
     dialog.querySelector("#authSignIn").addEventListener("click", signIn);
@@ -267,6 +282,7 @@
 
   function openAuthDialog() {
     const dialog = ensureDialog();
+    closeOpenSettingsMenus();
     refreshDialogState();
 
     if (!client) {
@@ -320,6 +336,7 @@
       </div>
     `;
     document.body.appendChild(dialog);
+    closeDialogOnBackdropClick(dialog);
     dialog.querySelector("[data-close-team]").addEventListener("click", () => dialog.close());
     return dialog;
   }
@@ -509,6 +526,7 @@
     }
 
     const dialog = ensureTeamDialog();
+    closeOpenSettingsMenus();
     if (typeof dialog.showModal === "function") {
       dialog.showModal();
     } else {
