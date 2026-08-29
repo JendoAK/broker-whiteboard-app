@@ -212,6 +212,15 @@
     });
   }
 
+  let passwordRecoveryActive = false;
+
+  function authRedirectUrl() {
+    const url = new URL(window.location.href);
+    url.hash = "";
+    url.search = "";
+    return url.href;
+  }
+
   function ensureDialog() {
     let dialog = document.querySelector("#supabaseAuthDialog");
     if (dialog) return dialog;
@@ -240,6 +249,30 @@
             <input id="authPassword" type="password" autocomplete="current-password" />
           </label>
         </div>
+        <div class="auth-help-actions" id="authHelpActions">
+          <button class="auth-text-action" id="authMagicLink" type="button">Email Magic Link</button>
+          <button class="auth-text-action" id="authForgotPassword" type="button">Forgot Password</button>
+        </div>
+        <section class="auth-security" id="authSecurity" hidden>
+          <div>
+            <p class="eyebrow">Account Security</p>
+            <h3>Change Password</h3>
+          </div>
+          <div class="auth-fields auth-password-fields">
+            <label>
+              <span>New Password</span>
+              <input id="authNewPassword" type="password" autocomplete="new-password" minlength="8" />
+            </label>
+            <label>
+              <span>Confirm New Password</span>
+              <input id="authConfirmPassword" type="password" autocomplete="new-password" minlength="8" />
+            </label>
+          </div>
+          <div class="auth-security-actions">
+            <button class="ghost-action" id="authResetEmail" type="button">Email Password Reset</button>
+            <button class="primary-action" id="authChangePassword" type="button">Change Password</button>
+          </div>
+        </section>
         <p class="auth-status" id="authStatus"></p>
         <div class="auth-actions">
           <button class="ghost-action" id="authSignOut" type="button" data-auth-action="signout">Sign Out</button>
@@ -256,6 +289,10 @@
     dialog.querySelector("#authSignIn").addEventListener("click", signIn);
     dialog.querySelector("#authSignUp").addEventListener("click", signUp);
     dialog.querySelector("#authSignOut").addEventListener("click", signOut);
+    dialog.querySelector("#authMagicLink").addEventListener("click", sendMagicLink);
+    dialog.querySelector("#authForgotPassword").addEventListener("click", sendPasswordReset);
+    dialog.querySelector("#authResetEmail").addEventListener("click", sendPasswordReset);
+    dialog.querySelector("#authChangePassword").addEventListener("click", changePassword);
     dialog.querySelector("#authPassword").addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
@@ -269,6 +306,8 @@
   function refreshDialogState() {
     const current = document.querySelector("#authCurrentUser");
     const signOutButton = document.querySelector("#authSignOut");
+    const security = document.querySelector("#authSecurity");
+    const helpActions = document.querySelector("#authHelpActions");
     if (current) {
       if (!currentUser) {
         current.textContent = "Not signed in yet.";
@@ -278,6 +317,8 @@
       }
     }
     if (signOutButton) signOutButton.hidden = !currentUser;
+    if (security) security.hidden = !currentUser;
+    if (helpActions) helpActions.hidden = Boolean(currentUser);
   }
 
   function openAuthDialog() {
@@ -287,6 +328,8 @@
 
     if (!client) {
       setStatus("Supabase did not load. Check your internet connection and refresh the page.", "error");
+    } else if (passwordRecoveryActive) {
+      setStatus("Choose and confirm a new password.", "pending");
     } else if (currentUser && !isApproved()) {
       setStatus("This account is waiting for an administrator to approve team access.", "pending");
     } else {
@@ -535,6 +578,99 @@
     loadTeamProfiles();
   }
 
+  function getAuthEmail() {
+    return currentUser?.email || document.querySelector("#authEmail")?.value.trim().toLowerCase() || "";
+  }
+
+  async function sendMagicLink() {
+    if (!client) {
+      setStatus("Supabase is not connected.", "error");
+      return;
+    }
+
+    const email = getAuthEmail();
+    if (!email || !isCompanyEmail(email)) {
+      setStatus("Enter your @piercecartwright.com email first.", "error");
+      return;
+    }
+
+    setBusy(true);
+    setStatus("Sending a secure sign-in link...", "pending");
+    const { error } = await client.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: authRedirectUrl(),
+        shouldCreateUser: false
+      }
+    });
+    setBusy(false);
+    if (error) {
+      setStatus(error.message, "error");
+      return;
+    }
+    setStatus("Magic link sent. Open the email on this device to sign in.", "success");
+  }
+
+  async function sendPasswordReset() {
+    if (!client) {
+      setStatus("Supabase is not connected.", "error");
+      return;
+    }
+
+    const email = getAuthEmail();
+    if (!email || !isCompanyEmail(email)) {
+      setStatus("Enter your @piercecartwright.com email first.", "error");
+      return;
+    }
+
+    setBusy(true);
+    setStatus("Sending password reset email...", "pending");
+    const { error } = await client.auth.resetPasswordForEmail(email, {
+      redirectTo: authRedirectUrl()
+    });
+    setBusy(false);
+    if (error) {
+      setStatus(error.message, "error");
+      return;
+    }
+    setStatus("Password reset email sent. Open it to choose a new password.", "success");
+  }
+
+  async function changePassword() {
+    if (!client || !currentUser) {
+      setStatus("Sign in before changing your password.", "error");
+      return;
+    }
+
+    const passwordInput = document.querySelector("#authNewPassword");
+    const confirmInput = document.querySelector("#authConfirmPassword");
+    const password = passwordInput?.value || "";
+    const confirmation = confirmInput?.value || "";
+    if (password.length < 8) {
+      setStatus("Use at least 8 characters for the new password.", "error");
+      return;
+    }
+    if (password !== confirmation) {
+      setStatus("The new passwords do not match.", "error");
+      return;
+    }
+
+    setBusy(true);
+    setStatus("Updating your password...", "pending");
+    const { error } = await client.auth.updateUser({ password });
+    setBusy(false);
+    if (error) {
+      setStatus(error.message, "error");
+      return;
+    }
+
+    passwordRecoveryActive = false;
+    passwordInput.value = "";
+    confirmInput.value = "";
+    refreshDialogState();
+    setStatus("Password changed successfully.", "success");
+  }
+
   async function signIn() {
     if (!client) {
       setStatus("Supabase did not load. Check your internet connection and refresh the page.", "error");
@@ -628,9 +764,21 @@
     const { data } = await client.auth.getUser();
     await applyUser(data.user || null);
 
-    client.auth.onAuthStateChange((_event, session) => {
-      window.setTimeout(() => {
-        applyUser(session?.user || null);
+    client.auth.onAuthStateChange((event, session) => {
+      window.setTimeout(async () => {
+        await applyUser(session?.user || null);
+        if (event === "PASSWORD_RECOVERY") {
+          passwordRecoveryActive = true;
+          const dialog = ensureDialog();
+          refreshDialogState();
+          setStatus("Choose and confirm a new password.", "pending");
+          if (!dialog.open && typeof dialog.showModal === "function") {
+            dialog.showModal();
+          } else if (!dialog.open) {
+            dialog.setAttribute("open", "open");
+          }
+          document.querySelector("#authNewPassword")?.focus();
+        }
       }, 0);
     });
   }
