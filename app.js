@@ -1239,7 +1239,8 @@ function normalizeMarketVisit(visit) {
     operatorLinks: Array.isArray(visit.operatorLinks) ? visit.operatorLinks.map(normalizeMarketOperatorLink) : [],
     calls: Array.isArray(visit.calls) ? visit.calls.map(normalizeMarketCall) : [],
     createdAt: visit.createdAt || new Date().toISOString(),
-    updatedAt: visit.updatedAt || ""
+    updatedAt: visit.updatedAt || "",
+    _audit: normalizeAuditRecord(visit._audit)
   };
 }
 
@@ -1292,7 +1293,8 @@ function normalizeSample(sample) {
     attachments: Array.isArray(sample.attachments) ? sample.attachments.map(normalizeAttachment).filter((file) => file.name && file.data) : [],
     createdAt: sample.createdAt || new Date().toISOString(),
     updatedAt: sample.updatedAt || "",
-    archivedAt: sample.archivedAt || (sample.status === "Delivered / Shown" ? sample.updatedAt || new Date().toISOString() : "")
+    archivedAt: sample.archivedAt || (sample.status === "Delivered / Shown" ? sample.updatedAt || new Date().toISOString() : ""),
+    _audit: normalizeAuditRecord(sample._audit)
   };
 }
 
@@ -1356,7 +1358,8 @@ function normalizeAddressBookEntry(entry) {
       : [],
     createdAt: entry.createdAt || new Date().toISOString(),
     updatedAt: entry.updatedAt || "",
-    archivedAt: entry.archivedAt || ""
+    archivedAt: entry.archivedAt || "",
+    _audit: normalizeAuditRecord(entry._audit)
   };
 }
 
@@ -1382,7 +1385,8 @@ function normalizeStockProduct(product) {
     so: normalizeYes(product.so),
     attachments: Array.isArray(product.attachments) ? product.attachments.map(normalizeStockAttachment).filter((file) => file.name && (file.data || file.storageId)) : [],
     createdAt: product.createdAt || new Date().toISOString(),
-    updatedAt: product.updatedAt || ""
+    updatedAt: product.updatedAt || "",
+    _audit: normalizeAuditRecord(product._audit)
   };
 }
 
@@ -1515,7 +1519,8 @@ function normalizeDotOrder(order) {
     attachments: Array.isArray(order.attachments) ? order.attachments.map(normalizeAttachment) : [],
     createdAt: order.createdAt || new Date().toISOString(),
     updatedAt: order.updatedAt || "",
-    archivedAt: order.archivedAt || (["Delivered", "Cancelled"].includes(order.status) ? order.updatedAt || new Date().toISOString() : "")
+    archivedAt: order.archivedAt || (["Delivered", "Cancelled"].includes(order.status) ? order.updatedAt || new Date().toISOString() : ""),
+    _audit: normalizeAuditRecord(order._audit)
   };
 }
 
@@ -1533,7 +1538,8 @@ function normalizeNestleMachine(machine) {
     note: machine.note || "",
     createdAt: machine.createdAt || new Date().toISOString(),
     updatedAt: machine.updatedAt || "",
-    archivedAt: machine.archivedAt || (["Installed", "Returned", "Cancelled"].includes(machine.status) ? machine.updatedAt || new Date().toISOString() : "")
+    archivedAt: machine.archivedAt || (["Installed", "Returned", "Cancelled"].includes(machine.status) ? machine.updatedAt || new Date().toISOString() : ""),
+    _audit: normalizeAuditRecord(machine._audit)
   };
 }
 
@@ -1614,6 +1620,58 @@ function getCloudClient() {
 
 function getCloudUser() {
   return window.foodBrokerBaseAuth?.getCurrentUser?.() || null;
+}
+
+function normalizeAuditRecord(audit) {
+  if (!audit || typeof audit !== "object") return null;
+  const initials = String(audit.initials || "").trim().slice(0, 4).toUpperCase();
+  if (!initials) return null;
+  return {
+    initials,
+    name: String(audit.name || "").trim(),
+    email: String(audit.email || "").trim(),
+    action: String(audit.action || "Updated").trim(),
+    at: audit.at || ""
+  };
+}
+
+function getCurrentEditorIdentity() {
+  const profile = window.foodBrokerBaseAuth?.getCurrentProfile?.();
+  const user = getCloudUser();
+  const email = String(profile?.email || user?.email || "").trim();
+  const name = String(profile?.display_name || email.split("@")[0] || "").trim();
+  if (!name && !email) return null;
+
+  const parts = name.split(/[\s._-]+/).filter(Boolean);
+  const initials = (parts.length > 1
+    ? `${parts[0][0]}${parts[parts.length - 1][0]}`
+    : parts[0]?.slice(0, 2) || email.slice(0, 2)
+  ).toUpperCase();
+
+  return { initials, name: name || email, email };
+}
+
+function stampSharedRecord(record, action = "Updated") {
+  const editor = getCurrentEditorIdentity();
+  if (!record || !editor) return record;
+  record._audit = {
+    ...editor,
+    action,
+    at: new Date().toISOString()
+  };
+  return record;
+}
+
+function renderAuditStamp(record) {
+  const audit = normalizeAuditRecord(record?._audit);
+  if (!audit) return "";
+  const changedAt = audit.at ? new Date(audit.at) : null;
+  const when = changedAt && !Number.isNaN(changedAt.getTime())
+    ? ` on ${changedAt.toLocaleString()}`
+    : "";
+  const editor = audit.name || audit.email || audit.initials;
+  const title = `${audit.action} by ${editor}${when}`;
+  return `<span class="audit-stamp" title="${escapeHtml(title)}">${escapeHtml(audit.initials)} - ${escapeHtml(audit.action)}</span>`;
 }
 
 function getCloudConfig(sectionKey) {
@@ -3823,7 +3881,10 @@ function renderAddressBookRow(entry) {
   ].filter(Boolean);
   return `
     <tr>
-      <td><button class="table-link" type="button" data-address-edit="${escapeAttribute(entry.id)}">${escapeHtml(entry.operation)}</button></td>
+      <td>
+        <button class="table-link" type="button" data-address-edit="${escapeAttribute(entry.id)}">${escapeHtml(entry.operation)}</button>
+        ${renderAuditStamp(entry)}
+      </td>
       <td>
         <strong>${entry.primaryContact.name ? escapeHtml(entry.primaryContact.name) : ""}</strong>
         ${primaryContactDetails.length ? `<br><span class="products">${escapeHtml(primaryContactDetails.join(" | "))}</span>` : ""}
@@ -3971,6 +4032,7 @@ function saveAddressBookEntry() {
     createdAt: existing?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString()
   });
+  stampSharedRecord(entry, existing ? "Updated" : "Created");
   addressBook = existing ? addressBook.map((item) => (item.id === id ? entry : item)) : [entry, ...addressBook];
   persistAddressBook();
   updateAccountSuggestions();
@@ -3997,7 +4059,10 @@ function archiveAddressBookEntry(id) {
   if (!entry) return;
   const shouldArchive = confirm(entry.operation ? `Archive operator "${entry.operation}"?` : "Archive this operator?");
   if (!shouldArchive) return;
-  addressBook = addressBook.map((item) => (item.id === id ? { ...item, archivedAt: new Date().toISOString() } : item));
+  addressBook = addressBook.map((item) => {
+    if (item.id !== id) return item;
+    return stampSharedRecord({ ...item, archivedAt: new Date().toISOString() }, "Archived");
+  });
   persistAddressBook();
   updateAccountSuggestions();
   updateSalesRepSuggestions();
@@ -4006,7 +4071,9 @@ function archiveAddressBookEntry(id) {
 }
 
 function restoreAddressBookEntry(id) {
-  addressBook = addressBook.map((entry) => (entry.id === id ? { ...entry, archivedAt: "" } : entry));
+  addressBook = addressBook.map((entry) => (
+    entry.id === id ? stampSharedRecord({ ...entry, archivedAt: "" }, "Restored") : entry
+  ));
   persistAddressBook();
   updateAccountSuggestions();
   updateSalesRepSuggestions();
@@ -4199,7 +4266,12 @@ function renderStockRow(product) {
       <td>${escapeHtml(product.storage)}</td>
       <td>${escapeHtml(product.category)}</td>
       <td>${escapeHtml(product.so)}</td>
-      <td><button class="edit-card" type="button" data-stock-edit="${escapeAttribute(product.id)}">Edit</button></td>
+      <td>
+        <div class="audit-action-cell">
+          ${renderAuditStamp(product)}
+          <button class="edit-card" type="button" data-stock-edit="${escapeAttribute(product.id)}">Edit</button>
+        </div>
+      </td>
     </tr>
   `;
 }
@@ -4386,6 +4458,7 @@ async function saveStockProduct() {
     attachments,
     updatedAt: new Date().toISOString()
   });
+  stampSharedRecord(product, existing ? "Updated" : "Created");
   const previousProducts = stockProducts;
   stockProducts = existing ? stockProducts.map((item) => (item.id === id ? product : item)) : [product, ...stockProducts];
   if (!persistStockProducts()) {
@@ -4796,6 +4869,7 @@ function renderMarketVisitCard(visit) {
       <div class="market-card-main">
         <h3>${escapeHtml(getMarketVisitDisplayName(visit))}</h3>
         ${dateText ? `<p class="market-card-date">${escapeHtml(dateText)}</p>` : `<p class="market-card-date">No date</p>`}
+        ${visit.type === "manufacturer" ? renderAuditStamp(visit) : ""}
       </div>
       <div class="market-card-status-row">
         <label>
@@ -5474,6 +5548,7 @@ function saveMarketVisit() {
     createdAt: existing?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString()
   });
+  if (type === "manufacturer") stampSharedRecord(visit, existing ? "Updated" : "Created");
   marketVisits = existing ? marketVisits.map((item) => (item.id === id ? visit : item)) : [visit, ...marketVisits];
   activeMarketType = type;
   activeMarketDetailId = id;
@@ -5494,7 +5569,14 @@ function deleteCurrentMarketVisit() {
 }
 
 function updateMarketVisit(id, patch) {
-  marketVisits = marketVisits.map((visit) => (visit.id === id ? normalizeMarketVisit({ ...visit, ...patch, updatedAt: new Date().toISOString() }) : visit));
+  marketVisits = marketVisits.map((visit) => {
+    if (visit.id !== id) return visit;
+    const next = normalizeMarketVisit({ ...visit, ...patch, updatedAt: new Date().toISOString() });
+    if (next.type === "manufacturer") {
+      stampSharedRecord(next, Object.prototype.hasOwnProperty.call(patch, "status") ? "Status changed" : "Updated");
+    }
+    return next;
+  });
   persistMarketVisits();
   renderMarketVisits();
 }
@@ -5506,11 +5588,13 @@ function saveMarketProductNote(visit, productId, key, value) {
 function saveMarketOperatorDataWithoutRender(visitId, operatorId, patch) {
   marketVisits = marketVisits.map((visit) => {
     if (visit.id !== visitId) return visit;
-    return normalizeMarketVisit({
+    const next = normalizeMarketVisit({
       ...visit,
       operatorLinks: visit.operatorLinks.map((link) => (link.id === operatorId ? { ...link, ...patch } : link)),
       updatedAt: new Date().toISOString()
     });
+    if (next.type === "manufacturer") stampSharedRecord(next, "Updated");
+    return next;
   });
   persistMarketVisits();
 }
@@ -5518,7 +5602,7 @@ function saveMarketOperatorDataWithoutRender(visitId, operatorId, patch) {
 function saveMarketOperatorProductNoteWithoutRender(visitId, operatorId, productId, note) {
   marketVisits = marketVisits.map((visit) => {
     if (visit.id !== visitId) return visit;
-    return normalizeMarketVisit({
+    const next = normalizeMarketVisit({
       ...visit,
       operatorLinks: visit.operatorLinks.map((link) => {
         if (link.id !== operatorId) return link;
@@ -5532,6 +5616,8 @@ function saveMarketOperatorProductNoteWithoutRender(visitId, operatorId, product
       }),
       updatedAt: new Date().toISOString()
     });
+    if (next.type === "manufacturer") stampSharedRecord(next, "Updated");
+    return next;
   });
   persistMarketVisits();
 }
@@ -6610,7 +6696,7 @@ function renderSampleRow(sample) {
       <td>${escapeHtml(sample.orderType)}</td>
       <td>${renderInlineSelect("sample-status-select", sample.id, sample.status, sampleStatuses)}</td>
       <td class="note-cell">${sample.note ? escapeHtml(sample.note) : ""}${sample.attachments?.length ? `<div><span class="badge">${sample.attachments.length} file${sample.attachments.length === 1 ? "" : "s"}</span></div>` : ""}</td>
-      <td><button class="edit-card" type="button" data-sample-edit="${escapeAttribute(sample.id)}">Edit</button></td>
+      <td><div class="audit-action-cell">${renderAuditStamp(sample)}<button class="edit-card" type="button" data-sample-edit="${escapeAttribute(sample.id)}">Edit</button></div></td>
     </tr>
   `;
 }
@@ -6624,16 +6710,17 @@ function bindSampleTableActions() {
   });
   elements.sampleTable.querySelectorAll(".sample-status-select").forEach((select) => {
     select.addEventListener("change", () => {
-      samples = samples.map((sample) =>
-        sample.id === select.dataset.id
-          ? {
-              ...sample,
-              status: select.value,
-              archivedAt: select.value === "Delivered / Shown" ? sample.archivedAt || new Date().toISOString() : sample.archivedAt,
-              updatedAt: new Date().toISOString()
-            }
-          : sample
-      );
+      samples = samples.map((sample) => {
+        if (sample.id !== select.dataset.id) return sample;
+        const next = {
+          ...sample,
+          status: select.value,
+          archivedAt: select.value === "Delivered / Shown" ? sample.archivedAt || new Date().toISOString() : sample.archivedAt,
+          updatedAt: new Date().toISOString()
+        };
+        stampSharedRecord(next, "Status changed");
+        return next;
+      });
       persistSamples();
       renderSamples();
     });
@@ -6727,6 +6814,7 @@ function saveSample() {
     updatedAt: new Date().toISOString(),
     archivedAt: status === "Delivered / Shown" ? existing?.archivedAt || new Date().toISOString() : ""
   });
+  stampSharedRecord(sample, existing ? "Updated" : "Created");
   samples = existing ? samples.map((item) => (item.id === id ? sample : item)) : [sample, ...samples];
   persistSamples();
   closeSampleForm();
@@ -7905,7 +7993,7 @@ function renderDotRow(order) {
       <td>${escapeHtml(order.requestedFor)}</td>
       <td>${renderInlineSelect("dot-status-select", order.id, order.status, dotOrderStatuses)}</td>
       <td class="note-cell">${escapeHtml(order.note)}${order.attachments?.length ? `<div><span class="badge">${order.attachments.length} file${order.attachments.length === 1 ? "" : "s"}</span></div>` : ""}</td>
-      <td><button class="edit-card" type="button" data-dot-edit="${escapeAttribute(order.id)}">Edit</button></td>
+      <td><div class="audit-action-cell">${renderAuditStamp(order)}<button class="edit-card" type="button" data-dot-edit="${escapeAttribute(order.id)}">Edit</button></div></td>
     </tr>
   `;
 }
@@ -7924,16 +8012,17 @@ function bindDotTableActions() {
   });
   elements.dotTable.querySelectorAll(".dot-status-select").forEach((select) => {
     select.addEventListener("change", () => {
-      dotOrders = dotOrders.map((order) =>
-        order.id === select.dataset.id
-          ? {
-              ...order,
-              status: select.value,
-              archivedAt: ["Delivered", "Cancelled"].includes(select.value) ? order.archivedAt || new Date().toISOString() : order.archivedAt,
-              updatedAt: new Date().toISOString()
-            }
-          : order
-      );
+      dotOrders = dotOrders.map((order) => {
+        if (order.id !== select.dataset.id) return order;
+        const next = {
+          ...order,
+          status: select.value,
+          archivedAt: ["Delivered", "Cancelled"].includes(select.value) ? order.archivedAt || new Date().toISOString() : order.archivedAt,
+          updatedAt: new Date().toISOString()
+        };
+        stampSharedRecord(next, "Status changed");
+        return next;
+      });
       persistDotOrders();
       renderDotOrders();
     });
@@ -8040,6 +8129,7 @@ function saveDotOrder() {
     updatedAt: new Date().toISOString(),
     archivedAt: ["Delivered", "Cancelled"].includes(status) ? existing?.archivedAt || new Date().toISOString() : ""
   });
+  stampSharedRecord(order, existing ? "Updated" : "Created");
   dotOrders = existing ? dotOrders.map((item) => (item.id === id ? order : item)) : [order, ...dotOrders];
   persistDotOrders();
   closeDotForm();
@@ -8165,7 +8255,7 @@ function renderNestleRow(machine) {
       <td>${escapeHtml(machine.salesRep)}</td>
       <td>${renderInlineSelect("nestle-status-select", machine.id, machine.status, nestleMachineStatuses)}</td>
       <td class="note-cell">${escapeHtml(machine.note)}</td>
-      <td><button class="edit-card" type="button" data-nestle-edit="${escapeAttribute(machine.id)}">Edit</button></td>
+      <td><div class="audit-action-cell">${renderAuditStamp(machine)}<button class="edit-card" type="button" data-nestle-edit="${escapeAttribute(machine.id)}">Edit</button></div></td>
     </tr>
   `;
 }
@@ -8179,16 +8269,17 @@ function bindNestleTableActions() {
   });
   elements.nestleTable.querySelectorAll(".nestle-status-select").forEach((select) => {
     select.addEventListener("change", () => {
-      nestleMachines = nestleMachines.map((machine) =>
-        machine.id === select.dataset.id
-          ? {
-              ...machine,
-              status: select.value,
-              archivedAt: ["Installed", "Returned", "Cancelled"].includes(select.value) ? machine.archivedAt || new Date().toISOString() : machine.archivedAt,
-              updatedAt: new Date().toISOString()
-            }
-          : machine
-      );
+      nestleMachines = nestleMachines.map((machine) => {
+        if (machine.id !== select.dataset.id) return machine;
+        const next = {
+          ...machine,
+          status: select.value,
+          archivedAt: ["Installed", "Returned", "Cancelled"].includes(select.value) ? machine.archivedAt || new Date().toISOString() : machine.archivedAt,
+          updatedAt: new Date().toISOString()
+        };
+        stampSharedRecord(next, "Status changed");
+        return next;
+      });
       persistNestleMachines();
       renderNestleMachines();
     });
@@ -8279,6 +8370,7 @@ function saveNestleMachine() {
     updatedAt: new Date().toISOString(),
     archivedAt: ["Installed", "Returned", "Cancelled"].includes(status) ? existing?.archivedAt || new Date().toISOString() : ""
   });
+  stampSharedRecord(machine, existing ? "Updated" : "Created");
   nestleMachines = existing ? nestleMachines.map((item) => (item.id === id ? machine : item)) : [machine, ...nestleMachines];
   persistNestleMachines();
   closeNestleForm();

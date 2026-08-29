@@ -1,4 +1,4 @@
-const CACHE_NAME = "foodbrokerbase-app-v22";
+const CACHE_NAME = "foodbrokerbase-app-v23";
 const APP_SHELL = [
   "./",
   "./index.html",

@@ -5120,3 +5120,26 @@ html {
     flex-basis: min(86vw, 310px);
   }
 }
+.audit-stamp {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  margin-top: 4px;
+  padding: 3px 6px;
+  border: 1px solid rgba(54, 74, 84, 0.28);
+  background: #eef2f2;
+  color: #44515a;
+  font-size: 0.72rem;
+  font-weight: 800;
+  border-radius: 4px;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.audit-action-cell {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
