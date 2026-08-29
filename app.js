@@ -1268,6 +1268,9 @@ function normalizeMarketOperatorLink(link) {
 function normalizeMarketCall(call) {
   return {
     id: call.id || crypto.randomUUID(),
+    kind: call.kind === "appointment" ? "appointment" : "call",
+    title: call.title || "",
+    appointmentType: call.appointmentType || "",
     date: call.date || "",
     startTime: call.startTime || "",
     endTime: call.endTime || "",
@@ -1280,6 +1283,26 @@ function normalizeMarketCall(call) {
     notes: call.notes || "",
     status: call.status || "Planned"
   };
+}
+
+function getMarketCallTitle(call) {
+  if (call.kind === "appointment") {
+    return call.title || call.appointmentType || "Appointment";
+  }
+  return call.operatorName || getOperatorName(call.operatorId) || call.title || "Appointment";
+}
+
+function renderMarketNotesSection(visit) {
+  return `
+    <section class="market-notes-section">
+      <h3>Notes</h3>
+      <textarea class="market-notes-editor" data-market-notes="${escapeAttribute(visit.id)}" placeholder="Visit notes, follow-ups, travel details...">${escapeHtml(visit.notes)}</textarea>
+      <div class="market-notes-actions">
+        <span class="market-save-status" data-market-notes-status aria-live="polite"></span>
+        <button class="small-action save-market-notes" type="button" data-save-market-notes="${escapeAttribute(visit.id)}">Save Notes</button>
+      </div>
+    </section>
+  `;
 }
 
 function normalizeStringList(value) {
@@ -4928,7 +4951,7 @@ function renderMarketVisitDetail(visit) {
         <p class="market-section-help">Choose which visit products apply to each operator and keep product or follow-up notes here.</p>
         ${renderMarketOperatorsSection(visit, operators)}
       </section>
-      <section><h3>Notes</h3><textarea class="market-notes-editor" data-market-notes="${escapeAttribute(visit.id)}">${escapeHtml(visit.notes)}</textarea></section>
+      ${renderMarketNotesSection(visit)}
     </div>
   `;
   bindMarketDetailActions(panel, visit);
@@ -4970,7 +4993,7 @@ function renderManufacturerVisitDetail(panel, visit, products, operators) {
           <p class="market-section-help">Scheduled calls appear here automatically so you can choose products and keep operator notes.</p>
           ${renderMarketOperatorsSection(visit, operators)}
         </section>
-        <section><h3>Notes</h3><textarea class="market-notes-editor" data-market-notes="${escapeAttribute(visit.id)}">${escapeHtml(visit.notes)}</textarea></section>
+        ${renderMarketNotesSection(visit)}
       </section>
       <section class="manufacturer-week-panel">
         <div class="quick-list-header"><div><p class="eyebrow">Weekly overview</p><h2>Monday to Friday schedule</h2></div></div>
@@ -5169,6 +5192,33 @@ function renderMarketCallsSection(visit, includeCalendar = visit.type === "perso
       <input data-call-reps placeholder="Sales reps" value="${escapeAttribute(visit.salesReps.join(", "))}" />
       <button class="small-action save-market-call" type="button" data-add-market-call="${escapeAttribute(visit.id)}">Save Call</button>
     </div>
+    <div class="market-appointment-tools">
+      <button class="small-action toggle-market-appointment" type="button" data-toggle-market-appointment>+ Appointment</button>
+      <span>Add an airport pickup, training, distributor meeting, travel item, or other appointment without an operator.</span>
+    </div>
+    <div class="market-inline-add market-appointment-add" data-market-appointment-form hidden>
+      <input data-appointment-title placeholder="Appointment title" />
+      <select data-appointment-type>
+        <option>Airport / Travel</option>
+        <option>Training</option>
+        <option>Distributor Meeting</option>
+        <option>Internal Meeting</option>
+        <option>Other</option>
+      </select>
+      <input data-appointment-date type="date" value="${escapeAttribute(visit.startDate || "")}" />
+      <select data-appointment-start>${renderMarketTimeOptions("8:00 AM")}</select>
+      <select data-appointment-end>${renderMarketTimeOptions("9:00 AM")}</select>
+      <input data-appointment-location placeholder="Location" value="${escapeAttribute(visit.location || "")}" />
+      <input data-appointment-reps placeholder="Attendees / sales reps" value="${escapeAttribute(visit.salesReps.join(", "))}" />
+      <select data-appointment-status>
+        <option>Planned</option>
+        <option>Tentative</option>
+        <option>Completed</option>
+        <option>Canceled</option>
+      </select>
+      <input data-appointment-notes placeholder="Notes" />
+      <button class="small-action save-market-appointment" type="button" data-add-market-appointment="${escapeAttribute(visit.id)}">Save Appointment</button>
+    </div>
     ${
       includeCalendar
         ? `<div class="market-schedule-calendar">
@@ -5181,7 +5231,7 @@ function renderMarketCallsSection(visit, includeCalendar = visit.type === "perso
             </div>
           </div>`
         : visit.calls.length
-          ? `<table class="quick-table market-call-table"><thead><tr><th>Date</th><th>Time</th><th>Operator</th><th>Location</th><th>Reps</th><th>Notes</th><th></th></tr></thead><tbody>${visit.calls.map((call) => renderMarketCallRow(visit, call)).join("")}</tbody></table>`
+          ? `<table class="quick-table market-call-table"><thead><tr><th>Date</th><th>Time</th><th>Operator / Appointment</th><th>Location</th><th>Reps</th><th>Notes</th><th></th></tr></thead><tbody>${visit.calls.map((call) => renderMarketCallRow(visit, call)).join("")}</tbody></table>`
           : `<div class="empty-state">No calls scheduled yet</div>`
     }
   `;
@@ -5209,7 +5259,7 @@ function renderMarketCallRow(visit, call) {
   return `<tr>
     <td>${call.date ? formatDate(call.date) : ""}</td>
     <td>${escapeHtml([call.startTime, call.endTime].filter(Boolean).join(" - "))}</td>
-    <td>${escapeHtml(call.operatorName || getOperatorName(call.operatorId) || "")}</td>
+    <td>${escapeHtml(getMarketCallTitle(call))}${call.kind === "appointment" && call.appointmentType ? `<small class="market-call-kind">${escapeHtml(call.appointmentType)}</small>` : ""}</td>
     <td>${escapeHtml(call.location || "")}</td>
     <td>${escapeHtml(call.salesReps.join(", ") || visit.salesReps.join(", "))}</td>
     <td><input data-call-note="${escapeAttribute(call.id)}" value="${escapeAttribute(call.notes)}" /></td>
@@ -5274,7 +5324,7 @@ function formatHourLabel(hour) {
 function renderWeekCallBlock(call, selectedCallId = "") {
   return `
     <button class="week-call-block ${call.id === selectedCallId ? "active-week-call" : ""}" type="button" data-week-call="${escapeAttribute(call.id)}">
-      <strong>${escapeHtml(call.operatorName || getOperatorName(call.operatorId) || "Appointment")}</strong>
+      <strong>${escapeHtml(getMarketCallTitle(call))}</strong>
       <span>${escapeHtml([call.startTime, call.endTime].filter(Boolean).join(" - "))}</span>
       ${call.status ? `<small>${escapeHtml(call.status)}</small>` : ""}
     </button>
@@ -5293,7 +5343,8 @@ function renderMarketCallPreview(visit, call) {
   }
   return `
     <p class="eyebrow">Appointment details</p>
-    <h3>${escapeHtml(call.operatorName || getOperatorName(call.operatorId) || "Appointment")}</h3>
+    <h3>${escapeHtml(getMarketCallTitle(call))}</h3>
+    ${call.kind === "appointment" && call.appointmentType ? `<p class="market-call-kind">${escapeHtml(call.appointmentType)}</p>` : ""}
     <dl class="market-call-preview-grid">
       <div><dt>Date</dt><dd>${escapeHtml(call.date ? formatDate(call.date) : "No date")}</dd></div>
       <div><dt>Time</dt><dd>${escapeHtml([call.startTime, call.endTime].filter(Boolean).join(" - ") || "No time")}</dd></div>
@@ -5490,6 +5541,35 @@ function bindMarketDetailActions(panel, visit) {
       : visit.operatorLinks;
     updateMarketVisit(visit.id, { calls: [...visit.calls, call], operatorLinks });
   });
+  panel.querySelector("[data-toggle-market-appointment]")?.addEventListener("click", () => {
+    const form = panel.querySelector("[data-market-appointment-form]");
+    if (!form) return;
+    form.hidden = !form.hidden;
+    if (!form.hidden) form.querySelector("[data-appointment-title]")?.focus();
+  });
+  panel.querySelector("[data-add-market-appointment]")?.addEventListener("click", () => {
+    const titleInput = panel.querySelector("[data-appointment-title]");
+    const title = titleInput?.value.trim() || "";
+    if (!title) {
+      titleInput?.focus();
+      return;
+    }
+    const appointment = normalizeMarketCall({
+      kind: "appointment",
+      title,
+      appointmentType: panel.querySelector("[data-appointment-type]")?.value || "Other",
+      date: panel.querySelector("[data-appointment-date]")?.value || visit.startDate,
+      startTime: panel.querySelector("[data-appointment-start]")?.value || "",
+      endTime: panel.querySelector("[data-appointment-end]")?.value || "",
+      location: panel.querySelector("[data-appointment-location]")?.value.trim() || "",
+      salesReps: normalizeStringList(panel.querySelector("[data-appointment-reps]")?.value || ""),
+      manufacturerContact: visit.visitorName,
+      productIds: [],
+      notes: panel.querySelector("[data-appointment-notes]")?.value.trim() || "",
+      status: panel.querySelector("[data-appointment-status]")?.value || "Planned"
+    });
+    updateMarketVisit(visit.id, { calls: [...visit.calls, appointment] });
+  });
   panel.querySelector("[data-call-operator-name]")?.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
@@ -5497,6 +5577,10 @@ function bindMarketDetailActions(panel, visit) {
   });
   panel.querySelectorAll("[data-remove-market-call]").forEach((button) => button.addEventListener("click", () => updateMarketVisit(visit.id, { calls: visit.calls.filter((call) => call.id !== button.dataset.removeMarketCall) })));
   panel.querySelectorAll("[data-call-note]").forEach((input) => input.addEventListener("change", () => updateMarketVisit(visit.id, { calls: visit.calls.map((call) => (call.id === input.dataset.callNote ? { ...call, notes: input.value } : call)) })));
+  panel.querySelector("[data-save-market-notes]")?.addEventListener("click", () => {
+    const editor = panel.querySelector("[data-market-notes]");
+    updateMarketVisit(visit.id, { notes: editor?.value || "" });
+  });
   panel.querySelector("[data-market-notes]")?.addEventListener("change", (event) => updateMarketVisit(visit.id, { notes: event.target.value }));
   bindMarketWeekPreview(panel, visit);
 }
@@ -5960,7 +6044,7 @@ function formatDateRange(start, end) {
 }
 
 function getMarketVisitCalendarCalls(visit) {
-  const directCalls = visit.calls.map((call) => ({ ...call, visitId: visit.id, title: `${getMarketVisitDisplayName(visit)}${call.operatorName || getOperatorName(call.operatorId) ? ` - ${call.operatorName || getOperatorName(call.operatorId)}` : ""}`, salesReps: call.salesReps.length ? call.salesReps : visit.salesReps }));
+  const directCalls = visit.calls.map((call) => ({ ...call, visitId: visit.id, title: `${getMarketVisitDisplayName(visit)} - ${getMarketCallTitle(call)}`, salesReps: call.salesReps.length ? call.salesReps : visit.salesReps }));
   return directCalls;
 }
 
@@ -6071,7 +6155,7 @@ function renderMarketVisitPrintDocument(visit, sections = { schedule: true, prod
         <table>
           <thead><tr><th>Date</th><th>Time</th><th>Operator</th><th>Location</th><th>Sales reps</th><th>Notes</th></tr></thead>
           <tbody>
-            ${calls.map((call) => `<tr><td>${call.date ? formatDate(call.date) : ""}</td><td>${escapeHtml([call.startTime, call.endTime].filter(Boolean).join(" - "))}</td><td>${escapeHtml(call.operatorName || getOperatorName(call.operatorId) || "")}</td><td>${escapeHtml(call.location || visit.location || "")}</td><td>${escapeHtml(call.salesReps.join(", ") || visit.salesReps.join(", "))}</td><td>${escapeHtml(call.notes || "")}</td></tr>`).join("") || `<tr><td colspan="6">No calls scheduled yet.</td></tr>`}
+            ${calls.map((call) => `<tr><td>${call.date ? formatDate(call.date) : ""}</td><td>${escapeHtml([call.startTime, call.endTime].filter(Boolean).join(" - "))}</td><td>${escapeHtml(getMarketCallTitle(call))}</td><td>${escapeHtml(call.location || visit.location || "")}</td><td>${escapeHtml(call.salesReps.join(", ") || visit.salesReps.join(", "))}</td><td>${escapeHtml(call.notes || "")}</td></tr>`).join("") || `<tr><td colspan="6">No calls scheduled yet.</td></tr>`}
           </tbody>
         </table>` : ""}
         ${sections.products ? `
@@ -6117,7 +6201,7 @@ function getMarketVisitCalendarShareText(visit) {
   }
   calls.forEach((call) => {
     lines.push(
-      `${call.date ? formatDate(call.date) : "No date"} | ${[call.startTime, call.endTime].filter(Boolean).join(" - ") || "No time"} | ${call.operatorName || getOperatorName(call.operatorId) || "No operator"}`
+      `${call.date ? formatDate(call.date) : "No date"} | ${[call.startTime, call.endTime].filter(Boolean).join(" - ") || "No time"} | ${getMarketCallTitle(call)}`
     );
     const reps = call.salesReps?.length ? call.salesReps.join(", ") : visit.salesReps.join(", ");
     if (reps) lines.push(`Reps: ${reps}`);
@@ -6443,12 +6527,12 @@ function getMarketVisitTimelineItems(terms) {
     visit.calls.forEach((call) => {
       const callProducts = products.filter((product) => call.productIds?.includes(product.id));
       const callProductText = callProducts.map((product) => [product.vendor, product.description, product.apn, product.supc].filter(Boolean).join(" ")).join(" ");
-      const operatorName = call.operatorName || getOperatorName(call.operatorId);
+      const operatorName = getMarketCallTitle(call);
       pushTimelineItem(
         items,
         {
           type: "Market Call",
-          title: `${operatorName || "Appointment"} - ${getMarketVisitDisplayName(visit)}`,
+          title: `${operatorName} - ${getMarketVisitDisplayName(visit)}`,
           subtitle: [call.startTime && call.endTime ? `${call.startTime} - ${call.endTime}` : "", call.location || visit.location, (call.salesReps?.length ? call.salesReps : visit.salesReps).join(", ")].filter(Boolean).join(" | "),
           body: call.notes || callProductText,
           date: call.date || visit.startDate || "",

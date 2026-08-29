@@ -5237,3 +5237,50 @@ html {
   justify-content: flex-end;
   flex-wrap: wrap;
 }
+
+.market-notes-editor {
+  min-height: 100px;
+}
+
+.market-notes-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.market-appointment-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+  color: #5c6470;
+  font-size: 0.9rem;
+}
+
+.market-appointment-add {
+  grid-template-columns: minmax(180px, 1.4fr) minmax(150px, 1fr) repeat(3, minmax(135px, 0.8fr));
+}
+
+.market-appointment-add[hidden] {
+  display: none;
+}
+
+.market-call-kind {
+  display: block;
+  margin-top: 2px;
+  color: #6b6258;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 700px) {
+  .market-appointment-add {
+    grid-template-columns: 1fr;
+  }
+
+  .market-appointment-tools {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
