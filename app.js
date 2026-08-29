@@ -23,7 +23,7 @@ const stockFileStoreName = "files";
 const sampleStatuses = ["Requested", "Ordered", "Added to PO", "Received", "Delivered / Shown", "Cancelled"];
 const dotOrderStatuses = ["Need to Order", "Ordered", "In Transit", "Received", "Delivered", "Cancelled"];
 const nestleMachineStatuses = ["Requested", "Approved", "Ordered", "Installed", "Needs Service", "Returned", "Cancelled"];
-const marketVisitTypes = { personal: "P. C. Market Visit", manufacturer: "Vendor Market Visit" };
+const marketVisitTypes = { personal: "Personal Market Visit", manufacturer: "Vendor Market Visit" };
 const marketStatuses = ["Planned", "In Progress", "Completed", "Follow Up Needed", "Canceled"];
 const stockListGroups = {
   usFoods: {
@@ -280,7 +280,7 @@ const cloudSectionConfigs = [
             : []
       }
     ],
-    label: "P. C. Market Visits",
+    label: "Personal Market Visits",
     scope: "personal",
     get: () => getMarketVisitsByCloudType("personal"),
     set: (value) => replaceMarketVisitsByCloudType("personal", value)
@@ -443,6 +443,7 @@ const elements = {
   marketRepFilter: document.querySelector("#marketRepFilter"),
   marketStatusFilter: document.querySelector("#marketStatusFilter"),
   marketDateFilter: document.querySelector("#marketDateFilter"),
+  marketVisitTypeDialog: document.querySelector("#marketVisitTypeDialog"),
   marketVisitFormDialog: document.querySelector("#marketVisitFormDialog"),
   marketVisitForm: document.querySelector("#marketVisitForm"),
   marketVisitFormTitle: document.querySelector("#marketVisitFormTitle"),
@@ -869,8 +870,17 @@ document.querySelectorAll("[data-market-view]").forEach((button) => {
     renderMarketVisits();
   });
 });
-document.querySelector("#addPersonalMarketVisit").addEventListener("click", () => openMarketVisitForm(null, "personal"));
-document.querySelector("#addManufacturerMarketVisit").addEventListener("click", () => openMarketVisitForm(null, "manufacturer"));
+document.querySelector("#addMarketVisit").addEventListener("click", () => elements.marketVisitTypeDialog.showModal());
+document.querySelector("#closeMarketVisitTypeDialog").addEventListener("click", () => elements.marketVisitTypeDialog.close());
+document.querySelector("#cancelMarketVisitTypeDialog").addEventListener("click", () => elements.marketVisitTypeDialog.close());
+document.querySelector("#createPersonalMarketVisit").addEventListener("click", () => {
+  elements.marketVisitTypeDialog.close();
+  openMarketVisitForm(null, "personal");
+});
+document.querySelector("#createVendorMarketVisit").addEventListener("click", () => {
+  elements.marketVisitTypeDialog.close();
+  openMarketVisitForm(null, "manufacturer");
+});
 elements.marketVisitVendor.addEventListener("change", () => {
   if (!elements.marketVisitName.value && activeMarketType === "manufacturer") {
     elements.marketVisitName.value = `${elements.marketVisitVendor.value} Market Visit`.trim();
@@ -6416,7 +6426,7 @@ function getMarketVisitTimelineItems(terms) {
     pushTimelineItem(
       items,
       {
-        type: visit.type === "manufacturer" ? "Vendor Market Visit" : "P. C. Market Visit",
+        type: visit.type === "manufacturer" ? "Vendor Market Visit" : "Personal Market Visit",
         title: getMarketVisitDisplayName(visit),
         subtitle: [formatDateRange(visit.startDate, visit.endDate), visit.vendor, visit.location, visit.salesReps.join(", ")].filter(Boolean).join(" | "),
         body: visit.notes || operatorText || productText,

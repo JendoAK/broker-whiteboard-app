@@ -2657,8 +2657,7 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
 }
 
 .market-subtabs,
-.market-view-toggle,
-.market-create-actions {
+.market-view-toggle {
   display: grid;
   gap: 8px;
   grid-template-columns: repeat(2, minmax(230px, 1fr));
@@ -2666,8 +2665,9 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
 }
 
 .market-create-actions {
-  grid-template-columns: repeat(2, minmax(148px, 176px));
-  max-width: 368px;
+  display: flex;
+  align-items: center;
+  max-width: none;
 }
 
 .market-view-toggle {
@@ -2703,6 +2703,63 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
   padding: 7px 10px;
   box-shadow: 3px 3px 0 rgba(128, 68, 61, 0.14);
   font-size: 0.92rem;
+}
+
+.market-add-action {
+  width: auto;
+  min-width: 170px;
+}
+
+.market-type-dialog {
+  width: min(540px, calc(100vw - 24px));
+}
+
+.market-type-form {
+  min-width: 0;
+}
+
+.market-type-prompt {
+  margin: 0;
+  color: #5f554b;
+}
+
+.market-type-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.market-type-choice {
+  min-height: 64px;
+  border: 2px solid #b56f63;
+  border-radius: 8px;
+  background: #f1d7d1;
+  box-shadow: 4px 4px 0 rgba(128, 68, 61, 0.16);
+  color: #44221e;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 900;
+  padding: 16px;
+}
+
+.market-type-choice:hover,
+.market-type-choice:focus-visible {
+  background: #e9c1ba;
+}
+
+.market-type-choice-vendor {
+  background: #c96f63;
+  color: #2d1411;
+}
+
+.market-type-choice-vendor:hover,
+.market-type-choice-vendor:focus-visible {
+  background: #bd6257;
+}
+
+.market-type-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .market-save-action {
@@ -5043,8 +5100,7 @@ html {
     gap: 8px;
   }
 
-  .market-subtabs,
-  .market-create-actions {
+  .market-subtabs {
     grid-template-columns: repeat(2, minmax(140px, 1fr));
     max-width: 100%;
   }
@@ -5145,9 +5201,12 @@ html {
   }
 
   .market-subtabs,
-  .market-create-actions,
   .manufacturer-stats,
   .form-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .market-type-choices {
     grid-template-columns: 1fr;
   }
 

@@ -11,7 +11,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="pwa-icon-192.png" />
     <link rel="apple-touch-icon" href="pwa-icon-192.png" />
-    <link rel="stylesheet" href="styles.css?v=20260828-5" />
+    <link rel="stylesheet" href="styles.css?v=20260828-6" />
   </head>
   <body class="auth-pending">
     <datalist id="timelineSearchSuggestions"></datalist>
@@ -771,15 +771,14 @@
 
         <section class="market-header-row">
           <div class="market-subtabs" role="tablist" aria-label="Market visit type">
-            <button class="market-subtab active-market-subtab" id="marketPersonalTab" type="button" data-market-type="personal">P. C. Market Visit</button>
+            <button class="market-subtab active-market-subtab" id="marketPersonalTab" type="button" data-market-type="personal">Personal Market Visit</button>
             <button class="market-subtab" id="marketManufacturerTab" type="button" data-market-type="manufacturer">Vendor Market Visit</button>
           </div>
         </section>
 
         <section class="market-action-row">
           <div class="market-create-actions">
-            <button class="primary-action market-add-action" id="addPersonalMarketVisit" type="button">+ Add P. C. Market Visit</button>
-            <button class="primary-action market-add-action" id="addManufacturerMarketVisit" type="button">+ Add Vendor Market Visit</button>
+            <button class="primary-action market-add-action" id="addMarketVisit" type="button">+ Add Market Visit</button>
           </div>
           <div class="market-view-toggle">
             <button class="ghost-action active-market-view" type="button" data-market-view="list">List / Agenda</button>
@@ -799,6 +798,26 @@
         <main class="market-content" id="marketContent"></main>
       </div>
     </section>
+
+    <dialog class="note-dialog market-type-dialog" id="marketVisitTypeDialog">
+      <form method="dialog" class="note-form market-type-form" id="marketVisitTypeForm">
+        <div class="form-header">
+          <div>
+            <p class="eyebrow">Market visit</p>
+            <h2>Create Market Visit</h2>
+          </div>
+          <button class="icon-button" id="closeMarketVisitTypeDialog" type="button" aria-label="Close">&times;</button>
+        </div>
+        <p class="market-type-prompt">Which type of market visit are you creating?</p>
+        <div class="market-type-choices">
+          <button class="market-type-choice" id="createPersonalMarketVisit" type="button">Personal Market Visit</button>
+          <button class="market-type-choice market-type-choice-vendor" id="createVendorMarketVisit" type="button">Vendor Market Visit</button>
+        </div>
+        <div class="market-type-actions">
+          <button class="ghost-action" id="cancelMarketVisitTypeDialog" type="button">Cancel</button>
+        </div>
+      </form>
+    </dialog>
 
     <dialog class="note-dialog market-form-dialog" id="marketVisitFormDialog">
       <form method="dialog" class="note-form" id="marketVisitForm">
@@ -1337,7 +1356,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
     <script src="supabase-auth.js?v=20260828-3"></script>
-    <script src="app.js?v=20260828-4"></script>
+    <script src="app.js?v=20260828-5"></script>
     <script>
       if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
         window.addEventListener("load", () => {
