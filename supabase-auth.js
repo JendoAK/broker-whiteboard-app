@@ -21,10 +21,12 @@
     client,
     getCurrentUser: () => currentUser,
     getCurrentProfile: () => currentProfile,
+    isAdmin: () => isAdmin(),
     getCurrentSession: () => (client ? client.auth.getSession() : Promise.resolve({ data: { session: null } })),
     signOut: () => signOut(),
     openDialog: () => openAuthDialog(),
-    openTeamDialog: () => openTeamDialog()
+    openTeamDialog: () => openTeamDialog(),
+    syncSettingsAccess: () => syncSettingsAccess()
   };
 
   function ready(fn) {
@@ -58,6 +60,26 @@
 
   function isApproved() {
     return Boolean(currentUser && approvedRoles.has(currentProfile?.role));
+  }
+
+  function isAdmin() {
+    return Boolean(currentUser && currentProfile?.role === "admin");
+  }
+
+  function syncSettingsAccess() {
+    const adminOnlyLabels = new Set([
+      "Manage Team",
+      "Export Backup",
+      "Import Backup",
+      "Merge This Browser with Cloud",
+      "Download Cloud to This Browser"
+    ]);
+
+    document.querySelectorAll(".settings-panel button").forEach((button) => {
+      const adminOnly = button.hasAttribute("data-admin-only-setting")
+        || adminOnlyLabels.has(button.textContent.trim());
+      if (adminOnly) button.hidden = !isAdmin();
+    });
   }
 
   async function loadCurrentProfile(user = currentUser) {
@@ -105,6 +127,7 @@
     });
     updateAuthGate();
     syncTeamManagementButtons();
+    syncSettingsAccess();
   }
 
   function ensureAuthGate() {
@@ -314,6 +337,36 @@
     return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString();
   }
 
+  async function saveTeamDisplayName(profile, input, name, button) {
+    const nextName = input.value.trim();
+    button.disabled = true;
+    button.textContent = "Saving...";
+
+    const { error } = await client.rpc("set_team_user_display_name", {
+      target_user: profile.user_id,
+      new_display_name: nextName
+    });
+
+    if (error) {
+      setTeamStatus(error.message, true);
+      button.disabled = false;
+      button.textContent = "Save Name";
+      return;
+    }
+
+    profile.display_name = nextName;
+    name.textContent = nextName || profile.email?.split("@")[0] || "Unnamed user";
+
+    if (profile.user_id === currentUser?.id) {
+      currentProfile = { ...currentProfile, display_name: nextName || null };
+      updateLoginButtons();
+    }
+
+    setTeamStatus("Display name saved.");
+    button.disabled = false;
+    button.textContent = "Save Name";
+  }
+
   function renderTeamProfiles(profiles) {
     const list = document.querySelector("#teamManagementList");
     if (!list) return;
@@ -336,7 +389,20 @@
       email.textContent = profile.email || "";
       const created = document.createElement("small");
       created.textContent = profile.created_at ? `Joined ${formatCreatedDate(profile.created_at)}` : "";
-      identity.append(name, email, created);
+      const nameEditor = document.createElement("div");
+      nameEditor.className = "team-name-editor";
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.value = profile.display_name || "";
+      nameInput.placeholder = profile.email?.split("@")[0] || "Display name";
+      nameInput.setAttribute("aria-label", `Display name for ${profile.email || "user"}`);
+      const saveName = document.createElement("button");
+      saveName.type = "button";
+      saveName.className = "ghost-action";
+      saveName.textContent = "Save Name";
+      saveName.addEventListener("click", () => saveTeamDisplayName(profile, nameInput, name, saveName));
+      nameEditor.append(nameInput, saveName);
+      identity.append(name, email, nameEditor, created);
 
       const select = document.createElement("select");
       select.className = "team-role-select";

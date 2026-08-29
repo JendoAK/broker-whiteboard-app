@@ -5329,3 +5329,19 @@ html {
   background: #e5ebef;
   color: #172f43;
 }
+.settings-panel button[hidden],
+[data-admin-only-setting][hidden] {
+  display: none !important;
+}
+
+.team-name-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+.team-name-editor input {
+  min-width: 0;
+}
