@@ -1705,7 +1705,7 @@ function renderAuditStamp(record) {
     : "";
   const editor = audit.name || audit.email || audit.initials;
   const title = `${audit.action} by ${editor}${when}`;
-  return `<span class="audit-stamp" title="${escapeHtml(title)}">${escapeHtml(audit.initials)} - ${escapeHtml(audit.action)}</span>`;
+  return `<span class="audit-stamp" title="${escapeHtml(title)}">${escapeHtml(audit.action)} by ${escapeHtml(audit.initials)}</span>`;
 }
 
 function getCloudConfig(sectionKey) {
