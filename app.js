@@ -204,6 +204,7 @@ const pcMarketVisitCloudKey = `${marketVisitStorageKey}-pc-shared`;
 const vendorMarketVisitCloudKey = `${marketVisitStorageKey}-vendor`;
 const eventProductStorageKey = `${marketVisitStorageKey}-new-products`;
 const personalVisitCalendarKey = `${marketVisitStorageKey}-my-calendar`;
+const calendarPreferencesKey = `${marketVisitStorageKey}-calendar-preferences`;
 const cloudPendingStorageKey = "foodBrokerBasePendingCloudSections";
 let cloudSyncReady = false;
 let cloudSyncLoading = false;
@@ -232,6 +233,7 @@ function replaceMarketVisitsByCloudType(type, value) {
 }
 
 const cloudSectionConfigs = [
+  { key: calendarPreferencesKey, label: "My Calendar Preferences", scope: "personal", get: getCurrentCalendarPreferences, set: setCurrentCalendarPreferences },
   { key: personalVisitCalendarKey, label: "My Events & Visits Calendar", scope: "personal",
     get: getCurrentPersonalVisitCalendar, set: setCurrentPersonalVisitCalendar },
   ...["testkitchen", "foodshow"].map((type) => ({
@@ -310,6 +312,7 @@ const cloudSectionConfigs = [
 ];
 
 const localCloudCacheConfigs = [
+  { key: calendarPreferencesKey, get: () => calendarPreferences },
   { key: personalVisitCalendarKey, get: () => personalVisitCalendar },
   { key: eventProductStorageKey, get: () => eventProducts },
   { key: storageKey, get: () => cards },
@@ -335,6 +338,7 @@ let addressBook = loadAddressBook();
 let stockProducts = loadStockProducts();
 let eventProducts = loadEventProducts();
 let personalVisitCalendar = loadPersonalVisitCalendar();
+let calendarPreferences = loadCalendarPreferences();
 migrateStockProductData();
 let samples = loadSamples();
 let dotOrders = loadDotOrders();
@@ -889,6 +893,7 @@ document.querySelectorAll("[data-market-view]").forEach((button) => {
 });
 document.querySelector("#addMarketVisit").addEventListener("click", () => elements.marketVisitTypeDialog.showModal());
 setupPersonalVisitCalendarForm();
+setupCalendarHolidayToggle();
 document.querySelector("#closeMarketVisitTypeDialog").addEventListener("click", () => elements.marketVisitTypeDialog.close());
 document.querySelector("#cancelMarketVisitTypeDialog").addEventListener("click", () => elements.marketVisitTypeDialog.close());
 document.querySelector("#createPersonalMarketVisit").addEventListener("click", () => {
@@ -2406,6 +2411,7 @@ function exportBackup() {
     stockProducts,
     eventProducts,
     personalVisitCalendar: getCurrentPersonalVisitCalendar(),
+    calendarPreferences: getCurrentCalendarPreferences(),
     samples,
     dotOrders,
     nestleMachines,
@@ -2443,6 +2449,7 @@ function importBackup(event) {
       stockProducts = Array.isArray(parsed.stockProducts) ? parsed.stockProducts.map(normalizeStockProduct) : [];
       eventProducts = Array.isArray(parsed.eventProducts) ? parsed.eventProducts.map(normalizeEventProduct) : [];
       setCurrentPersonalVisitCalendar(parsed.personalVisitCalendar);
+      setCurrentCalendarPreferences(parsed.calendarPreferences);
       samples = Array.isArray(parsed.samples) ? parsed.samples.map(normalizeSample) : [];
       dotOrders = Array.isArray(parsed.dotOrders) ? parsed.dotOrders.map(normalizeDotOrder) : [];
       nestleMachines = Array.isArray(parsed.nestleMachines) ? parsed.nestleMachines.map(normalizeNestleMachine) : [];
@@ -2454,6 +2461,7 @@ function importBackup(event) {
       persistStockProducts();
       persistEventProducts();
       persistPersonalVisitCalendar();
+      persistCalendarPreferences();
       persistSamples();
       persistDotOrders();
       persistNestleMachines();
@@ -2929,6 +2937,7 @@ function showNextCalendarRange() {
 }
 
 function renderCalendar() {
+  document.querySelector("#showCalendarHolidays").checked = showCalendarHolidays();
   const isWeekView = calendarView === "week";
   const isDayView = calendarView === "day";
   const gridStart = getCalendarGridStart();
@@ -2978,6 +2987,7 @@ function renderCalendar() {
           <span>${date.getDate()}</span>
         </div>
         <div class="calendar-items">
+          ${getCalendarHolidays(key).map(renderCalendarHoliday).join("")}
           ${getPersonalCalendarVisits(key).map(renderPersonalCalendarVisit).join("")}
           ${dayCards
             .map(
@@ -3079,6 +3089,7 @@ function getCalendarViewData() {
       date,
       key,
       visits: getPersonalCalendarVisits(key),
+      holidays: getCalendarHolidays(key),
       cards: activeCards.filter((card) => card.due === key).sort(compareCards),
       todos: activeTodos.filter((todo) => todo.due === key).sort(compareTodos)
     });
@@ -3128,6 +3139,7 @@ function renderCalendarPrintDay(day) {
   return `<section class="day">
     <div class="date"><span>${escapeHtml(day.date.toLocaleDateString(undefined, { month: "short", day: "numeric" }))}</span></div>
     ${(day.visits || []).map((visit) => `<div class="item">${escapeHtml(visit.title)}</div>`).join("")}
+    ${(day.holidays || []).map((holiday) => `<div class="item">${escapeHtml(holiday.title)}</div>`).join("")}
     ${day.cards
       .map((card) => `<div class="item">${escapeHtml(card.account)}<div class="meta">Lead &middot; ${escapeHtml(card.priority)} &middot; ${escapeHtml(normalizeStatus(card.status))}</div></div>`)
       .join("")}
@@ -3140,6 +3152,7 @@ function renderCalendarPrintDay(day) {
 function openCalendarDayWindow(dateKey) {
   const date = parseLocalDate(dateKey);
   const dayVisits = getPersonalCalendarVisits(dateKey);
+  const dayHolidays = getCalendarHolidays(dateKey);
   const dayCards = cards
     .filter((card) => card.due === dateKey && !card.archivedAt && !card.deletedAt)
     .sort(compareCards);
@@ -3151,8 +3164,9 @@ function openCalendarDayWindow(dateKey) {
     day: "numeric",
     year: "numeric"
   });
-  elements.calendarDayList.innerHTML = dayCards.length || dayTodos.length || dayVisits.length
-    ? `${dayVisits.length ? `<div class="calendar-section-label">Events &amp; Visits</div>${dayVisits.map(renderPersonalCalendarVisit).join("")}` : ""}
+  elements.calendarDayList.innerHTML = dayCards.length || dayTodos.length || dayVisits.length || dayHolidays.length
+    ? `${dayHolidays.map(renderCalendarHoliday).join("")}
+       ${dayVisits.length ? `<div class="calendar-section-label">Events &amp; Visits</div>${dayVisits.map(renderPersonalCalendarVisit).join("")}` : ""}
        ${dayCards.length ? `<div class="calendar-section-label">Leads</div>${dayCards.map((card) => renderAccountNote(card)).join("")}` : ""}
        ${dayTodos.length ? `<div class="calendar-section-label">To-Do List</div>${dayTodos.map(renderCalendarTodo).join("")}` : ""}`
     : `<div class="empty-state">No tasks due this day</div>`;

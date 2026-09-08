@@ -11,7 +11,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="pwa-icon-192.png" />
     <link rel="apple-touch-icon" href="pwa-icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=20260908-7" />
+  <link rel="stylesheet" href="styles.css?v=20260908-8" />
   </head>
   <body class="auth-pending">
     <datalist id="timelineSearchSuggestions"></datalist>
@@ -393,6 +393,7 @@
           <button class="ghost-action calendar-step-control" id="calendarNext" type="button" aria-label="Next calendar range">&rarr;</button>
           <button class="ghost-action print-action" id="printCalendar" type="button">Print Calendar</button>
         </div>
+        <label class="calendar-holiday-toggle" title="U.S. federal holidays, including observed weekdays"><input type="checkbox" id="showCalendarHolidays" /> Show U.S. holidays</label>
         <div class="calendar-weekdays" aria-hidden="true">
           <span>Mon</span>
           <span>Tue</span>
@@ -1374,7 +1375,8 @@
     <script src="supabase-auth.js?v=20260829-6"></script>
   <script src="market-events.js?v=20260908-7"></script>
   <script src="personal-visit-calendar.js?v=20260908-7"></script>
-  <script src="app.js?v=20260908-7"></script>
+  <script src="calendar-holidays.js?v=20260908-8"></script>
+  <script src="app.js?v=20260908-8"></script>
     <script>
       if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
         window.addEventListener("load", () => {
