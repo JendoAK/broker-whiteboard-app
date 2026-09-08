@@ -1,4 +1,4 @@
-﻿const columns = [
+const columns = [
   "New Lead",
   "Need Action",
   "Samples Requested",
@@ -5060,7 +5060,7 @@ function renderMarketVisits() {
         <div><p class="eyebrow">${escapeHtml(title)}</p></div>
         <span class="count-pill">${visits.length}</span>
       </div>
-      ${visits.length ? `<div class="market-card-grid">${visits.map(renderMarketVisitCard).join("")}</div>` : `<div class="empty-state">No market visits yet</div>`}
+      ${visits.length ? `<div class="market-card-grid">${visits.map(renderMarketVisitCard).join("")}</div>` : `<div class="empty-state">No events or visits yet</div>`}
     </section>
     <section class="market-detail-panel" id="marketDetailPanel"></section>
   `;
@@ -5214,7 +5214,7 @@ function renderManufacturerVisitDetail(panel, visit, products, operators) {
         </div>
       </div>
       <div class="manufacturer-actions">
-        <button class="edit-card" type="button" data-detail-close>Back to market visits</button>
+        <button class="edit-card" type="button" data-detail-close>Back to Events &amp; Visits</button>
         <button class="primary-action market-add-action" type="button" data-scroll-add-call>Add appointment</button>
         <button class="edit-card" type="button" data-detail-print="${escapeAttribute(visit.id)}">Print calendar</button>
         <button class="edit-card" type="button" data-market-ics="${escapeAttribute(visit.id)}">Share calendar</button>
