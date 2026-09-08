@@ -4139,6 +4139,8 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
   line-height: 1.18;
 }
 
+.visit-calendar-item { background: #f5e3df; border-left: 5px solid #b56f63; }
+
 .calendar-item span {
   margin-top: 3px;
   color: var(--muted);

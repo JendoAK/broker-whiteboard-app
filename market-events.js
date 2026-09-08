@@ -97,7 +97,7 @@ function renderEventProductEditor(id) {
 function renderMarketEventDetail(panel, visit) {
   const operators = getMarketVisitOperators(visit);
   panel.innerHTML = `<div class="market-detail-header"><div><p class="eyebrow">${escapeHtml(marketVisitTypes[visit.type])} · Shared with team</p><h2>${escapeHtml(visit.name)}</h2><p>${escapeHtml([formatDateRange(visit.startDate, visit.endDate), [visit.startTime, visit.endTime].filter(Boolean).join(" – "), visit.location].filter(Boolean).join(" | "))}</p>${renderAuditStamp(visit)}</div>
-    <div class="market-section-actions"><button class="edit-card" data-event-edit type="button">Edit event</button><button class="edit-card" data-detail-print type="button">Print event</button><button class="edit-card" data-detail-close type="button">Back to events</button></div></div>
+    <div class="market-section-actions">${renderPersonalVisitCalendarButton(visit)}<button class="edit-card" data-event-edit type="button">Edit event</button><button class="edit-card" data-detail-print type="button">Print event</button><button class="edit-card" data-detail-close type="button">Back to events</button></div></div>
     <div class="market-detail-tabs event-detail-sections">
       ${visit.type === "testkitchen" ? `<section><h3>Attendees & organizations</h3>${renderEventAttendees(visit)}</section>` : ""}
       <section><h3>Products to show</h3>${renderEventProducts(visit)}</section>

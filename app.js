@@ -203,6 +203,7 @@ const personalMarketVisitCloudKey = `${marketVisitStorageKey}-personal`;
 const pcMarketVisitCloudKey = `${marketVisitStorageKey}-pc-shared`;
 const vendorMarketVisitCloudKey = `${marketVisitStorageKey}-vendor`;
 const eventProductStorageKey = `${marketVisitStorageKey}-new-products`;
+const personalVisitCalendarKey = `${marketVisitStorageKey}-my-calendar`;
 const cloudPendingStorageKey = "foodBrokerBasePendingCloudSections";
 let cloudSyncReady = false;
 let cloudSyncLoading = false;
@@ -231,6 +232,8 @@ function replaceMarketVisitsByCloudType(type, value) {
 }
 
 const cloudSectionConfigs = [
+  { key: personalVisitCalendarKey, label: "My Events & Visits Calendar", scope: "personal",
+    get: getCurrentPersonalVisitCalendar, set: setCurrentPersonalVisitCalendar },
   ...["testkitchen", "foodshow"].map((type) => ({
     key: `${marketVisitStorageKey}-${type}`, localKey: marketVisitStorageKey,
     label: marketVisitTypes[type], scope: "team",
@@ -307,6 +310,7 @@ const cloudSectionConfigs = [
 ];
 
 const localCloudCacheConfigs = [
+  { key: personalVisitCalendarKey, get: () => personalVisitCalendar },
   { key: eventProductStorageKey, get: () => eventProducts },
   { key: storageKey, get: () => cards },
   { key: todoStorageKey, get: () => todos },
@@ -330,6 +334,7 @@ let manualVendorReports = loadManualVendorReports();
 let addressBook = loadAddressBook();
 let stockProducts = loadStockProducts();
 let eventProducts = loadEventProducts();
+let personalVisitCalendar = loadPersonalVisitCalendar();
 migrateStockProductData();
 let samples = loadSamples();
 let dotOrders = loadDotOrders();
@@ -883,6 +888,7 @@ document.querySelectorAll("[data-market-view]").forEach((button) => {
   });
 });
 document.querySelector("#addMarketVisit").addEventListener("click", () => elements.marketVisitTypeDialog.showModal());
+setupPersonalVisitCalendarForm();
 document.querySelector("#closeMarketVisitTypeDialog").addEventListener("click", () => elements.marketVisitTypeDialog.close());
 document.querySelector("#cancelMarketVisitTypeDialog").addEventListener("click", () => elements.marketVisitTypeDialog.close());
 document.querySelector("#createPersonalMarketVisit").addEventListener("click", () => {
@@ -2399,6 +2405,7 @@ function exportBackup() {
     addressBook,
     stockProducts,
     eventProducts,
+    personalVisitCalendar: getCurrentPersonalVisitCalendar(),
     samples,
     dotOrders,
     nestleMachines,
@@ -2435,6 +2442,7 @@ function importBackup(event) {
       addressBook = Array.isArray(parsed.addressBook) ? parsed.addressBook.map(normalizeAddressBookEntry) : [];
       stockProducts = Array.isArray(parsed.stockProducts) ? parsed.stockProducts.map(normalizeStockProduct) : [];
       eventProducts = Array.isArray(parsed.eventProducts) ? parsed.eventProducts.map(normalizeEventProduct) : [];
+      setCurrentPersonalVisitCalendar(parsed.personalVisitCalendar);
       samples = Array.isArray(parsed.samples) ? parsed.samples.map(normalizeSample) : [];
       dotOrders = Array.isArray(parsed.dotOrders) ? parsed.dotOrders.map(normalizeDotOrder) : [];
       nestleMachines = Array.isArray(parsed.nestleMachines) ? parsed.nestleMachines.map(normalizeNestleMachine) : [];
@@ -2445,6 +2453,7 @@ function importBackup(event) {
       persistAddressBook();
       persistStockProducts();
       persistEventProducts();
+      persistPersonalVisitCalendar();
       persistSamples();
       persistDotOrders();
       persistNestleMachines();
@@ -2969,6 +2978,7 @@ function renderCalendar() {
           <span>${date.getDate()}</span>
         </div>
         <div class="calendar-items">
+          ${getPersonalCalendarVisits(key).map(renderPersonalCalendarVisit).join("")}
           ${dayCards
             .map(
               (card) => `
@@ -3005,6 +3015,7 @@ function renderCalendar() {
   }
 
   elements.calendarGrid.innerHTML = days.join("");
+  bindPersonalCalendarVisitLinks(elements.calendarGrid);
   elements.calendarGrid.querySelectorAll("[data-calendar-day]").forEach((day) => {
     day.addEventListener("click", () => openCalendarDayWindow(day.dataset.calendarDay));
   });
@@ -3067,6 +3078,7 @@ function getCalendarViewData() {
     days.push({
       date,
       key,
+      visits: getPersonalCalendarVisits(key),
       cards: activeCards.filter((card) => card.due === key).sort(compareCards),
       todos: activeTodos.filter((todo) => todo.due === key).sort(compareTodos)
     });
@@ -3115,6 +3127,7 @@ function renderCalendarPrintDocument({ isWeekView, isDayView, title, days }) {
 function renderCalendarPrintDay(day) {
   return `<section class="day">
     <div class="date"><span>${escapeHtml(day.date.toLocaleDateString(undefined, { month: "short", day: "numeric" }))}</span></div>
+    ${(day.visits || []).map((visit) => `<div class="item">${escapeHtml(visit.title)}</div>`).join("")}
     ${day.cards
       .map((card) => `<div class="item">${escapeHtml(card.account)}<div class="meta">Lead &middot; ${escapeHtml(card.priority)} &middot; ${escapeHtml(normalizeStatus(card.status))}</div></div>`)
       .join("")}
@@ -3126,6 +3139,7 @@ function renderCalendarPrintDay(day) {
 
 function openCalendarDayWindow(dateKey) {
   const date = parseLocalDate(dateKey);
+  const dayVisits = getPersonalCalendarVisits(dateKey);
   const dayCards = cards
     .filter((card) => card.due === dateKey && !card.archivedAt && !card.deletedAt)
     .sort(compareCards);
@@ -3137,8 +3151,9 @@ function openCalendarDayWindow(dateKey) {
     day: "numeric",
     year: "numeric"
   });
-  elements.calendarDayList.innerHTML = dayCards.length || dayTodos.length
-    ? `${dayCards.length ? `<div class="calendar-section-label">Leads</div>${dayCards.map((card) => renderAccountNote(card)).join("")}` : ""}
+  elements.calendarDayList.innerHTML = dayCards.length || dayTodos.length || dayVisits.length
+    ? `${dayVisits.length ? `<div class="calendar-section-label">Events &amp; Visits</div>${dayVisits.map(renderPersonalCalendarVisit).join("")}` : ""}
+       ${dayCards.length ? `<div class="calendar-section-label">Leads</div>${dayCards.map((card) => renderAccountNote(card)).join("")}` : ""}
        ${dayTodos.length ? `<div class="calendar-section-label">To-Do List</div>${dayTodos.map(renderCalendarTodo).join("")}` : ""}`
     : `<div class="empty-state">No tasks due this day</div>`;
   elements.calendarDayList.querySelectorAll("[data-edit-id]").forEach((button) => {
@@ -3160,6 +3175,7 @@ function openCalendarDayWindow(dateKey) {
       openTodoForm(todo);
     });
   });
+  bindPersonalCalendarVisitLinks(elements.calendarDayList);
   elements.calendarDayDialog.showModal();
 }
 
@@ -5084,6 +5100,7 @@ function renderMarketVisits() {
       openMarketVisitDetail(card.dataset.marketCard);
     });
     card.addEventListener("keydown", (event) => {
+      if (event.target !== card) return;
       if (!["Enter", " "].includes(event.key)) return;
       event.preventDefault();
       openMarketVisitDetail(card.dataset.marketCard);
@@ -5114,6 +5131,7 @@ function renderMarketVisits() {
     const visit = marketVisits.find((item) => item.id === activeMarketDetailId);
     if (visit) renderMarketVisitDetail(visit);
   }
+  bindPersonalVisitCalendarButtons(elements.marketContent);
 }
 
 function openMarketVisitDetail(id, shouldScroll = true) {
@@ -5146,6 +5164,7 @@ function renderMarketVisitCard(visit) {
       </div>
       <div class="table-actions">
         <button class="edit-card market-card-action" type="button" data-market-view-detail="${escapeAttribute(visit.id)}">View</button>
+        ${renderPersonalVisitCalendarButton(visit)}
         <button class="edit-card market-card-action" type="button" data-market-edit="${escapeAttribute(visit.id)}">Edit</button>
         <button class="edit-card market-card-action" type="button" data-market-print="${escapeAttribute(visit.id)}">${isMarketEvent(visit) ? "Print event" : "Print Schedule"}</button>
         <button class="edit-card market-card-action" type="button" data-market-ics="${escapeAttribute(visit.id)}">Download .ics</button>
@@ -5175,6 +5194,7 @@ function renderMarketVisitDetail(visit) {
       <div class="table-actions">
         <button class="edit-card" type="button" data-detail-print="${escapeAttribute(visit.id)}">Print</button>
         <button class="edit-card" type="button" data-detail-followup="${escapeAttribute(visit.id)}">Create Follow-Up</button>
+        ${renderPersonalVisitCalendarButton(visit)}
         <button class="edit-card" type="button" data-detail-close>Close</button>
       </div>
     </div>
@@ -5214,6 +5234,7 @@ function renderManufacturerVisitDetail(panel, visit, products, operators) {
         </div>
       </div>
       <div class="manufacturer-actions">
+        ${renderPersonalVisitCalendarButton(visit)}
         <button class="edit-card" type="button" data-detail-close>Back to Events &amp; Visits</button>
         <button class="primary-action market-add-action" type="button" data-scroll-add-call>Add appointment</button>
         <button class="edit-card" type="button" data-detail-print="${escapeAttribute(visit.id)}">Print calendar</button>
