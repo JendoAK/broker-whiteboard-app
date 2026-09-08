@@ -11,7 +11,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="pwa-icon-192.png" />
     <link rel="apple-touch-icon" href="pwa-icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=20260829-8" />
+  <link rel="stylesheet" href="styles.css?v=20260908-3" />
   </head>
   <body class="auth-pending">
     <datalist id="timelineSearchSuggestions"></datalist>
@@ -773,6 +773,8 @@
           <div class="market-subtabs" role="tablist" aria-label="Market visit type">
             <button class="market-subtab active-market-subtab" id="marketPersonalTab" type="button" data-market-type="personal">Personal Market Visit</button>
             <button class="market-subtab" id="marketManufacturerTab" type="button" data-market-type="manufacturer">Vendor Market Visit</button>
+            <button class="market-subtab" type="button" data-market-type="testkitchen">Testkitchen</button>
+            <button class="market-subtab" type="button" data-market-type="foodshow">Foodshow</button>
           </div>
         </section>
 
@@ -812,6 +814,8 @@
         <div class="market-type-choices">
           <button class="market-type-choice" id="createPersonalMarketVisit" type="button">Personal Market Visit</button>
           <button class="market-type-choice market-type-choice-vendor" id="createVendorMarketVisit" type="button">Vendor Market Visit</button>
+          <button class="market-type-choice" data-create-market-event="testkitchen" type="button">Testkitchen · Team</button>
+          <button class="market-type-choice" data-create-market-event="foodshow" type="button">Foodshow · Team</button>
         </div>
         <div class="market-type-actions">
           <button class="ghost-action" id="cancelMarketVisitTypeDialog" type="button">Cancel</button>
@@ -863,7 +867,7 @@
         </div>
         <input id="marketPrintVisitId" type="hidden" />
         <div class="print-option-list">
-          <label><input id="marketPrintSchedule" type="checkbox" checked /> Schedule</label>
+          <label><input id="marketPrintSchedule" type="checkbox" checked /> <span id="marketPrintScheduleLabel">Schedule</span></label>
           <label><input id="marketPrintProducts" type="checkbox" checked /> Product list</label>
         </div>
         <div class="form-actions">
@@ -1129,6 +1133,13 @@
               <button class="ghost-action market-nav-action nav-button" id="openMarketVisitsStock" type="button"><span class="nav-icon" aria-hidden="true">&#128506;</span><span>Market Visits</span></button>
               <button class="ghost-action calendar-action nav-button" id="openCalendarStock" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
             </div>
+            <div class="stock-toolbar">
+            <div class="view-actions stock-actions" id="stockListActions" hidden>
+              <button class="primary-action stock-add-action" id="addStockProduct" type="button">+ Add Product</button>
+              <button class="primary-action stock-import-action" id="importStockList" type="button">Upload Stock List</button>
+              <button class="primary-action stock-print-action" id="printStockList" type="button">Print Stock List</button>
+              <input id="stockImportFile" type="file" accept=".csv,.tsv,.txt,.xlsx,.xls" hidden />
+            </div>
             <div class="view-actions stock-list-picker" id="stockListPicker">
               <button class="primary-action stock-list-choice stock-list-usf" type="button" data-stock-list="usFoods" aria-label="US Foods Stock List">
                 <img class="stock-logo-img stock-logo-usf-img" src="https://commons.wikimedia.org/wiki/Special:FilePath/US_Foods_logo.svg" alt="US Foods" />
@@ -1140,11 +1151,6 @@
                 <img class="stock-logo-img stock-logo-linford-img" src="linford-logo.svg" alt="Linford of Alaska" />
               </button>
             </div>
-            <div class="view-actions stock-actions" id="stockListActions" hidden>
-              <button class="primary-action stock-add-action" id="addStockProduct" type="button">+ Add Product</button>
-              <button class="primary-action stock-import-action" id="importStockList" type="button">Upload List</button>
-              <button class="primary-action stock-print-action" id="printStockList" type="button">Print Stock List</button>
-              <input id="stockImportFile" type="file" accept=".csv,.tsv,.txt,.xlsx,.xls" hidden />
             </div>
           </div>
           <div class="utility-actions" aria-label="Board utilities">
@@ -1193,7 +1199,7 @@
         </div>
         <input id="stockId" type="hidden" />
         <div class="field-grid stock-product-grid">
-          <label><span>Vendor / Manufacturer</span><input id="stockVendor" list="vendorSuggestions" autocomplete="off" /></label>
+          <label><span>Vendor / Manufacturer</span><input id="stockVendor" list="stockVendorSuggestions" autocomplete="off" /><datalist id="stockVendorSuggestions"></datalist></label>
           <label><span>Brand name</span><input id="stockBrandName" autocomplete="off" /></label>
           <label><span>Brand type</span><select id="stockBrandType"><option value=""></option><option value="EB">EB</option><option value="MB">MB</option></select></label>
           <label><span>APN</span><input id="stockApn" autocomplete="off" /></label>
@@ -1356,7 +1362,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
     <script src="supabase-auth.js?v=20260829-6"></script>
-  <script src="app.js?v=20260829-8"></script>
+  <script src="market-events.js?v=20260908-2"></script>
+  <script src="app.js?v=20260908-4"></script>
     <script>
       if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
         window.addEventListener("load", () => {
@@ -1364,7 +1371,7 @@
         });
       }
     </script>
-  </body>
+</body>
 </html>
 
 

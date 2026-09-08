@@ -23,7 +23,7 @@ const stockFileStoreName = "files";
 const sampleStatuses = ["Requested", "Ordered", "Added to PO", "Received", "Delivered / Shown", "Cancelled"];
 const dotOrderStatuses = ["Need to Order", "Ordered", "In Transit", "Received", "Delivered", "Cancelled"];
 const nestleMachineStatuses = ["Requested", "Approved", "Ordered", "Installed", "Needs Service", "Returned", "Cancelled"];
-const marketVisitTypes = { personal: "Personal Market Visit", manufacturer: "Vendor Market Visit" };
+const marketVisitTypes = { personal: "Personal Market Visit", manufacturer: "Vendor Market Visit", testkitchen: "Testkitchen", foodshow: "Foodshow" };
 const marketStatuses = ["Planned", "In Progress", "Completed", "Follow Up Needed", "Canceled"];
 const stockListGroups = {
   usFoods: {
@@ -202,6 +202,7 @@ const legacyPcMarketVisitCloudKey = `${marketVisitStorageKey}-pc`;
 const personalMarketVisitCloudKey = `${marketVisitStorageKey}-personal`;
 const pcMarketVisitCloudKey = `${marketVisitStorageKey}-pc-shared`;
 const vendorMarketVisitCloudKey = `${marketVisitStorageKey}-vendor`;
+const eventProductStorageKey = `${marketVisitStorageKey}-new-products`;
 const cloudPendingStorageKey = "foodBrokerBasePendingCloudSections";
 let cloudSyncReady = false;
 let cloudSyncLoading = false;
@@ -230,6 +231,14 @@ function replaceMarketVisitsByCloudType(type, value) {
 }
 
 const cloudSectionConfigs = [
+  ...["testkitchen", "foodshow"].map((type) => ({
+    key: `${marketVisitStorageKey}-${type}`, localKey: marketVisitStorageKey,
+    label: marketVisitTypes[type], scope: "team",
+    get: () => getMarketVisitsByCloudType(type),
+    set: (value) => replaceMarketVisitsByCloudType(type, value)
+  })),
+  { key: eventProductStorageKey, label: "New Event Products", scope: "team", get: () => eventProducts,
+    set: (value) => (eventProducts = Array.isArray(value) ? value.map(normalizeEventProduct) : []) },
   { key: storageKey, label: "Leads", scope: "personal", get: () => cards, set: (value) => (cards = Array.isArray(value) ? value.map(normalizeCard) : []) },
   { key: todoStorageKey, label: "To-Do List", scope: "personal", get: () => todos, set: (value) => (todos = Array.isArray(value) ? value.map(normalizeTodo) : []) },
   {
@@ -298,6 +307,7 @@ const cloudSectionConfigs = [
 ];
 
 const localCloudCacheConfigs = [
+  { key: eventProductStorageKey, get: () => eventProducts },
   { key: storageKey, get: () => cards },
   { key: todoStorageKey, get: () => todos },
   { key: manualVendorStorageKey, get: () => manualVendorReports },
@@ -319,6 +329,7 @@ let todos = loadTodos();
 let manualVendorReports = loadManualVendorReports();
 let addressBook = loadAddressBook();
 let stockProducts = loadStockProducts();
+let eventProducts = loadEventProducts();
 migrateStockProductData();
 let samples = loadSamples();
 let dotOrders = loadDotOrders();
@@ -882,6 +893,12 @@ document.querySelector("#createVendorMarketVisit").addEventListener("click", () 
   elements.marketVisitTypeDialog.close();
   openMarketVisitForm(null, "manufacturer");
 });
+document.querySelectorAll("[data-create-market-event]").forEach((button) => {
+  button.addEventListener("click", () => {
+    elements.marketVisitTypeDialog.close();
+    openMarketVisitForm(null, button.dataset.createMarketEvent);
+  });
+});
 elements.marketVisitVendor.addEventListener("change", () => {
   if (!elements.marketVisitName.value && activeMarketType === "manufacturer") {
     elements.marketVisitName.value = `${elements.marketVisitVendor.value} Market Visit`.trim();
@@ -1230,7 +1247,7 @@ function loadMarketVisits() {
 
 function normalizeMarketVisit(visit) {
   const requestedType = visit.type === "pc" ? "personal" : visit.type;
-  const type = ["personal", "manufacturer"].includes(requestedType) ? requestedType : "personal";
+  const type = Object.hasOwn(marketVisitTypes, requestedType) ? requestedType : "personal";
   return {
     id: visit.id || crypto.randomUUID(),
     type,
@@ -1246,6 +1263,8 @@ function normalizeMarketVisit(visit) {
     notes: visit.notes || "",
     status: marketStatuses.includes(visit.status) ? visit.status : "Planned",
     productIds: Array.isArray(visit.productIds) ? visit.productIds : [],
+    newProductIds: Array.isArray(visit.newProductIds) ? visit.newProductIds : [],
+    attendees: Array.isArray(visit.attendees) ? visit.attendees.map(normalizeEventAttendee) : [],
     productNotes: visit.productNotes || {},
     operatorLinks: Array.isArray(visit.operatorLinks) ? visit.operatorLinks.map(normalizeMarketOperatorLink) : [],
     calls: Array.isArray(visit.calls) ? visit.calls.map(normalizeMarketCall) : [],
@@ -2379,6 +2398,7 @@ function exportBackup() {
     manualVendorReports,
     addressBook,
     stockProducts,
+    eventProducts,
     samples,
     dotOrders,
     nestleMachines,
@@ -2414,6 +2434,7 @@ function importBackup(event) {
       manualVendorReports = Array.isArray(parsed.manualVendorReports) ? parsed.manualVendorReports.map(normalizeManualVendorReport) : [];
       addressBook = Array.isArray(parsed.addressBook) ? parsed.addressBook.map(normalizeAddressBookEntry) : [];
       stockProducts = Array.isArray(parsed.stockProducts) ? parsed.stockProducts.map(normalizeStockProduct) : [];
+      eventProducts = Array.isArray(parsed.eventProducts) ? parsed.eventProducts.map(normalizeEventProduct) : [];
       samples = Array.isArray(parsed.samples) ? parsed.samples.map(normalizeSample) : [];
       dotOrders = Array.isArray(parsed.dotOrders) ? parsed.dotOrders.map(normalizeDotOrder) : [];
       nestleMachines = Array.isArray(parsed.nestleMachines) ? parsed.nestleMachines.map(normalizeNestleMachine) : [];
@@ -2423,6 +2444,7 @@ function importBackup(event) {
       persistManualVendorReports();
       persistAddressBook();
       persistStockProducts();
+      persistEventProducts();
       persistSamples();
       persistDotOrders();
       persistNestleMachines();
@@ -4513,8 +4535,23 @@ function bindStockActions() {
   });
 }
 
+function updateStockVendorSuggestions() {
+  const names = new Map();
+  [...getVendorOptions(), ...marketVisits.map((visit) => visit.vendor), ...eventProducts.map((product) => product.vendor)]
+    .map(normalizeVendorName)
+    .filter(Boolean)
+    .forEach((name) => {
+      const key = name.toLocaleLowerCase();
+      if (!names.has(key)) names.set(key, name);
+    });
+  document.querySelector("#stockVendorSuggestions").innerHTML = [...names.values()]
+    .sort((a, b) => a.localeCompare(b))
+    .map((name) => `<option value="${escapeAttribute(name)}"></option>`).join("");
+}
+
 function openStockForm(product) {
   elements.stockForm.reset();
+  updateStockVendorSuggestions();
   const existing = product ? normalizeStockProduct(product) : null;
   currentStockAttachments = existing?.attachments ? existing.attachments.map(normalizeStockAttachment) : [];
   elements.stockFormTitle.textContent = existing ? "Edit Product" : "Add Product";
@@ -5097,7 +5134,7 @@ function renderMarketVisitCard(visit) {
       <div class="market-card-main">
         <h3>${escapeHtml(getMarketVisitDisplayName(visit))}</h3>
         ${dateText ? `<p class="market-card-date">${escapeHtml(dateText)}</p>` : `<p class="market-card-date">No date</p>`}
-        ${visit.type === "manufacturer" ? renderAuditStamp(visit) : ""}
+        ${visit.type !== "personal" ? renderAuditStamp(visit) : ""}
       </div>
       <div class="market-card-status-row">
         <label>
@@ -5110,7 +5147,7 @@ function renderMarketVisitCard(visit) {
       <div class="table-actions">
         <button class="edit-card market-card-action" type="button" data-market-view-detail="${escapeAttribute(visit.id)}">View</button>
         <button class="edit-card market-card-action" type="button" data-market-edit="${escapeAttribute(visit.id)}">Edit</button>
-        <button class="edit-card market-card-action" type="button" data-market-print="${escapeAttribute(visit.id)}">Print Schedule</button>
+        <button class="edit-card market-card-action" type="button" data-market-print="${escapeAttribute(visit.id)}">${isMarketEvent(visit) ? "Print event" : "Print Schedule"}</button>
         <button class="edit-card market-card-action" type="button" data-market-ics="${escapeAttribute(visit.id)}">Download .ics</button>
       </div>
     </article>
@@ -5120,6 +5157,10 @@ function renderMarketVisitCard(visit) {
 function renderMarketVisitDetail(visit) {
   const panel = elements.marketContent.querySelector("#marketDetailPanel");
   if (!panel) return;
+  if (isMarketEvent(visit)) {
+    renderMarketEventDetail(panel, visit);
+    return;
+  }
   const products = getMarketVisitProducts(visit);
   const operators = getMarketVisitOperators(visit);
   if (visit.type === "manufacturer") {
@@ -5191,7 +5232,10 @@ function renderManufacturerVisitDetail(panel, visit, products, operators) {
         ${renderMarketNotesSection(visit)}
       </section>
       <section class="manufacturer-week-panel">
-        <div class="quick-list-header"><div><p class="eyebrow">Weekly overview</p><h2>Monday to Friday schedule</h2></div></div>
+        <div class="quick-list-header market-calendar-overview-header">
+          <div><p class="eyebrow">Weekly overview</p><h2>Monday to Friday schedule</h2></div>
+          ${renderMarketCalendarActions(visit)}
+        </div>
         <div class="manufacturer-calendar-layout">
           ${renderManufacturerWeekGrid(visit, selectedCall?.id || "")}
           <aside class="market-call-preview" data-market-call-preview>
@@ -5263,6 +5307,7 @@ function renderMarketOperator(visit, operator) {
         </span>
       </summary>
       <div class="market-operator-detail">
+        ${isMarketEvent(visit) ? `<label>Lead distributor<select data-event-lead-distributor="${escapeAttribute(operator.id)}"><option>US Foods</option><option>Sysco</option><option>Other</option></select></label>` : ""}
         ${products.length ? `<div class="operator-product-notes">${products.map((product) => renderOperatorProductNote(operator, product)).join("")}</div>` : `<div class="empty-state">Add products to this visit, then they will show here for this operator.</div>`}
         <label class="operator-general-note"><span>Operator note</span><textarea class="market-operator-note" data-market-operator-notes="${escapeAttribute(operator.id)}" placeholder="Operator notes, feedback, next step...">${escapeHtml(operator.notes)}</textarea></label>
       </div>
@@ -5367,18 +5412,21 @@ function renderMarketProductChip(product) {
   `;
 }
 
-function renderMarketCallsSection(visit, includeCalendar = visit.type === "personal") {
-  const calls = getMarketVisitCalendarCalls(visit);
-  const selectedCall = calls[0] || null;
+function renderMarketCalendarActions(visit) {
   return `
-    <div class="section-label-row market-calendar-actions-row">
-      <span></span>
-      <div class="market-section-actions">
+      <div class="market-section-actions" role="group" aria-label="Calendar actions">
         <button class="edit-card market-section-action" type="button" data-market-print-calendar="${escapeAttribute(visit.id)}">Print Calendar</button>
         <button class="edit-card market-section-action" type="button" data-market-share-calendar="${escapeAttribute(visit.id)}">Share Calendar</button>
         <button class="edit-card market-section-action" type="button" data-market-download-calendar="${escapeAttribute(visit.id)}">Download Calendar</button>
       </div>
-    </div>
+  `;
+}
+
+function renderMarketCallsSection(visit, includeCalendar = visit.type === "personal") {
+  const calls = getMarketVisitCalendarCalls(visit);
+  const selectedCall = calls[0] || null;
+  return `
+    ${!includeCalendar && visit.type !== "manufacturer" ? `<div class="section-label-row market-calendar-actions-row"><span></span>${renderMarketCalendarActions(visit)}</div>` : ""}
     <div class="market-inline-add market-call-add">
       <input data-call-date type="date" value="${escapeAttribute(visit.startDate || "")}" />
       <select data-call-start>${renderMarketTimeOptions("8:00 AM")}</select>
@@ -5417,7 +5465,7 @@ function renderMarketCallsSection(visit, includeCalendar = visit.type === "perso
     ${
       includeCalendar
         ? `<div class="market-schedule-calendar">
-            <div class="quick-list-header"><div><h2>Weekly Overview</h2></div></div>
+            <div class="quick-list-header market-calendar-overview-header"><div><h2>Weekly Overview</h2></div>${renderMarketCalendarActions(visit)}</div>
             <div class="manufacturer-calendar-layout">
               ${renderManufacturerWeekGrid(visit, selectedCall?.id || "")}
               <aside class="market-call-preview" data-market-call-preview>
@@ -5674,11 +5722,11 @@ function bindMarketDetailActions(panel, visit) {
       updateMarketVisit(visit.id, {
         operatorLinks: visit.operatorLinks.filter((link) => {
           const linkName = link.operatorName || getOperatorName(link.operatorId);
-          return link.id !== removeId && link.operatorId !== removeOperatorId && linkName !== removeName;
+          return link.id !== removeId && (!removeOperatorId || link.operatorId !== removeOperatorId) && (!removeName || linkName !== removeName);
         }),
         calls: visit.calls.filter((call) => {
           const callName = call.operatorName || getOperatorName(call.operatorId);
-          return `call-${call.id}` !== removeId && call.operatorId !== removeOperatorId && callName !== removeName;
+          return `call-${call.id}` !== removeId && (!removeOperatorId || call.operatorId !== removeOperatorId) && (!removeName || callName !== removeName);
         })
       });
     })
@@ -5822,7 +5870,7 @@ function saveMarketVisit() {
     ...(existing || {}),
     id,
     type,
-    name: elements.marketVisitName.value.trim() || (type === "manufacturer" ? `${vendor || "Manufacturer"} Market Visit` : "Market Visit"),
+    name: elements.marketVisitName.value.trim() || (type === "manufacturer" ? `${vendor || "Manufacturer"} Market Visit` : marketVisitTypes[type]),
     vendor,
     visitorName: elements.marketVisitorName.value.trim(),
     startDate: elements.marketStartDate.value,
@@ -5837,7 +5885,7 @@ function saveMarketVisit() {
     createdAt: existing?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString()
   });
-  if (type === "manufacturer") stampSharedRecord(visit, existing ? "Updated" : "Created");
+  if (type !== "personal") stampSharedRecord(visit, existing ? "Updated" : "Created");
   marketVisits = existing ? marketVisits.map((item) => (item.id === id ? visit : item)) : [visit, ...marketVisits];
   activeMarketType = type;
   activeMarketDetailId = id;
@@ -5861,7 +5909,7 @@ function updateMarketVisit(id, patch) {
   marketVisits = marketVisits.map((visit) => {
     if (visit.id !== id) return visit;
     const next = normalizeMarketVisit({ ...visit, ...patch, updatedAt: new Date().toISOString() });
-    if (next.type === "manufacturer") {
+    if (next.type !== "personal") {
       stampSharedRecord(next, Object.prototype.hasOwnProperty.call(patch, "status") ? "Status changed" : "Updated");
     }
     return next;
@@ -5882,7 +5930,7 @@ function saveMarketOperatorDataWithoutRender(visitId, operatorId, patch) {
       operatorLinks: visit.operatorLinks.map((link) => (link.id === operatorId ? { ...link, ...patch } : link)),
       updatedAt: new Date().toISOString()
     });
-    if (next.type === "manufacturer") stampSharedRecord(next, "Updated");
+    if (next.type !== "personal") stampSharedRecord(next, "Updated");
     return next;
   });
   persistMarketVisits();
@@ -5905,7 +5953,7 @@ function saveMarketOperatorProductNoteWithoutRender(visitId, operatorId, product
       }),
       updatedAt: new Date().toISOString()
     });
-    if (next.type === "manufacturer") stampSharedRecord(next, "Updated");
+    if (next.type !== "personal") stampSharedRecord(next, "Updated");
     return next;
   });
   persistMarketVisits();
@@ -5969,6 +6017,10 @@ function convertMarketOperatorToLead(visit, operatorId, panel) {
   const currentVisit = marketVisits.find((item) => item.id === visit.id) || visit;
   const operator = currentVisit.operatorLinks.find((link) => link.id === operatorId) || getMarketVisitOperators(currentVisit).find((link) => link.id === operatorId);
   if (!operator) return;
+  if (isMarketEvent(currentVisit) && cards.some((card) => card.sourceMarketVisitId === currentVisit.id && card.sourceMarketOperatorId === operatorId && !card.deletedAt)) {
+    alert("This organization already has a lead from this event in your Leads section.");
+    return;
+  }
   const selectedProductIds = [...panel.querySelectorAll("[data-operator-lead-product]")]
     .filter((input) => input.dataset.operatorLeadProduct === operatorId && input.checked)
     .map((input) => input.value);
@@ -5989,8 +6041,11 @@ function convertMarketOperatorToLead(visit, operatorId, panel) {
     account: operatorName,
     accountNumber: addressEntry?.accountNumber || "",
     syscoAccountNumber: addressEntry?.syscoAccountNumber || "",
-    distributor: "US Foods",
-    note: [`Created from market visit: ${getMarketVisitDisplayName(currentVisit)}`, operator.notes, productNotes].filter(Boolean).join("\n\n"),
+    distributor: isMarketEvent(currentVisit) ? [...panel.querySelectorAll("[data-event-lead-distributor]")].find((input) => input.dataset.eventLeadDistributor === operatorId)?.value || "US Foods" : "US Foods",
+    note: [`Created from ${marketVisitTypes[currentVisit.type]}: ${getMarketVisitDisplayName(currentVisit)}`, operator.notes, productNotes,
+      isMarketEvent(currentVisit) ? currentVisit.attendees.filter((person) => normalizeOperatorKey(person.organization) === normalizeOperatorKey(operatorName)).map((person) => [person.name, person.role, person.contact].filter(Boolean).join(" | ")).join("\n") : ""].filter(Boolean).join("\n\n"),
+    sourceMarketVisitId: currentVisit.id,
+    sourceMarketOperatorId: operatorId,
     priority: "Medium",
     due: currentVisit.endDate || currentVisit.startDate || "",
     status: "New Lead",
@@ -6023,7 +6078,7 @@ function getVisibleMarketVisits() {
       if (!query) return true;
       const products = getMarketVisitProducts(visit).map((product) => product.description).join(" ");
       const operators = getMarketVisitOperators(visit).map((operator) => operator.operatorName || getOperatorName(operator.operatorId)).join(" ");
-      return [visit.name, visit.vendor, visit.visitorName, visit.location, visit.salesReps.join(" "), visit.notes, products, operators].some((value) => String(value || "").toLowerCase().includes(query));
+      return [visit.name, visit.vendor, visit.visitorName, visit.location, visit.salesReps.join(" "), visit.notes, products, operators, ...(visit.attendees || []).map((person) => [person.name, person.organization, person.role, person.contact].join(" "))].some((value) => String(value || "").toLowerCase().includes(query));
     })
     .sort((a, b) => (a.startDate || "9999-12-31").localeCompare(b.startDate || "9999-12-31"));
 }
@@ -6054,7 +6109,17 @@ function getMarketVisitDateKeys(visit) {
 }
 
 function getMarketVisitProducts(visit) {
-  return visit.productIds.map((id) => stockProducts.find((product) => product.id === id)).filter(Boolean);
+  const products = visit.productIds.map((id) => stockProducts.find((product) => product.id === id)).filter(Boolean);
+  const seen = new Set(products.map((product) => product.id));
+  for (const id of visit.newProductIds || []) {
+    const product = resolveEventProduct(id);
+    if (!product) continue;
+    const key = product.linkedStockId || product.id;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    products.push(product);
+  }
+  return products;
 }
 
 function getProductsByVendor(vendor) {
@@ -6063,7 +6128,8 @@ function getProductsByVendor(vendor) {
 
 function getMarketProductCandidates(visit) {
   const source = visit.type === "manufacturer" && visit.vendor ? getProductsByVendor(visit.vendor) : stockProducts;
-  return source.filter((product) => !visit.productIds.includes(product.id));
+  const linkedIds = (visit.newProductIds || []).map((id) => resolveEventProduct(id)?.linkedStockId).filter(Boolean);
+  return source.filter((product) => !visit.productIds.includes(product.id) && !linkedIds.includes(product.id));
 }
 
 function formatMarketProductOption(product) {
@@ -6240,6 +6306,7 @@ function formatDateRange(start, end) {
 
 function getMarketVisitCalendarCalls(visit) {
   const directCalls = visit.calls.map((call) => ({ ...call, visitId: visit.id, title: `${getMarketVisitDisplayName(visit)} - ${getMarketCallTitle(call)}`, salesReps: call.salesReps.length ? call.salesReps : visit.salesReps }));
+  if (isMarketEvent(visit) && !directCalls.length) return [{ ...normalizeMarketCall({ id: visit.id, kind: "appointment", title: visit.name, date: visit.startDate, startTime: visit.startTime, endTime: visit.endTime, location: visit.location, salesReps: visit.salesReps, notes: visit.notes }), visitId: visit.id }];
   return directCalls;
 }
 
@@ -6293,6 +6360,7 @@ function createMarketFollowUp(visit) {
 function openMarketPrintOptions(id) {
   const visit = marketVisits.find((item) => item.id === id);
   if (!visit) return;
+  document.querySelector("#marketPrintScheduleLabel").textContent = isMarketEvent(visit) ? "Attendees, notes & leads" : "Schedule";
   elements.marketPrintVisitId.value = id;
   elements.marketPrintSchedule.checked = true;
   elements.marketPrintProducts.checked = true;
@@ -6315,6 +6383,7 @@ function printMarketVisit(id, sections = { schedule: true, products: true }) {
 }
 
 function renderMarketVisitPrintDocument(visit, sections = { schedule: true, products: true }) {
+  if (isMarketEvent(visit)) return renderMarketEventPrintDocument(visit, sections);
   const calls = getMarketVisitCalendarCalls(visit).sort((a, b) => `${a.date || ""}${a.startTime || ""}`.localeCompare(`${b.date || ""}${b.startTime || ""}`));
   const products = getMarketVisitProducts(visit);
   const sortedProducts = [...products].sort((a, b) => {

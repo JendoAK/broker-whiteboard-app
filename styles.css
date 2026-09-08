@@ -2297,6 +2297,25 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
   gap: 8px;
 }
 
+.stock-toolbar {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+}
+
+.stock-toolbar > .view-actions {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin-top: 0;
+  padding-bottom: 5px;
+}
+
+.stock-toolbar > .view-actions > button {
+  flex: 0 0 auto;
+}
+
 .stock-table .small-action {
   padding: 8px 10px;
   font-size: 0.92rem;
@@ -4288,6 +4307,50 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
 .market-section-actions {
   justify-content: flex-end;
   flex-wrap: wrap;
+}
+
+.market-subtabs { flex-wrap: wrap; }
+.event-detail-sections h4 { margin: 20px 0 10px; }
+.event-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  align-items: end;
+  margin: 14px 0;
+}
+.event-entry-grid label, .event-library-picker label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 600;
+}
+.event-entry-grid input, .event-entry-grid select, .event-entry-grid textarea,
+.event-library-picker input, .event-library-picker select {
+  width: 100%;
+  min-width: 0;
+}
+.event-library-picker { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin: 14px 0; }
+.event-library-picker label { flex: 1 1 260px; }
+.event-product-editor { margin-top: 10px; padding: 12px; }
+.event-product-editor summary { cursor: pointer; font-weight: 700; }
+.event-table-scroll { overflow-x: auto; }
+.event-detail-sections .quick-list-header { flex-wrap: wrap; }
+.event-detail-sections .market-section-help { margin: 12px 0; }
+
+.market-calendar-overview-header {
+  flex-wrap: wrap;
+}
+
+.market-calendar-overview-header > .market-section-actions {
+  margin-left: auto;
+}
+
+@media (max-width: 720px) {
+  .market-calendar-overview-header > .market-section-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
 }
 
 .market-section-help {
