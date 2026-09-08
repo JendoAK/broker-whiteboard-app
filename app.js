@@ -17,6 +17,8 @@ const stockStorageKey = "broker-whiteboard-stock-lists";
 const sampleStorageKey = "broker-whiteboard-sample-tracker";
 const dotOrderStorageKey = "broker-whiteboard-dot-orders";
 const nestleMachineStorageKey = "broker-whiteboard-nestle-machines";
+const sharedTrackerKeys = new Set([sampleStorageKey, dotOrderStorageKey, nestleMachineStorageKey]);
+const trackerMigrationOwners = new Map();
 const marketVisitStorageKey = "broker-whiteboard-market-visits";
 const stockFileDbName = "foodbrokerbase-stock-files";
 const stockFileStoreName = "files";
@@ -1844,6 +1846,18 @@ function getCloudSectionValue(section, personalRowMap, teamRowMap) {
     value = mergedValue;
   });
 
+  if (sharedTrackerKeys.has(section.key)) {
+    const owners = new Set(teamRowMap.get(section.key)?.data?.migratedTrackerOwners || []);
+    const ownerId = getCloudUser()?.id;
+    const legacyValue = extractCloudValue(personalRowMap.get(section.key));
+    if (ownerId && !owners.has(ownerId) && Array.isArray(legacyValue) && legacyValue.length) {
+      // Shared versions win when an older personal copy has the same ID.
+      value = mergeCloudSectionValues(Array.isArray(value) ? value : [], legacyValue);
+      owners.add(ownerId);
+      usedLegacyRow = true;
+    }
+    trackerMigrationOwners.set(section.key, [...owners]);
+  }
   return { found: value !== undefined, value, usedLegacyRow };
 }
 
@@ -1940,6 +1954,7 @@ async function saveCloudSections(sectionKeys = cloudSectionConfigs.map((section)
       record_key: section.key,
       updated_by: user.id,
       data: {
+        ...(sharedTrackerKeys.has(section.key) ? { migratedTrackerOwners: trackerMigrationOwners.get(section.key) || [] } : {}),
         label: section.label,
         value: section.get(),
         backupVersion,
