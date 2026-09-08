@@ -4140,6 +4140,10 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
 }
 
 .visit-calendar-item { background: #f5e3df; border-left: 5px solid #b56f63; }
+.editable-market-call { cursor: pointer; }
+.editable-market-call:hover { background: #f5e3df; }
+.market-call-edit-title { border: 0; background: transparent; color: inherit; font: inherit; font-weight: 700; text-align: left; text-decoration: underline; cursor: pointer; padding: 0; }
+#marketCallEditDialog [data-call-edit-error] { color: #a02922; font-weight: 700; }
 .calendar-holiday-toggle { display: inline-flex; align-items: center; gap: 8px; margin: 8px 0 12px; font-weight: 700; cursor: pointer; }
 .calendar-holiday-toggle input { width: 18px; height: 18px; margin: 0; accent-color: #426b83; }
 .calendar-holiday { border-left: 4px solid #426b83; border-radius: 5px; background: #e6eff5; color: #264a60; padding: 6px 8px; font-size: .8rem; overflow-wrap: anywhere; }

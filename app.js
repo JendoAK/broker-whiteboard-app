@@ -5292,6 +5292,7 @@ function bindMarketWeekPreview(panel, visit) {
       panel.querySelectorAll("[data-week-call]").forEach((item) => item.classList.toggle("active-week-call", item === button));
       const preview = panel.querySelector("[data-market-call-preview]");
       if (preview) preview.innerHTML = renderMarketCallPreview(visit, call);
+      openMarketCallEditor(visit.id, button.dataset.weekCall);
     });
   });
 }
@@ -5534,10 +5535,10 @@ function formatTimeOption(hour, minute) {
 }
 
 function renderMarketCallRow(visit, call) {
-  return `<tr>
+  return `<tr class="editable-market-call" data-edit-market-call-row="${escapeAttribute(call.id)}">
     <td>${call.date ? formatDate(call.date) : ""}</td>
     <td>${escapeHtml([call.startTime, call.endTime].filter(Boolean).join(" - "))}</td>
-    <td>${escapeHtml(getMarketCallTitle(call))}${call.kind === "appointment" && call.appointmentType ? `<small class="market-call-kind">${escapeHtml(call.appointmentType)}</small>` : ""}</td>
+    <td><button class="market-call-edit-title" type="button" data-edit-market-call="${escapeAttribute(call.id)}" aria-label="Edit ${escapeAttribute(getMarketCallTitle(call))}">${escapeHtml(getMarketCallTitle(call))}</button>${call.kind === "appointment" && call.appointmentType ? `<small class="market-call-kind">${escapeHtml(call.appointmentType)}</small>` : ""}</td>
     <td>${escapeHtml(call.location || "")}</td>
     <td>${escapeHtml(call.salesReps.join(", ") || visit.salesReps.join(", "))}</td>
     <td><input data-call-note="${escapeAttribute(call.id)}" value="${escapeAttribute(call.notes)}" /></td>
@@ -5658,6 +5659,7 @@ function renderMarketCalendar(visits) {
       elements.marketContent.querySelectorAll("[data-market-agenda-call]").forEach((item) => item.classList.toggle("active-agenda-call", item === button));
       const preview = elements.marketContent.querySelector("[data-market-agenda-preview]");
       if (preview && visit) preview.innerHTML = renderMarketCallPreview(visit, call);
+      if (visit && call) openMarketCallEditor(visit.id, call.id);
     });
   });
 }
@@ -5671,6 +5673,7 @@ function renderMarketAgendaCall(call, selectedCallId = "") {
 }
 
 function bindMarketDetailActions(panel, visit) {
+  bindMarketCallListEditing(panel, visit);
   panel.querySelector("[data-detail-close]")?.addEventListener("click", () => {
     activeMarketDetailId = "";
     renderMarketVisits();
