@@ -4309,7 +4309,16 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
   flex-wrap: wrap;
 }
 
-.market-subtabs { flex-wrap: wrap; }
+.market-subtabs {
+  display: flex;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 5px;
+}
+.market-subtabs > .market-subtab { flex: 0 0 auto; }
+#addMarketVisit { min-width: 0; }
 .event-detail-sections h4 { margin: 20px 0 10px; }
 .event-entry-grid {
   display: grid;
