@@ -3270,7 +3270,14 @@ function setupSuggestionMenus() {
     );
     menu.style.width = `${width}px`;
     menu.style.left = `${left}px`;
-    menu.style.top = `${rect.bottom + 5}px`;
+    const hostRect = activeInput.closest("dialog[open]")?.getBoundingClientRect();
+    const topEdge = Math.max(pageGutter, hostRect?.top || 0);
+    const bottomEdge = Math.min(window.innerHeight - pageGutter, hostRect?.bottom || window.innerHeight);
+    const below = Math.max(0, bottomEdge - rect.bottom - 5);
+    const above = Math.max(0, rect.top - topEdge - 5);
+    const openAbove = below < 180 && above > below;
+    menu.style.maxHeight = `${Math.min(320, openAbove ? above : below)}px`;
+    menu.style.top = `${openAbove ? rect.top - menu.getBoundingClientRect().height - 5 : rect.bottom + 5}px`;
   };
 
   const setActiveIndex = (index) => {
@@ -3298,13 +3305,17 @@ function setupSuggestionMenus() {
     if (!activeInput || !value) return;
     const input = activeInput;
     input.value = value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
-    hideMenu();
     input.focus();
+    hideMenu();
   };
 
   const showMenu = (input) => {
     enhanceInput(input);
+    // A modal dialog makes body-level menus inert and paints above their z-index.
+    const host = input.closest("dialog[open]") || document.body;
+    if (menu.parentElement !== host) host.appendChild(menu);
     const allValues = getValues(input);
     const terms = input.value
       .trim()
@@ -3323,6 +3334,7 @@ function setupSuggestionMenus() {
       return;
     }
 
+    if (activeInput && activeInput !== input) activeInput.setAttribute("aria-expanded", "false");
     activeInput = input;
     activeIndex = -1;
     menu.replaceChildren();
@@ -3381,6 +3393,9 @@ function setupSuggestionMenus() {
   });
   window.addEventListener("resize", positionMenu);
   window.addEventListener("scroll", positionMenu, true);
+  document.addEventListener("close", (event) => {
+    if (event.target.contains(menu)) hideMenu();
+  }, true);
 }
 
 function setupDatePicker(input) {
@@ -8251,6 +8266,7 @@ function compareDue(a, b) {
 function openForm(card) {
   elements.form.reset();
   updateAccountSuggestions();
+  updateSalesRepSuggestions();
   elements.cardId.value = card?.id || "";
   elements.dialogTitle.textContent = card ? "Edit Lead" : "Add Lead";
   elements.deleteCard.hidden = !card;
@@ -8291,6 +8307,7 @@ function openForm(card) {
 
   updateProductNumberLabels();
   elements.dialog.showModal();
+  updateVendorControls();
   setTimeout(() => elements.account.focus(), 0);
 }
 
