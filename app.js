@@ -5291,6 +5291,7 @@ function renderManufacturerVisitDetail(panel, visit, products, operators) {
       <div>
         <div class="badge-row">
           ${visit.vendor ? `<span class="badge manufacturer-pill">${escapeHtml(visit.vendor)}</span>` : ""}
+          ${visit.visitorName ? `<span class="badge">Regional manager: ${escapeHtml(visit.visitorName)}</span>` : ""}
           ${visit.location ? `<span class="badge">${escapeHtml(visit.location)}</span>` : ""}
           <span class="badge">${escapeHtml(formatDateRange(visit.startDate, visit.endDate) || "No date")}</span>
         </div>
@@ -5363,7 +5364,7 @@ function renderMarketOverview(visit) {
       <div><dt>Sales reps</dt><dd>${escapeHtml(visit.salesReps.join(", ") || "No reps")}</dd></div>
       <div><dt>Status</dt><dd>${escapeHtml(visit.status)}</dd></div>
       ${visit.vendor ? `<div><dt>Manufacturer</dt><dd>${escapeHtml(visit.vendor)}</dd></div>` : ""}
-      ${visit.visitorName ? `<div><dt>Visitor</dt><dd>${escapeHtml(visit.visitorName)}</dd></div>` : ""}
+      ${visit.visitorName ? `<div><dt>Regional manager</dt><dd>${escapeHtml(visit.visitorName)}</dd></div>` : ""}
     </dl>
   `;
 }
