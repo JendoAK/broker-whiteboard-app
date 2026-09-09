@@ -1,7 +1,7 @@
-const CACHE_NAME = "foodbrokerbase-contactfilters1";
+const CACHE_NAME = "foodbrokerbase-contactfields1";
 const APP_SHELL = [
-  "./contacts-layout.css?v=20260909-contactfilters1",
-  "./people-contacts.js?v=20260909-contactfilters1",
+  "./contacts-layout.css?v=20260909-contactfields1",
+  "./people-contacts.js?v=20260909-contactfields1",
   "./",
   "./index.html",
   "./styles.css?v=20260909-kitchencolors1",
@@ -9,10 +9,10 @@ const APP_SHELL = [
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
   "./market-call-editor.js?v=20260909-visitcolors1",
-  "./team-work-view.js?v=20260909-roles1", "./app.js?v=20260909-contactfilters1",
+  "./team-work-view.js?v=20260909-roles1", "./app.js?v=20260909-contactfields1",
   "./market-week-calendar.js?v=20260909-visitcolors1",
   "./market-operator-conversion.js?v=20260909-visitcolors1",
-  "./testkitchen-layout.js?v=20260909-kitchencolors1",
+  "./testkitchen-layout.js?v=20260909-contactfields1",
   "./vendor-visit-print.js?v=20260909-visitcolors1",
   "./market-visit-layout.js?v=20260909-visitcolors1",
   "./supabase-config.js",

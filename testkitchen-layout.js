@@ -64,6 +64,7 @@ function openKitchenAttendeeForm(visitId, personId = '', onSave) {
   const body = dialog.querySelector('[data-visit-entry-body]');
   const input = (key, label, required = false) => `<label><span>${label}</span><input name="${key}" value="${escapeAttribute(person[key] || '')}" ${required ? 'required' : ''} /></label>`;
   body.innerHTML = `<form><div class="field-grid">${input('name','Name',true)}${input('organization','Company / organization',true)}<label><span>Attendee type</span><select name="category">${['Distributor','Operator / Restaurant','Our team','Vendor','Other'].map(value => `<option ${value === person.category ? 'selected' : ''}>${value}</option>`).join('')}</select></label>${input('role','Role')}${input('contact','Email / phone')}</div><p role="alert" data-attendee-error></p><div class="form-actions"><button class="ghost-action" type="button" data-attendee-cancel>Cancel</button><button class="primary-action" type="submit">${personId ? 'Save attendee' : 'Add attendee'}</button></div></form>`;
+  attachContactValueSuggestions(body.querySelector('form'));
   attachPeopleSuggestions(body.querySelector('[name=name]'), person => { ['organization','role','contact','category'].forEach(key => body.querySelector(`[name=${key}]`).value = person[key] || ''); });
   body.querySelector('[data-attendee-cancel]').onclick = () => dialog.close();
   body.querySelector('form').onsubmit = event => {
