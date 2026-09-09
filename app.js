@@ -6380,6 +6380,7 @@ function printMarketVisit(id, sections = { schedule: true, products: true }) {
 }
 
 function renderMarketVisitPrintDocument(visit, sections = { schedule: true, products: true }) {
+  if (visit.type === "manufacturer") return renderVendorVisitCalendarPrint(visit, sections);
   if (isMarketEvent(visit)) return renderMarketEventPrintDocument(visit, sections);
   const calls = getMarketVisitCalendarCalls(visit).sort((a, b) => `${a.date || ""}${a.startTime || ""}`.localeCompare(`${b.date || ""}${b.startTime || ""}`));
   const products = getMarketVisitProducts(visit);
