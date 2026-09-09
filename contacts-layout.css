@@ -19,3 +19,9 @@
 #otherContactsView #peopleContactsPanel { max-height:60vh; gap:12px; }
 #otherContactsView .compact-operator { background:#f4f8fc; border:1px solid #b3cbd9; border-left:5px solid #50869e; border-radius:10px; padding:14px; color:#203f52; box-shadow:0 2px 4px #24445912; }
 #otherContactsView .compact-operator:hover { background:#d3e6f1; border-color:#50869e; }
+
+.person-contact-card { display:flex; align-items:center; gap:8px; background:#f4f8fc; border:1px solid #b3cbd9; border-radius:10px; padding:8px; }
+#otherContactsView .person-contact-card .compact-operator { flex:1; min-width:0; border:0; box-shadow:none; background:transparent; padding:6px; }
+.contact-delete { color:#8b322c; flex-shrink:0; }
+.deleted-contacts { grid-column:1 / -1; padding:12px; color:#39586a; }
+.deleted-contacts > div { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:10px; }

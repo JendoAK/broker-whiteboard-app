@@ -23,11 +23,13 @@ function persistPeopleContacts() {
 }
 function getPeopleDirectory() {
   const result = new Map();
+  const deleted = peopleContacts.filter(person => person.archivedAt);
   const add = value => {
     if (!value) return;
     const person = normalizePeopleContact(value);
     if (!person.name.trim() || person.archivedAt) return;
     const key = kitchenPersonKey(person);
+    if (deleted.some(item => kitchenPersonKey(item) === key || (!person.organization && normalizeOperatorKey(item.name) === normalizeOperatorKey(person.name)))) return;
     if (!result.has(key)) result.set(key, person);
   };
   peopleContacts.forEach(add);
@@ -56,10 +58,22 @@ function renderPeopleContacts() {
   if (!panel) return;
   const query = normalizeOperatorKey(document.querySelector('#peopleContactSearch')?.value || '');
   const people = getPeopleDirectory().filter(person => person.category !== 'Operator / Restaurant').filter(person => normalizeOperatorKey([person.name, person.organization, person.role, person.contact].join(' ')).includes(query));
-  panel.innerHTML = people.map(person => `<button class="compact-operator" type="button" data-edit-person-key="${escapeAttribute(kitchenPersonKey(person))}"><strong>${escapeHtml(person.name)}</strong><span>${escapeHtml([person.organization,person.role,person.contact].filter(Boolean).join(' · '))}</span></button>`).join('') || '<p>No matching people. Add a contact to save their details.</p>';
+  panel.innerHTML = people.map(person => `<div class="person-contact-card"><button class="compact-operator" type="button" data-edit-person-key="${escapeAttribute(kitchenPersonKey(person))}"><strong>${escapeHtml(person.name)}</strong><span>${escapeHtml([person.organization,person.role,person.contact].filter(Boolean).join(' · '))}</span></button><button type="button" class="edit-card contact-delete" data-delete-person-key="${escapeAttribute(kitchenPersonKey(person))}" aria-label="Delete ${escapeAttribute(person.name)}">Delete</button></div>`).join('') || '<p>No matching people. Add a contact to save their details.</p>';
+  const deleted = peopleContacts.filter(person => person.archivedAt);
+  if (deleted.length) panel.insertAdjacentHTML('beforeend', '<details class="deleted-contacts"><summary>Deleted contacts (' + deleted.length + ')</summary>' + deleted.map(person => `<div><span>${escapeHtml(person.name)} · ${escapeHtml(person.organization)}</span><button type="button" class="edit-card" data-restore-person="${escapeAttribute(person.id)}">Restore</button></div>`).join('') + '</details>');
+  panel.querySelectorAll('[data-delete-person-key]').forEach(button => button.onclick = () => deletePeopleContact(button.dataset.deletePersonKey));
+  panel.querySelectorAll('[data-restore-person]').forEach(button => button.onclick = () => { peopleContacts = peopleContacts.map(person => person.id === button.dataset.restorePerson ? {...person, archivedAt:'', updatedAt:new Date().toISOString()} : person); persistPeopleContacts(); });
   panel.querySelectorAll('[data-edit-person-key]').forEach(button => button.onclick = () => openPeopleContactForm(getPeopleDirectory().find(person => kitchenPersonKey(person) === button.dataset.editPersonKey)));
 }
 
+function deletePeopleContact(key) {
+  const person = getPeopleDirectory().find(item => kitchenPersonKey(item) === key);
+  if (!person || !confirm('Delete ' + person.name + ' from the shared contact list and name suggestions? Existing leads and event records will keep their details. You can restore this contact under Deleted contacts.')) return;
+  const existing = peopleContacts.find(item => kitchenPersonKey(item) === key);
+  const deleted = normalizePeopleContact({...person, id:existing?.id || crypto.randomUUID(), archivedAt:new Date().toISOString(), updatedAt:new Date().toISOString()});
+  peopleContacts = existing ? peopleContacts.map(item => item.id === existing.id ? deleted : item) : [...peopleContacts,deleted];
+  persistPeopleContacts();
+}
 function openPeopleContactForm(person = {}) {
   const existing = peopleContacts.find(item => kitchenPersonKey(item) === kitchenPersonKey(person));
   const dialog = createVisitDialog(existing ? 'Edit shared contact' : 'Save shared contact');
