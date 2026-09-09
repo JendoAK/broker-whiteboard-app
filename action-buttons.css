@@ -1,0 +1,13 @@
+/* Shared amber treatment for creation, printing, and other main actions. */
+button.app-highlight-action {
+  background: #efcf62 !important;
+  color: #302511 !important;
+  border: 1px solid #8a682a !important;
+  box-shadow: 2px 3px 0 rgba(74, 53, 20, .22) !important;
+  font-family: inherit;
+  font-weight: 800;
+}
+button.app-highlight-action:hover:not(:disabled) { background: #e8b947 !important; }
+button.app-highlight-action:active:not(:disabled) { box-shadow: 1px 1px 0 rgba(74, 53, 20, .22) !important; }
+button.app-highlight-action:focus-visible { outline: 3px solid #735018; outline-offset: 3px; }
+button.app-highlight-action:disabled { opacity: .5; cursor: not-allowed; box-shadow: none !important; }

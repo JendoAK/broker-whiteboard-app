@@ -1,5 +1,7 @@
-const CACHE_NAME = "foodbrokerbase-contactfields1";
+const CACHE_NAME = "foodbrokerbase-actions1";
 const APP_SHELL = [
+  "./action-buttons.css?v=20260909-actions1",
+  "./action-buttons.js?v=20260909-actions1",
   "./contacts-layout.css?v=20260909-contactfields1",
   "./people-contacts.js?v=20260909-contactfields1",
   "./",
