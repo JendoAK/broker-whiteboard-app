@@ -30,6 +30,7 @@ function bindMarketArchiveActions(container) {
 }
 
 function renderCompactMarketVisit(panel, visit) {
+  if (visit.type === "personal") return renderPersonalMarketVisit(panel, visit);
   const products = getMarketVisitProducts(visit);
   const operators = getMarketVisitOperators(visit).sort((a, b) => getMarketOperatorDisplayName(a).localeCompare(getMarketOperatorDisplayName(b)));
   const calls = getMarketVisitCalendarCalls(visit);
@@ -67,6 +68,21 @@ function renderCompactMarketVisit(panel, visit) {
   panel.querySelector("[data-visit-add-appointment]").onclick = () => openMarketCallEditor(visit.id, "", "appointment");
   panel.querySelector("[data-visit-add-operator]").onclick = () => openVisitOperatorDialog(visit.id);
   panel.querySelectorAll("[data-open-visit-operator]").forEach(button => button.onclick = () => openVisitOperatorDialog(visit.id, button.dataset.openVisitOperator));
+}
+
+function renderPersonalMarketVisit(panel, visit) {
+  const products = getMarketVisitProducts(visit);
+  const operators = getMarketVisitOperators(visit);
+  panel.innerHTML = `<div class="market-detail-header compact-visit-header"><div><p class="eyebrow">Personal market visit · ${escapeHtml(formatDateRange(visit.startDate, visit.endDate))}</p><h2>${escapeHtml(getMarketVisitDisplayName(visit))}</h2><p>Prepare your products, visit operators, and capture feedback.</p></div><div class="table-actions">${renderMarketArchiveButton(visit)}<button class="edit-card" type="button" data-detail-close>Back to Events &amp; Visits</button></div></div>
+  ${visit.archivedAt ? '<p class="market-section-help">Archived visit. Restore it to return it to active visits.</p>' : ''}
+  <div class="compact-visit-actions" role="group" aria-label="Add to visit"><button class="primary-action" type="button" data-visit-add-products>Add products</button><button class="primary-action" type="button" data-visit-add-operator>Add operator</button></div>
+  <div class="compact-visit-lists market-detail-tabs"><section><h3>Products (${products.length})</h3><div class="section-label-row"><span>Your product list for this visit</span><button class="edit-card" type="button" data-market-print-products="${escapeAttribute(visit.id)}">Print products</button></div><div class="compact-visit-list">${products.map(renderMarketProductChip).join('') || '<p class="empty-state">Add the products you plan to show.</p>'}</div></section>
+  <section><h3>Operators (${operators.length})</h3><div class="section-label-row"><span>Click an operator to select products, write feedback, or create a lead.</span></div><div class="compact-visit-list">${operators.map(operator => `<button class="compact-operator" type="button" data-open-visit-operator="${escapeAttribute(operator.id)}"><strong>${escapeHtml(getMarketOperatorDisplayName(operator))}</strong><span>${(operator.productIds || []).filter(id=>products.some(product=>product.id===id)).length} products${operator.notes || Object.values(operator.productNotes || {}).some(note=>note.note) ? ' · Notes added' : ''} · Products, notes &amp; lead</span></button>`).join('') || '<p class="empty-state">Add an operator to record the products shown and their feedback.</p>'}</div></section></div>
+  <details class="compact-visit-extra"><summary>Visit notes${visit.notes ? ' · Notes added' : ''}</summary>${renderMarketNotesSection(visit)}</details>`;
+  bindMarketDetailActions(panel, visit);
+  panel.querySelector('[data-visit-add-products]').onclick = () => openVisitProductsDialog(visit.id);
+  panel.querySelector('[data-visit-add-operator]').onclick = () => openVisitOperatorDialog(visit.id);
+  panel.querySelectorAll('[data-open-visit-operator]').forEach(button => button.onclick = () => openVisitOperatorDialog(visit.id, button.dataset.openVisitOperator));
 }
 
 function createVisitDialog(title) {
@@ -179,6 +195,11 @@ function openVisitOperatorDialog(visitId, operatorId = "") {
       if (!match) { body.querySelector("[data-operator-error]").textContent = "Enter the operator’s name, rather than only a distributor name."; return; }
       if (!isMarketOperatorAlreadyAttached(current, match.operatorId, match.operatorName)) updateMarketVisit(visitId, { operatorLinks: [...current.operatorLinks, normalizeMarketOperatorLink({ operatorId: match.operatorId, operatorName: match.operatorName })] });
       dialog.close();
+      if (current.type === "personal") {
+        const savedVisit = marketVisits.find(item => item.id === visitId);
+        const added = getMarketVisitOperators(savedVisit).find(item => item.operatorId === match.operatorId || normalizeOperatorKey(getMarketOperatorDisplayName(item)) === normalizeOperatorKey(match.operatorName));
+        if (added) openVisitOperatorDialog(visitId, added.id);
+      }
     };
   }
   dialog.showModal();
