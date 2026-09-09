@@ -1,13 +1,13 @@
-const CACHE_NAME = "foodbrokerbase-app-v48";
+const CACHE_NAME = "foodbrokerbase-app-v49";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=20260909-3",
+  "./styles.css?v=20260909-4",
   "./market-events.js?v=20260908-7",
   "./personal-visit-calendar.js?v=20260908-7",
   "./calendar-holidays.js?v=20260908-8",
   "./market-call-editor.js?v=20260908-9",
-  "./app.js?v=20260909-2",
+  "./app.js?v=20260909-4",
   "./supabase-config.js",
   "./supabase-auth.js?v=20260909-2",
   "./manifest.webmanifest",

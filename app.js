@@ -1353,6 +1353,8 @@ function normalizeSample(sample) {
     directFromManufacturer: sample.directFromManufacturer ?? (sample.orderType === "Direct from manufacturer"),
     addedToPo: sample.addedToPo ?? (sample.orderType === "Added to PO" || sample.status === "Added to PO"),
     isDot: sample.isDot ?? false,
+    fedex: Boolean(sample.fedex),
+    usps: Boolean(sample.usps),
     shipmentConfirmation: sample.shipmentConfirmation || "",
     poNumber: sample.poNumber || "",
     dotNumber: sample.dotNumber || "",
@@ -1588,6 +1590,8 @@ function normalizeDotOrder(order) {
     directFromManufacturer: order.directFromManufacturer ?? (order.orderType === "Direct from manufacturer"),
     addedToPo: order.addedToPo ?? (order.orderType === "Added to PO" || order.status === "Added to PO"),
     isDot: order.isDot ?? true,
+    fedex: Boolean(order.fedex),
+    usps: Boolean(order.usps),
     shipmentConfirmation: order.shipmentConfirmation || "",
     orderedBy: order.orderedBy || "",
     expected: order.expected || "",
@@ -7133,7 +7137,7 @@ function renderSampleRow(sample) {
       <td>${sample.orderedBy ? escapeHtml(sample.orderedBy) : ""}</td>
       <td>${sample.expected ? formatDate(sample.expected) : "No date"}</td>
       <td>${sample.requestedFor ? escapeHtml(sample.requestedFor) : ""}</td>
-      <td>${escapeHtml([sample.isDot && "DOT", sample.directFromManufacturer && "Direct from manufacturer", sample.addedToPo && "Added to PO", sample.poNumber && `PO # ${sample.poNumber}`, sample.dotNumber && `DOT # ${sample.dotNumber}`].filter(Boolean).join(" · ") || sample.orderType)}</td>
+      <td>${escapeHtml([sample.fedex && "FedEx", sample.usps && "USPS", sample.isDot && "DOT", sample.directFromManufacturer && "Direct from manufacturer", sample.addedToPo && "Added to PO", sample.poNumber && `PO # ${sample.poNumber}`, sample.dotNumber && `DOT # ${sample.dotNumber}`].filter(Boolean).join(" · ") || sample.orderType)}</td>
       <td>${renderInlineSelect("sample-status-select", sample.id, sample.status, sampleStatuses)}</td>
       <td class="note-cell">${sample.note ? escapeHtml(sample.note) : ""}${sample.attachments?.length ? `<div><span class="badge">${sample.attachments.length} file${sample.attachments.length === 1 ? "" : "s"}</span></div>` : ""}</td>
       <td><div class="audit-action-cell">${renderAuditStamp(sample)}<button class="edit-card" type="button" data-sample-edit="${escapeAttribute(sample.id)}">Edit</button></div></td>
@@ -7211,10 +7215,10 @@ function openSampleForm(sample) {
   elements.sampleOrderedBy.value = existing?.orderedBy || "";
   elements.sampleExpected.value = existing?.expected || "";
   for (const key of ["poNumber", "dotNumber", "vendor", "orderedDate", "storageType", "shipmentConfirmation"]) document.querySelector('#sampleForm [name="'+key+'"]').value = existing?.[key] || "";
-  for (const key of ["isDot", "directFromManufacturer", "addedToPo"]) document.querySelector('#sampleForm [name="'+key+'"]').checked = Boolean(existing?.[key]);
-  elements.sampleRequestedFor.value = existing?.requestedFor || "";
+  for (const key of ["isDot", "directFromManufacturer", "addedToPo", "fedex", "usps"]) document.querySelector('#sampleForm [name="'+key+'"]').checked = Boolean(existing?.[key]);
+
   elements.sampleStatus.value = existing?.status || "Requested";
-  elements.sampleNote.value = existing?.note || "";
+  elements.sampleNote.value = [existing?.note, existing?.requestedFor && !(existing?.note || "").includes(existing.requestedFor) ? "For: " + existing.requestedFor : ""].filter(Boolean).join("\n");
   currentSampleAttachments = existing?.attachments ? existing.attachments.map(normalizeAttachment) : [];
   renderSampleAttachmentList();
   elements.deleteSample.hidden = !existing;
@@ -7230,17 +7234,17 @@ function saveSample() {
   const id = elements.sampleId.value || crypto.randomUUID();
   const existing = getUnifiedSampleOrders().find((sample) => sample.id === id);
   const status = elements.sampleStatus.value;
-  const operatorMatch = syncOperatorToAddressBook(elements.sampleRequestedFor.value);
+
   const sample = normalizeSample({
     ...existing,
     ...Object.fromEntries(["poNumber", "dotNumber", "vendor", "orderedDate", "storageType", "shipmentConfirmation"].map(key => [key, document.querySelector('#sampleForm [name="'+key+'"]').value.trim()])),
-    ...Object.fromEntries(["isDot", "directFromManufacturer", "addedToPo"].map(key => [key, document.querySelector('#sampleForm [name="'+key+'"]').checked])),
+    ...Object.fromEntries(["isDot", "directFromManufacturer", "addedToPo", "fedex", "usps"].map(key => [key, document.querySelector('#sampleForm [name="'+key+'"]').checked])),
     id,
     product: elements.sampleProduct.value.trim(),
     orderedBy: elements.sampleOrderedBy.value.trim(),
     expected: elements.sampleExpected.value,
     orderType: existing?.orderType || "Other",
-    requestedFor: operatorMatch?.operatorName || elements.sampleRequestedFor.value.trim(),
+    requestedFor: "",
     status,
     note: elements.sampleNote.value.trim(),
     attachments: currentSampleAttachments.map(normalizeAttachment),
