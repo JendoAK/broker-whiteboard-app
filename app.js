@@ -29,6 +29,7 @@ const nestleMachineStatuses = ["Requested", "Approved", "Ordered", "Installed", 
 const marketVisitTypes = { personal: "Personal Market Visit", manufacturer: "Vendor Market Visit", testkitchen: "Testkitchen", foodshow: "Foodshow" };
 const marketStatuses = ["Planned", "In Progress", "Completed", "Follow Up Needed", "Canceled"];
 const stockListGroups = {
+  k12: {label:"K-12 School Products",distributors:[],defaultDistributor:"Not stocked"},
   usFoods: {
     label: "US Foods Stock List",
     distributors: ["US Foods Anchorage", "US Foods Southeast"],
@@ -1461,6 +1462,7 @@ function normalizeStockProduct(product) {
     distributorNumber: product.distributorNumber || existingApn || existingSupc || "",
     apn: existingApn,
     supc: existingSupc,
+    k12: Boolean(product.k12),
     manufacturerNumber: product.manufacturerNumber || "",
     gtin: product.gtin || "",
     description: product.description || "",
@@ -4506,6 +4508,7 @@ function setActiveStockListControls() {
   const group = getActiveStockGroup();
   elements.stockListTitle.textContent = group?.label || "Choose a stock list";
   elements.stockListActions.hidden = !group;
+  document.getElementById("chooseK12Products").hidden = activeStockList !== "k12";
   elements.stockListPicker.querySelectorAll("[data-stock-list]").forEach((button) => {
     button.classList.toggle("active-stock-list", button.dataset.stockList === activeStockList);
   });
@@ -4518,7 +4521,7 @@ function renderStockLists() {
   setActiveStockListControls();
   if (!getActiveStockGroup()) {
     elements.stockCount.textContent = "0";
-    elements.stockTable.innerHTML = `<div class="empty-state stock-choice-empty">Choose US Foods, Sysco, or Linford to view that stock list.</div>`;
+    elements.stockTable.innerHTML = `<div class="empty-state stock-choice-empty">Choose US Foods, Sysco, Linford, or K-12 to view that stock list.</div>`;
     return;
   }
   const products = getVisibleStockProducts();
@@ -4583,9 +4586,9 @@ function getVisibleStockProducts() {
   const vendor = elements.stockVendorFilter.value.trim().toLowerCase();
   const category = elements.stockCategoryFilter.value.trim().toLowerCase();
   const group = getActiveStockGroup();
-  return stockProducts
+  return (activeStockList === "k12" ? getK12Products() : stockProducts)
     .filter((product) => {
-      if (group && !group.distributors.includes(product.distributor)) return false;
+      if (group && activeStockList !== "k12" && !group.distributors.includes(product.distributor)) return false;
       if (elements.stockDistributorFilter.value && product.distributor !== elements.stockDistributorFilter.value) return false;
       if (elements.stockStorageFilter.value && product.storage !== elements.stockStorageFilter.value) return false;
       if (elements.stockBrandTypeFilter.value && product.brandType !== elements.stockBrandTypeFilter.value) return false;
@@ -4625,7 +4628,7 @@ function renderStockRow(product) {
     : "";
   return `
     <tr>
-      <td><button class="table-link stock-product-link" type="button" data-stock-edit="${escapeAttribute(product.id)}">${escapeHtml(product.description)}${attachmentIcon}</button></td>
+      <td><button class="table-link stock-product-link" type="button" data-stock-edit="${escapeAttribute(product.id)}">${escapeHtml(product.description)}${attachmentIcon}</button>${renderK12Stocking(product)}</td>
       <td>${escapeHtml(product.brandName)}</td>
       <td>${escapeHtml(product.brandType)}</td>
       <td>${escapeHtml(product.apn)}</td>
@@ -4676,6 +4679,7 @@ function openStockForm(product) {
   currentStockAttachments = existing?.attachments ? existing.attachments.map(normalizeStockAttachment) : [];
   elements.stockFormTitle.textContent = existing ? "Edit Product" : "Add Product";
   elements.stockId.value = existing?.id || "";
+  document.getElementById("stockK12").checked = existing ? getK12Products().some(item => k12ProductKey(item) === k12ProductKey(existing)) : activeStockList === "k12";
   elements.deleteStockProduct.hidden = !existing;
   elements.stockDistributor.value = existing?.distributor || elements.stockDistributorFilter.value || getActiveStockDefaultDistributor();
   elements.stockApn.value = existing?.apn || "";
@@ -4825,6 +4829,7 @@ async function saveStockProduct() {
   currentStockAttachments = attachments;
   const product = normalizeStockProduct({
     id,
+    k12: document.getElementById("stockK12").checked,
     distributor: elements.stockDistributor.value,
     distributorNumber: elements.stockApn.value.trim() || elements.stockSupc.value.trim(),
     apn: elements.stockApn.value.trim(),
@@ -4846,6 +4851,7 @@ async function saveStockProduct() {
   stampSharedRecord(product, existing ? "Updated" : "Created");
   const previousProducts = stockProducts;
   stockProducts = existing ? stockProducts.map((item) => (item.id === id ? product : item)) : [product, ...stockProducts];
+  stockProducts = stockProducts.map(item => k12ProductKey(item) === k12ProductKey(product) && item.k12 !== product.k12 ? {...item, k12: product.k12, updatedAt: product.updatedAt} : item);
   if (!persistStockProducts()) {
     stockProducts = previousProducts;
     return;
@@ -4941,6 +4947,7 @@ function importStockFile(event) {
       elements.stockImportFile.value = "";
       return;
     }
+    if (activeStockList === "k12") imported.forEach(product => product.k12 = true);
     const result = mergeImportedStockProducts(imported);
     persistStockProducts();
     updateStockCategorySuggestions();
@@ -4988,7 +4995,7 @@ function stockProductsMatch(existing, incoming) {
 }
 
 function mergeStockProduct(current, incoming) {
-  const merged = { ...current };
+  const merged = { ...current, k12: Boolean(current.k12 || incoming.k12) };
   const fields = ["distributorNumber", "apn", "supc", "manufacturerNumber", "gtin", "description", "packaging", "storage", "vendor", "brandType", "brandName", "category", "so"];
   fields.forEach((field) => {
     if (!String(merged[field] || "").trim() && String(incoming[field] || "").trim()) {
@@ -5147,7 +5154,7 @@ function updateStockFilterOptions() {
   const selectedVendor = elements.stockVendorFilter.value;
   const selectedCategory = elements.stockCategoryFilter.value;
   const group = getActiveStockGroup();
-  const groupedProducts = stockProducts.filter((product) => !group || group.distributors.includes(product.distributor));
+  const groupedProducts = activeStockList === "k12" ? getK12Products() : stockProducts.filter((product) => !group || group.distributors.includes(product.distributor));
   const vendors = [...new Set(groupedProducts.map((product) => product.vendor.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const categories = [...new Set(stockDefaultCategories.concat(groupedProducts.map((product) => product.category.trim()).filter(Boolean)))].sort((a, b) => a.localeCompare(b));
   elements.stockVendorFilter.innerHTML = `<option value="">All</option>${vendors.map((vendor) => `<option value="${escapeAttribute(vendor)}">${escapeHtml(vendor)}</option>`).join("")}`;

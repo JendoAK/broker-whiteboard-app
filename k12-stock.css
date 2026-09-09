@@ -1,0 +1,8 @@
+.stock-list-k12 { flex-direction:column; gap:3px; background:#e1e8c6 !important; color:#37541c !important; }
+.stock-list-k12 strong { font-size:24px; }
+.stock-list-k12 small { font-size:12px; }
+.k12-membership { display:flex; align-items:center; gap:8px; padding:12px; background:#e5edd9; border-radius:8px; font-weight:700; }
+.k12-membership input { width:auto; }
+.k12-help { font-size:13px; color:#486036; }
+.k12-stocking { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+.k12-stocking span { border-radius:5px; padding:3px 6px; background:#e5eddb; color:#354e2b; font-size:11px; white-space:nowrap; }
