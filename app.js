@@ -1404,6 +1404,7 @@ function normalizeTodo(todo) {
       : [],
     status: todoColumns.includes(todo.status) ? todo.status : "New",
     createdAt: todo.createdAt || new Date().toISOString(),
+    updatedAt: todo.updatedAt || "",
     completedAt: todo.completedAt || "",
     archivedAt: todo.archivedAt || ""
   };
@@ -1497,6 +1498,7 @@ function normalizeManualVendorReport(report) {
     opportunityNote: report.opportunityNote || "",
     outcome: report.outcome || "Unsure",
     submitted: Boolean(report.submitted),
+    updatedAt: report.updatedAt || "",
     submittedDate: report.submittedDate || "",
     promotedCardId: report.promotedCardId || "",
     createdAt: report.createdAt || new Date().toISOString()
@@ -1645,8 +1647,16 @@ function normalizeStatus(status) {
   return statusMap[status] || "New Lead";
 }
 
+function recordWorkUpdateTimes(records, key) {
+  let prior; try { prior = JSON.parse(localStorage.getItem(key) || '[]'); } catch { return; }
+  if (!Array.isArray(prior)) return;
+  const old = new Map(prior.map(item => [item.id,item]));
+  const comparable = item => JSON.stringify(item, (name,value) => name === 'updatedAt' ? undefined : value);
+  records.forEach(item => { const previous = old.get(item.id); if (previous && comparable(previous) !== comparable(item)) item.updatedAt = new Date().toISOString(); else if (previous?.updatedAt && !item.updatedAt) item.updatedAt = previous.updatedAt; });
+}
 function persist() {
   try {
+    recordWorkUpdateTimes(cards, storageKey);
     localStorage.setItem(storageKey, JSON.stringify(cards));
     scheduleCloudSave(storageKey);
     return true;
@@ -1659,6 +1669,7 @@ function persist() {
 
 function persistTodos() {
   try {
+    recordWorkUpdateTimes(todos, todoStorageKey);
     localStorage.setItem(todoStorageKey, JSON.stringify(todos));
     scheduleCloudSave(todoStorageKey);
     return true;
@@ -1670,6 +1681,7 @@ function persistTodos() {
 }
 
 function persistManualVendorReports() {
+  recordWorkUpdateTimes(manualVendorReports, manualVendorStorageKey);
   localStorage.setItem(manualVendorStorageKey, JSON.stringify(manualVendorReports));
   scheduleCloudSave(manualVendorStorageKey);
 }

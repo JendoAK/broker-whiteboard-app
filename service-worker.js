@@ -1,5 +1,6 @@
-const CACHE_NAME = "foodbrokerbase-actions1";
+const CACHE_NAME = "foodbrokerbase-activity1";
 const APP_SHELL = [
+  "./team-work-view.css?v=20260909-activity1",
   "./action-buttons.css?v=20260909-actions1",
   "./action-buttons.js?v=20260909-actions1",
   "./contacts-layout.css?v=20260909-contactfields1",
@@ -11,7 +12,7 @@ const APP_SHELL = [
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
   "./market-call-editor.js?v=20260909-visitcolors1",
-  "./team-work-view.js?v=20260909-roles1", "./app.js?v=20260909-contactfields1",
+  "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260909-activity1",
   "./market-week-calendar.js?v=20260909-visitcolors1",
   "./market-operator-conversion.js?v=20260909-visitcolors1",
   "./testkitchen-layout.js?v=20260909-contactfields1",
