@@ -25,3 +25,16 @@
 .contact-delete { color:#8b322c; flex-shrink:0; }
 .deleted-contacts { grid-column:1 / -1; padding:12px; color:#39586a; }
 .deleted-contacts > div { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:10px; }
+
+.contact-search-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:14px; }
+#otherContactsView #peopleContactSearch { flex:1 1 260px; width:auto; max-width:420px; }
+.contact-filter-buttons { display:flex; flex-wrap:wrap; gap:8px; }
+.contact-filter-buttons button { --filter-color:#375d72; padding:10px 16px; border:2px solid var(--filter-color); border-radius:999px; background:#f6f9fc; color:var(--filter-color); font-size:14px; font-weight:800; box-shadow:0 2px 3px #28485818; }
+.contact-filter-buttons [data-contact-filter="usfoods"] { --filter-color:#486c1a; }
+.contact-filter-buttons [data-contact-filter="sysco"] { --filter-color:#006c9c; }
+.contact-filter-buttons [data-contact-filter="regional"] { --filter-color:#76528a; }
+.contact-filter-buttons [data-contact-filter="pc"] { --filter-color:#97552f; }
+.contact-filter-buttons button[aria-pressed="true"] { background:var(--filter-color); color:#fff; box-shadow:0 3px 6px #28485830; }
+.contact-filter-buttons button:hover { transform:translateY(-1px); }
+.contact-filter-buttons button:focus-visible { outline:3px solid #1c4057; outline-offset:3px; }
+.contact-match-count { font-size:13px; font-weight:700; margin:12px 0 4px; }

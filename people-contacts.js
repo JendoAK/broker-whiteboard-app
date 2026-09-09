@@ -53,11 +53,24 @@ function getPeopleDirectory() {
   return [...result.values()].filter(p => p.organization || !known.has(p.name.toLowerCase())).sort((a,b) => a.name.localeCompare(b.name));
 }
 
+let activeContactFilter = 'all';
+function contactMatchesFilter(person, filter = activeContactFilter) {
+  const organization = normalizeOperatorKey(person.organization).replace(/[^a-z0-9]/g, '');
+  const role = normalizeOperatorKey(person.role);
+  if (filter === 'usfoods') return organization.startsWith('usfoods') || organization === 'usf';
+  if (filter === 'sysco') return organization.startsWith('sysco');
+  if (filter === 'regional') return /regional.*manager/.test(role);
+  if (filter === 'pc') return organization === 'pc' || organization.includes('piercecartwright') || person.category === 'Our team';
+  return true;
+}
 function renderPeopleContacts() {
   const panel = document.querySelector('#peopleContactsPanel');
   if (!panel) return;
   const query = normalizeOperatorKey(document.querySelector('#peopleContactSearch')?.value || '');
-  const people = getPeopleDirectory().filter(person => person.category !== 'Operator / Restaurant').filter(person => normalizeOperatorKey([person.name, person.organization, person.role, person.contact].join(' ')).includes(query));
+  const people = getPeopleDirectory().filter(person => person.category !== 'Operator / Restaurant').filter(person => contactMatchesFilter(person)).filter(person => normalizeOperatorKey([person.name, person.organization, person.role, person.contact].join(' ')).includes(query));
+  document.querySelectorAll('[data-contact-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.contactFilter === activeContactFilter)));
+  const count = document.getElementById('contactMatchCount');
+  if (count) count.textContent = people.length + (people.length === 1 ? ' contact' : ' contacts');
   panel.innerHTML = people.map(person => `<div class="person-contact-card"><button class="compact-operator" type="button" data-edit-person-key="${escapeAttribute(kitchenPersonKey(person))}"><strong>${escapeHtml(person.name)}</strong><span>${escapeHtml([person.organization,person.role,person.contact].filter(Boolean).join(' · '))}</span></button><button type="button" class="edit-card contact-delete" data-delete-person-key="${escapeAttribute(kitchenPersonKey(person))}" aria-label="Delete ${escapeAttribute(person.name)}">Delete</button></div>`).join('') || '<p>No matching people. Add a contact to save their details.</p>';
   const deleted = peopleContacts.filter(person => person.archivedAt);
   if (deleted.length) panel.insertAdjacentHTML('beforeend', '<details class="deleted-contacts"><summary>Deleted contacts (' + deleted.length + ')</summary>' + deleted.map(person => `<div><span>${escapeHtml(person.name)} · ${escapeHtml(person.organization)}</span><button type="button" class="edit-card" data-restore-person="${escapeAttribute(person.id)}">Restore</button></div>`).join('') + '</details>');
@@ -166,6 +179,7 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('showOperatorsView').onclick = () => setContactsView('operators');
   document.getElementById('showOtherContactsView').onclick = () => setContactsView('contacts');
   document.querySelector('#addPeopleContact')?.addEventListener('click',()=>{ setContactsView('contacts'); openPeopleContactForm(); });
+  document.querySelectorAll('[data-contact-filter]').forEach(button => button.onclick = () => { activeContactFilter = button.dataset.contactFilter; renderPeopleContacts(); });
   document.querySelector('#peopleContactSearch')?.addEventListener('input',renderPeopleContacts);
   ['salesRepInput','syscoSalesRepInput'].forEach(id=>attachPeopleSuggestions(document.getElementById(id)));
   attachPeopleSuggestions(elements.marketSalesReps);
