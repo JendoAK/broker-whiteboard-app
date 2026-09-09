@@ -5670,3 +5670,12 @@ button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-
 .precise-day-heading span { font-size: .85rem; }
 .visit-product-choice strong { font-size: 1rem; text-transform: none; }
 .visit-product-choice small { font-size: .9rem; line-height: 1.4; }
+
+.kitchen-lists { align-items: start; }
+.kitchen-lists .compact-visit-list { max-height: 340px; }
+.kitchen-person { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #eadac6; padding: 6px 0; }
+.kitchen-person-name { flex: 1; min-width: 0; display: grid; gap: 4px; padding: 8px; text-align: left; border: 0; background: transparent; color: #30251f; cursor: pointer; }
+.kitchen-person-name strong { font-size: 1rem; }
+.kitchen-person-name span { font-size: .9rem; font-weight: 500; }
+.kitchen-organizations { margin-top: 14px; }
+.kitchen-operator-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; }

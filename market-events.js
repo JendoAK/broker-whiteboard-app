@@ -96,6 +96,7 @@ function renderEventProductEditor(id) {
 }
 
 function renderMarketEventDetail(panel, visit) {
+  if (visit.type === "testkitchen") { renderCompactTestkitchen(panel, visit); return; }
   const operators = getMarketVisitOperators(visit);
   panel.innerHTML = `<div class="market-detail-header"><div><p class="eyebrow">${escapeHtml(marketVisitTypes[visit.type])} · Shared with team</p><h2>${escapeHtml(visit.name)}</h2><p>${escapeHtml([formatDateRange(visit.startDate, visit.endDate), [visit.startTime, visit.endTime].filter(Boolean).join(" – "), visit.location].filter(Boolean).join(" | "))}</p>${renderAuditStamp(visit)}</div>
     <div class="market-section-actions">${renderPersonalVisitCalendarButton(visit)}<button class="edit-card" data-event-edit type="button">Edit event</button><button class="edit-card" data-detail-print type="button">Print event</button><button class="edit-card" data-detail-close type="button">Back to events</button></div></div>
@@ -129,7 +130,7 @@ function removeEventProduct(visit, id) {
 }
 
 function bindMarketEventActions(panel, visit) {
-  panel.querySelector("[data-event-edit]").addEventListener("click", () => openMarketVisitForm(visit));
+  panel.querySelector("[data-event-edit]")?.addEventListener("click", () => openMarketVisitForm(visit));
   const attendeeForm = panel.querySelector("[data-event-attendee-form]");
   attendeeForm?.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -147,20 +148,20 @@ function bindMarketEventActions(panel, visit) {
     attendeeForm.elements.namedItem("name").focus();
   }));
   panel.querySelectorAll("[data-remove-event-attendee]").forEach((button) => button.addEventListener("click", () => updateMarketVisit(visit.id, { attendees: visit.attendees.filter((person) => person.id !== button.dataset.removeEventAttendee) })));
-  panel.querySelector("[data-event-organization-form]").addEventListener("submit", (event) => {
+  panel.querySelector("[data-event-organization-form]")?.addEventListener("submit", (event) => {
     event.preventDefault();
     const name = new FormData(event.currentTarget).get("organization").trim();
     if (!name || isMarketOperatorAlreadyAttached(visit, "", name)) return;
     const address = getMarketOperatorOptions().find((entry) => normalizeOperatorKey(entry.operation) === normalizeOperatorKey(name));
     updateMarketVisit(visit.id, { operatorLinks: [...visit.operatorLinks, normalizeMarketOperatorLink({ operatorId: address?.id || "", operatorName: name, productIds: getMarketVisitProducts(visit).map((product) => product.id) })] });
   });
-  panel.querySelector("[data-event-library-form]").addEventListener("submit", (event) => {
+  panel.querySelector("[data-event-library-form]")?.addEventListener("submit", (event) => {
     event.preventDefault();
     const id = new FormData(event.currentTarget).get("productId");
     if (!eventProducts.some((product) => product.id === id) || visit.newProductIds.includes(id)) return;
     updateMarketVisit(visit.id, { newProductIds: [...visit.newProductIds, id] });
   });
-  panel.querySelector("[data-event-new-product-form]").addEventListener("submit", (event) => {
+  panel.querySelector("[data-event-new-product-form]")?.addEventListener("submit", (event) => {
     event.preventDefault();
     const values = Object.fromEntries(new FormData(event.currentTarget));
     if (!values.description.trim() || !values.vendor.trim()) return;
