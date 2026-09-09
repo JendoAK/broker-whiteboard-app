@@ -5296,13 +5296,10 @@ function renderManufacturerVisitDetail(panel, visit, products, operators) {
           <span class="badge">${escapeHtml(formatDateRange(visit.startDate, visit.endDate) || "No date")}</span>
         </div>
         <h2>${escapeHtml(getMarketVisitDisplayName(visit))}</h2>
-        ${visit.notes ? `<p>${escapeHtml(visit.notes)}</p>` : `<p>Build the appointment schedule, products, operators, and follow-ups for this manufacturer visit.</p>`}
-        <div class="manufacturer-stats">
-          <div><span>Time in market</span><strong>${getMarketVisitDateKeys(visit).length || 0}</strong><small>${getMarketVisitDateKeys(visit).length === 1 ? "day" : "days"}</small></div>
-          <div><span>Active schedule</span><strong>${calls.length}</strong><small>${calls.length === 1 ? "appointment" : "appointments"}</small></div>
-          <div><span>Products</span><strong>${products.length}</strong><small>selected</small></div>
-          <div><span>Operators</span><strong>${operators.length}</strong><small>planned</small></div>
+        <div class="market-detail-tabs manufacturer-products">
+          <section><h3>Products</h3>${renderMarketProductsSection(visit, products)}</section>
         </div>
+        ${visit.notes ? `<p>${escapeHtml(visit.notes)}</p>` : ""}
       </div>
       <div class="manufacturer-actions">
         ${renderPersonalVisitCalendarButton(visit)}
@@ -5314,7 +5311,6 @@ function renderManufacturerVisitDetail(panel, visit, products, operators) {
     </div>
     <div class="manufacturer-detail-grid">
       <section class="market-detail-tabs">
-        <section><h3>Products</h3>${renderMarketProductsSection(visit, products)}</section>
         <section><h3>Schedule Calls</h3>${renderMarketCallsSection(visit, false)}</section>
         <section>
           <h3>Operator Products & Notes</h3>
