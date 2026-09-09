@@ -5697,3 +5697,15 @@ button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-
 .visit-operators-panel .compact-operator:focus-visible { outline: 3px solid #245e54; outline-offset: 2px; }
 .visit-operators-panel .compact-operator strong { font-size: 1.05rem; }
 .compact-visit-lists .section-label-row { min-height: 42px; }
+
+/* Testkitchen uses the same product palette, with separate people and feedback groups. */
+.compact-visit-lists .visit-attendees-panel { background: #e5f0ee; border-color: #8bb5ae; box-shadow: none; }
+.compact-visit-lists .visit-attendees-panel > h3 { background: #a4cbc3; color: #173d36; border-color: #7eaaa1; }
+.visit-attendees-panel .kitchen-person { background: #f5fbf9; border: 1px solid #b2cec7; border-left: 5px solid #397c70; border-radius: 5px; padding: 10px; }
+.visit-attendees-panel .kitchen-person-name { color: #163c34; }
+.visit-attendees-panel .kitchen-person:hover { background: #d3e8e2; }
+.kitchen-organizations .visit-organizations-panel { background: #e8eff6; border-color: #9bb3c9; box-shadow: none; }
+.kitchen-organizations .visit-organizations-panel > h3 { background: #b7ccde; color: #203f59; border-color: #8daac3; }
+.visit-organizations-panel .compact-operator { background: #f7fafc; border: 1px solid #bdcedd; border-left: 5px solid #527d9e; color: #203f59; font-family: inherit; }
+.visit-organizations-panel .compact-operator:hover { background: #d9e7f1; }
+.visit-organizations-panel .compact-operator:focus-visible, .visit-attendees-panel .kitchen-person-name:focus-visible { outline: 3px solid #245e54; outline-offset: 2px; }
