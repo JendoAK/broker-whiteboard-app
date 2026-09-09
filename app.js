@@ -5169,7 +5169,7 @@ function renderMarketVisits() {
   });
   elements.marketContent.querySelectorAll("[data-market-card]").forEach((card) => {
     card.addEventListener("click", (event) => {
-      if (event.target.closest("button, a, input, select, textarea")) return;
+      if (event.target.closest("button, a, input, select, textarea, summary")) return;
       openMarketVisitDetail(card.dataset.marketCard);
     });
     card.addEventListener("keydown", (event) => {
@@ -5230,6 +5230,8 @@ function renderMarketVisitCard(visit) {
         ${visit.type !== "personal" ? renderAuditStamp(visit) : ""}
         ${visit.archivedAt ? `<span class="badge">Archived</span>` : ""}
       </div>
+      <details class="market-card-options">
+        <summary>Options <span>${escapeHtml(visit.status)}</span></summary>
       <div class="market-card-status-row">
         <label>
           <span>Status</span>
@@ -5246,6 +5248,7 @@ function renderMarketVisitCard(visit) {
         <button class="edit-card market-card-action" type="button" data-market-print="${escapeAttribute(visit.id)}">${isMarketEvent(visit) ? "Print event" : "Print Schedule"}</button>
         <button class="edit-card market-card-action" type="button" data-market-ics="${escapeAttribute(visit.id)}">Download .ics</button>
       </div>
+      </details>
     </article>
   `;
 }

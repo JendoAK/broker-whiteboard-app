@@ -5627,3 +5627,16 @@ button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-
   .market-controls { grid-template-columns: minmax(0, 1fr) auto; }
   .market-controls > label.market-archive-filter { grid-column: 1 / -1; }
 }
+
+/* Compact visit cards reveal controls on demand. */
+.market-card-grid { align-items: start; }
+.market-card { min-height: 0; }
+.market-card h3 { font-size: 1.15rem; line-height: 1.2; text-transform: none; }
+.market-card-main { padding: 10px 12px; }
+.market-card-date { margin: 0; font-size: .95rem; }
+.market-card-options > summary { cursor: pointer; padding: 9px 12px; font-size: .95rem; font-weight: 800; color: #44221e; }
+.market-card-options > summary span { float: right; font-weight: 600; font-size: .85rem; }
+.market-card-options > .table-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 12px 12px; }
+.market-card-options > .table-actions button { flex: 1 1 auto; font-size: .95rem; line-height: 1.35; min-height: 40px; padding: 8px 12px; white-space: normal; }
+.compact-visit-header { background: linear-gradient(110deg, #f6dfd9, #fff9f4); border-left: 6px solid #b45f53; border-radius: 9px; padding: 12px 16px; }
+.compact-visit-header h2 { color: #79382f; font-weight: 900; }
