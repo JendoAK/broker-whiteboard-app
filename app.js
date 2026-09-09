@@ -1421,7 +1421,7 @@ function normalizeAddressBookEntry(entry) {
     usfSalesRep: entry.usfSalesRep || "",
     syscoSalesRep: entry.syscoSalesRep || "",
     primaryContact: {
-      name: entry.primaryContact?.name || entry.primaryContact || "",
+      name: typeof entry.primaryContact?.name === "string" ? entry.primaryContact.name : (typeof entry.primaryContact === "string" ? entry.primaryContact : ""),
       role: entry.primaryContact?.role || "",
       email: entry.primaryContact?.email || entry.email || "",
       phone: entry.primaryContact?.phone || entry.phone || ""

@@ -5683,3 +5683,17 @@ button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-
 .people-directory { margin: 16px 0; padding: 16px; border: 1px solid #c6b9ac; border-radius: 10px; background: #fffaf4; }
 #peopleContactsPanel { display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 8px; max-height: 360px; overflow:auto; margin-top: 12px; }
 #peopleContactSearch { width: min(100%,540px); }
+
+/* Distinguish visit product preparation from operator follow-ups. */
+.compact-visit-lists .visit-products-panel { background: #f6eddf; border-color: #c9ad84; box-shadow: none; }
+.compact-visit-lists .visit-products-panel > h3 { background: #dec295; color: #382914; border-color: #c0a071; }
+.compact-visit-lists .visit-operators-panel { background: #e5f0ee; border-color: #8bb5ae; box-shadow: none; }
+.compact-visit-lists .visit-operators-panel > h3 { background: #a4cbc3; color: #173d36; border-color: #7eaaa1; }
+.visit-products-panel .market-product-chip { background: #fffdf8; border: 0; border-bottom: 1px solid #ddcdb5; border-radius: 4px; padding: 11px 12px; }
+.visit-products-panel .market-product-chip:nth-child(even) { background: #f3e5cf; }
+.visit-products-panel .market-product-chip span { color: #62523b; font-weight: 600; margin-top: 4px; }
+.visit-operators-panel .compact-operator { background: #f5fbf9; border: 1px solid #b2cec7; border-left: 5px solid #397c70; color: #163c34; font-family: inherit; }
+.visit-operators-panel .compact-operator:hover { background: #d3e8e2; border-color: #397c70; }
+.visit-operators-panel .compact-operator:focus-visible { outline: 3px solid #245e54; outline-offset: 2px; }
+.visit-operators-panel .compact-operator strong { font-size: 1.05rem; }
+.compact-visit-lists .section-label-row { min-height: 42px; }

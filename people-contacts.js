@@ -1,6 +1,7 @@
 "use strict";
 
 function normalizePeopleContact(person) {
+  person = { ...person, name: typeof person.name === 'string' && person.name !== '[object Object]' ? person.name : '' };
   return { ...normalizeEventAttendee(person), name: correctPeteName(person.name || ''),
     previousNames: Array.isArray(person.previousNames) ? person.previousNames : [],
     updatedAt: person.updatedAt || '', archivedAt: person.archivedAt || '' };
@@ -54,7 +55,7 @@ function renderPeopleContacts() {
   const panel = document.querySelector('#peopleContactsPanel');
   if (!panel) return;
   const query = normalizeOperatorKey(document.querySelector('#peopleContactSearch')?.value || '');
-  const people = getPeopleDirectory().filter(person => normalizeOperatorKey([person.name, person.organization, person.role, person.contact].join(' ')).includes(query));
+  const people = getPeopleDirectory().filter(person => person.category !== 'Operator / Restaurant').filter(person => normalizeOperatorKey([person.name, person.organization, person.role, person.contact].join(' ')).includes(query));
   panel.innerHTML = people.map(person => `<button class="compact-operator" type="button" data-edit-person-key="${escapeAttribute(kitchenPersonKey(person))}"><strong>${escapeHtml(person.name)}</strong><span>${escapeHtml([person.organization,person.role,person.contact].filter(Boolean).join(' · '))}</span></button>`).join('') || '<p>No matching people. Add a contact to save their details.</p>';
   panel.querySelectorAll('[data-edit-person-key]').forEach(button => button.onclick = () => openPeopleContactForm(getPeopleDirectory().find(person => kitchenPersonKey(person) === button.dataset.editPersonKey)));
 }
