@@ -67,6 +67,19 @@
   }
 
   function syncSettingsAccess() {
+    document.querySelectorAll(".settings-panel").forEach(panel => {
+      let button = panel.querySelector("[data-my-initials]");
+      if (!button) {
+        button = document.createElement("button");
+        button.type = "button";
+        button.className = "ghost-action";
+        button.dataset.myInitials = "true";
+        button.textContent = "My initials";
+        button.addEventListener("click", openAuthDialog);
+        panel.prepend(button);
+      }
+      button.hidden = !currentUser;
+    });
     const adminOnlyLabels = new Set([
       "Manage Team",
       "Export Backup",
@@ -191,11 +204,13 @@
   }
 
   async function applyUser(user) {
+    const wasSignedIn = Boolean(currentUser);
     currentUser = user || null;
     await loadCurrentProfile(currentUser);
     updateLoginButtons();
     notifyAuthChange();
     refreshDialogState();
+    if (!wasSignedIn && isApproved() && !passwordRecoveryActive) document.querySelector("#supabaseAuthDialog")?.close();
   }
 
   function closeDialogOnBackdropClick(dialog) {
@@ -239,6 +254,11 @@
         </div>
         <p class="auth-help">Use your @piercecartwright.com email. New accounts stay pending until an administrator approves them.</p>
         <div class="auth-current-user" id="authCurrentUser"></div>
+        <section id="authInitialsSection" hidden>
+          <label><span>My initials</span><input id="authInitials" maxlength="4" placeholder="JD" autocomplete="off" /></label>
+          <p>Used on new updates you make to shared records.</p>
+          <button class="primary-action" id="authSaveInitials" type="button">Save initials</button>
+        </section>
         <div class="auth-fields">
           <label>
             <span>Email</span>
@@ -293,6 +313,20 @@
     dialog.querySelector("#authForgotPassword").addEventListener("click", sendPasswordReset);
     dialog.querySelector("#authResetEmail").addEventListener("click", sendPasswordReset);
     dialog.querySelector("#authChangePassword").addEventListener("click", changePassword);
+    dialog.querySelector("#authSaveInitials").addEventListener("click", async () => {
+      const initials = dialog.querySelector("#authInitials").value.trim().toUpperCase();
+      if (!/^[A-Z]{1,4}$/.test(initials)) { setStatus("Enter 1–4 letters for your initials.", "error"); return; }
+      const button = dialog.querySelector("#authSaveInitials");
+      button.disabled = true;
+      try {
+        const { data, error } = await client.auth.updateUser({ data: { initials } });
+        if (error) throw error;
+        currentUser = data.user;
+        dialog.querySelector("#authInitials").value = initials;
+        setStatus("Your initials have been saved.", "success");
+      } catch (error) { setStatus(error.message || "Could not save initials. Please try again.", "error"); }
+      finally { button.disabled = false; }
+    });
     dialog.querySelector("#authPassword").addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
@@ -304,6 +338,18 @@
   }
 
   function refreshDialogState() {
+    const dialog = document.querySelector("#supabaseAuthDialog");
+    if (dialog) {
+      dialog.querySelector("h2").textContent = currentUser ? "My Account" : "FoodBrokerBase Login";
+      dialog.querySelector(".auth-help").hidden = Boolean(currentUser);
+      dialog.querySelector(".auth-fields").hidden = Boolean(currentUser);
+      dialog.querySelector("#authSignIn").hidden = Boolean(currentUser);
+      dialog.querySelector("#authSignUp").hidden = Boolean(currentUser);
+      dialog.querySelector("#authResetEmail").hidden = Boolean(currentUser);
+      dialog.querySelector("#authInitialsSection").hidden = !currentUser || passwordRecoveryActive;
+      dialog.querySelector("#authInitials").value = currentUser?.user_metadata?.initials || "";
+      if (currentUser) dialog.querySelector("#authPassword").value = "";
+    }
     const current = document.querySelector("#authCurrentUser");
     const signOutButton = document.querySelector("#authSignOut");
     const security = document.querySelector("#authSecurity");
@@ -696,6 +742,7 @@
     await applyUser(data.user || null);
     setBusy(false);
     setStatus(isApproved() ? "Signed in. Cloud sync is ready." : "Signed in. Waiting for administrator approval.", isApproved() ? "success" : "pending");
+    if (isApproved() && !passwordRecoveryActive) document.querySelector("#supabaseAuthDialog")?.close();
   }
 
   async function signUp() {
@@ -766,6 +813,7 @@
 
     client.auth.onAuthStateChange((event, session) => {
       window.setTimeout(async () => {
+        if (event === "PASSWORD_RECOVERY") passwordRecoveryActive = true;
         await applyUser(session?.user || null);
         if (event === "PASSWORD_RECOVERY") {
           passwordRecoveryActive = true;

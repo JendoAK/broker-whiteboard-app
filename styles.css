@@ -5522,5 +5522,6 @@ html {
 }
 
 #sampleForm fieldset label { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+#supabaseAuthDialog [hidden] { display: none !important; }
 #sampleForm fieldset input[type=checkbox] { width: 18px; height: 18px; margin: 0; flex: 0 0 auto; }
 .sample-product-link { white-space: pre-line; }

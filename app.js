@@ -1727,7 +1727,8 @@ function getCurrentEditorIdentity() {
     : parts[0]?.slice(0, 2) || email.slice(0, 2)
   ).toUpperCase();
 
-  return { initials, name: name || email, email };
+  const savedInitials = String(user?.user_metadata?.initials || "").trim().toUpperCase();
+  return { initials: /^[A-Z]{1,4}$/.test(savedInitials) ? savedInitials : initials, name: name || email, email };
 }
 
 function stampSharedRecord(record, action = "Updated") {

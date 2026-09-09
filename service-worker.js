@@ -1,15 +1,15 @@
-const CACHE_NAME = "foodbrokerbase-app-v46";
+const CACHE_NAME = "foodbrokerbase-app-v47";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=20260909-1",
+  "./styles.css?v=20260909-2",
   "./market-events.js?v=20260908-7",
   "./personal-visit-calendar.js?v=20260908-7",
   "./calendar-holidays.js?v=20260908-8",
   "./market-call-editor.js?v=20260908-9",
-  "./app.js?v=20260909-1",
+  "./app.js?v=20260909-2",
   "./supabase-config.js",
-  "./supabase-auth.js?v=20260829-6",
+  "./supabase-auth.js?v=20260909-2",
   "./manifest.webmanifest",
   "./broker-whiteboard-logo.png",
   "./pwa-icon-192.png",
