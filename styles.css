@@ -5560,3 +5560,8 @@ button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-
   outline: 3px solid #e7b82f;
   outline-offset: 3px;
 }
+
+#teamWorkDialog { padding: 24px; width: min(1000px, 94vw); }
+#teamWorkDialog details { padding: 12px; margin: 8px 0; border: 1px solid #bbb; border-radius: 8px; }
+#teamWorkDialog summary { cursor: pointer; font-weight: 700; }
+.team-work-field { padding: 5px 0 5px 12px; white-space: pre-wrap; }

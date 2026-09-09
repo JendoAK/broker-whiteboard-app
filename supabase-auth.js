@@ -13,7 +13,7 @@
       : null;
 
   const COMPANY_EMAIL_DOMAIN = "piercecartwright.com";
-  const approvedRoles = new Set(["member", "admin"]);
+  const approvedRoles = new Set(["member", "admin", "super_user"]);
   let currentUser = null;
   let currentProfile = null;
 
@@ -22,6 +22,7 @@
     getCurrentUser: () => currentUser,
     getCurrentProfile: () => currentProfile,
     isAdmin: () => isAdmin(),
+    isSuperUser: () => isSuperUser(),
     getCurrentSession: () => (client ? client.auth.getSession() : Promise.resolve({ data: { session: null } })),
     signOut: () => signOut(),
     openDialog: () => openAuthDialog(),
@@ -63,8 +64,10 @@
   }
 
   function isAdmin() {
-    return Boolean(currentUser && currentProfile?.role === "admin");
+    return Boolean(currentUser && ["admin", "super_user"].includes(currentProfile?.role));
   }
+
+  function isSuperUser() { return Boolean(currentUser && currentProfile?.role === "super_user"); }
 
   function syncSettingsAccess() {
     document.querySelectorAll(".settings-panel").forEach(panel => {
@@ -91,7 +94,7 @@
     document.querySelectorAll(".settings-panel button").forEach((button) => {
       const adminOnly = button.hasAttribute("data-admin-only-setting")
         || adminOnlyLabels.has(button.textContent.trim());
-      if (adminOnly) button.hidden = !isAdmin();
+      if (adminOnly) button.hidden = button.textContent.trim() === "Manage Team" ? !isAdmin() : !isSuperUser();
     });
   }
 
@@ -358,7 +361,7 @@
       if (!currentUser) {
         current.textContent = "Not signed in yet.";
       } else {
-        const roleLabel = currentProfile?.role === "admin" ? "Administrator" : currentProfile?.role === "member" ? "Team member" : "Pending approval";
+        const roleLabel = currentProfile?.role === "super_user" ? "Super User" : currentProfile?.role === "admin" ? "Administrator" : currentProfile?.role === "member" ? "Team member" : "Pending approval";
         current.innerHTML = `<strong>Signed in:</strong> ${escapeHtml(currentUser.email)}<br><span>${escapeHtml(roleLabel)}</span>`;
       }
     }
@@ -391,7 +394,7 @@
 
   function syncTeamManagementButtons() {
     document.querySelectorAll(".manage-team-action").forEach((button) => button.remove());
-    if (currentProfile?.role !== "admin") return;
+    if (!isAdmin()) return;
 
     document.querySelectorAll(".settings-panel").forEach((panel) => {
       const button = document.createElement("button");
@@ -509,6 +512,35 @@
       saveName.addEventListener("click", () => saveTeamDisplayName(profile, nameInput, name, saveName));
       nameEditor.append(nameInput, saveName);
       identity.append(name, email, nameEditor, created);
+      if (isSuperUser() && profile.initials !== undefined) {
+        const editor = document.createElement("div");
+        editor.className = "team-name-editor";
+        const input = document.createElement("input");
+        input.maxLength = 4;
+        input.value = profile.initials;
+        input.placeholder = "Initials";
+        input.setAttribute("aria-label", `Initials for ${profile.email || "user"}`);
+        const save = document.createElement("button");
+        save.type = "button";
+        save.className = "ghost-action";
+        save.textContent = "Save Initials";
+        save.addEventListener("click", async () => {
+          const initials = input.value.trim().toUpperCase();
+          if (!/^[A-Z]{1,4}$/.test(initials)) { setTeamStatus("Enter 1–4 letters for initials.", "error"); return; }
+          save.disabled = true;
+          try {
+            const { error } = await client.rpc("set_team_user_initials", { target_user: profile.user_id, new_initials: initials });
+            if (error) throw error;
+            profile.initials = initials;
+            input.value = initials;
+            if (profile.user_id === currentUser?.id) currentUser = { ...currentUser, user_metadata: { ...currentUser.user_metadata, initials } };
+            setTeamStatus("Initials saved. This member will see them after refreshing the app.", "success");
+          } catch (error) { setTeamStatus(error.message || "Could not save initials.", "error"); }
+          finally { save.disabled = false; }
+        });
+        editor.append(input, save);
+        identity.append(editor);
+      }
 
       const select = document.createElement("select");
       select.className = "team-role-select";
@@ -516,7 +548,8 @@
       [
         ["pending", "Pending"],
         ["member", "Team Member"],
-        ["admin", "Administrator"]
+        ["admin", "Administrator"],
+        ["super_user", "Super User"]
       ].forEach(([value, label]) => {
         const option = document.createElement("option");
         option.value = value;
@@ -547,14 +580,34 @@
 
       const actions = document.createElement("div");
       actions.className = "team-actions";
-      actions.appendChild(select);
+      if (isSuperUser()) actions.appendChild(select);
+      else {
+        const roleLabel = document.createElement("span");
+        roleLabel.textContent = profile.role === "super_user" ? "Super User" : profile.role === "admin" ? "Administrator" : profile.role === "member" ? "Team Member" : "Pending";
+        actions.appendChild(roleLabel);
+        if (profile.role === "pending") {
+          const approve = document.createElement("button");
+          approve.type = "button"; approve.className = "primary-action"; approve.textContent = "Approve member";
+          approve.addEventListener("click", async () => {
+            approve.disabled = true;
+            const { error } = await client.rpc("set_team_user_role", { target_user: profile.user_id, new_role: "member" });
+            if (error) { approve.disabled = false; setTeamStatus(error.message, "error"); }
+            else await loadTeamProfiles();
+          });
+          actions.appendChild(approve);
+        }
+      }
+      const view = document.createElement("button");
+      view.type = "button"; view.className = "ghost-action"; view.textContent = "View personal work";
+      view.addEventListener("click", () => window.openTeamMemberWork(profile));
+      actions.appendChild(view);
 
       if (profile.user_id === currentUser?.id) {
         const currentLabel = document.createElement("span");
         currentLabel.className = "team-current-account";
         currentLabel.textContent = "Your account";
         actions.appendChild(currentLabel);
-      } else {
+      } else if (isSuperUser()) {
         const deleteButton = document.createElement("button");
         deleteButton.className = "team-delete-user";
         deleteButton.type = "button";
@@ -604,17 +657,22 @@
       renderTeamProfiles([]);
       return;
     }
-    renderTeamProfiles(Array.isArray(data) ? data : []);
-    setTeamStatus("");
+    const initialsResult = isSuperUser() ? await client.rpc("get_team_initials") : { data: [], error: null };
+    const initials = new Map((initialsResult.data || []).map(item => [item.user_id, item.initials]));
+    renderTeamProfiles((Array.isArray(data) ? data : []).map(profile => ({ ...profile, initials: initialsResult.error ? undefined : initials.get(profile.user_id) || "" })));
+    setTeamStatus(initialsResult.error ? "Team initials editing needs the database update installed." : "", initialsResult.error ? "error" : "");
   }
 
   function openTeamDialog() {
-    if (!client || currentProfile?.role !== "admin") {
+    if (!client || !isAdmin()) {
       window.alert("Administrator access is required.");
       return;
     }
 
     const dialog = ensureTeamDialog();
+    dialog.querySelector('.auth-help').textContent = isSuperUser()
+      ? 'Manage team roles, display names, initials, and accounts.'
+      : 'Approve pending members, update display names, and view personal work without editing it.';
     closeOpenSettingsMenus();
     if (typeof dialog.showModal === "function") {
       dialog.showModal();

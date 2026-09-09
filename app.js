@@ -2179,7 +2179,7 @@ async function loadCloudSections(options = {}) {
 function handleCloudAuthChange(event) {
   const user = event.detail?.user || getCloudUser();
   const profile = event.detail?.profile || window.foodBrokerBaseAuth?.getCurrentProfile?.();
-  if (!user || !["member", "admin"].includes(profile?.role)) {
+  if (!user || !["member", "admin", "super_user"].includes(profile?.role)) {
     cloudSyncReady = false;
     cloudSyncUserId = "";
     stopCloudAutoRefresh();
@@ -2198,7 +2198,7 @@ document.addEventListener("visibilitychange", () => {
 });
 window.setTimeout(() => {
   const profile = window.foodBrokerBaseAuth?.getCurrentProfile?.();
-  if (getCloudUser() && ["member", "admin"].includes(profile?.role)) {
+  if (getCloudUser() && ["member", "admin", "super_user"].includes(profile?.role)) {
     startCloudAutoRefresh();
     loadCloudSections();
   }
