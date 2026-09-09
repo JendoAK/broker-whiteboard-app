@@ -16,6 +16,21 @@
   const approvedRoles = new Set(["member", "admin", "super_user"]);
   let currentUser = null;
   let currentProfile = null;
+  let profileLoadError = false;
+  let checkingAccess = false;
+
+  async function refreshAccess() {
+    if (!client || checkingAccess) return;
+    checkingAccess = true;
+    try {
+      const { data, error } = await client.auth.getUser();
+      if (error) throw error;
+      await applyUser(data.user || null);
+    } catch (error) {
+      profileLoadError = true;
+      updateLoginButtons();
+    } finally { checkingAccess = false; }
+  }
 
   window.foodBrokerBaseAuth = {
     client,
@@ -100,6 +115,7 @@
 
   async function loadCurrentProfile(user = currentUser) {
     currentProfile = null;
+    profileLoadError = false;
     if (!client || !user) return null;
 
     const { data, error } = await client
@@ -109,11 +125,13 @@
       .maybeSingle();
 
     if (error) {
+      profileLoadError = true;
       console.warn("FoodBrokerBase could not load the signed-in profile.", error);
       return null;
     }
 
     currentProfile = data || null;
+    profileLoadError = !currentProfile;
     return currentProfile;
   }
 
@@ -132,7 +150,7 @@
 
   function updateLoginButtons() {
     let label = "Login";
-    if (currentUser && !isApproved()) label = "Pending";
+    if (currentUser && !isApproved()) label = profileLoadError ? "Check access" : "Pending";
     if (isApproved()) label = getDisplayName(currentUser);
 
     document.querySelectorAll(".login-action").forEach((button) => {
@@ -166,7 +184,7 @@
       </div>
     `;
     shell.insertBefore(gate, topbar.nextSibling);
-    gate.querySelector("[data-open-auth-gate]").addEventListener("click", openAuthDialog);
+    gate.querySelector("[data-open-auth-gate]").addEventListener("click", () => currentUser ? refreshAccess() : openAuthDialog());
     return gate;
   }
 
@@ -187,10 +205,11 @@
     const button = gate.querySelector("[data-open-auth-gate]");
 
     if (pending) {
-      title.textContent = "Waiting for team approval";
-      message.textContent =
-        "Your account was created, but an administrator must approve it before shared or personal app data can open.";
-      button.textContent = "Account";
+      title.textContent = profileLoadError ? "Could not check your team access" : "Waiting for team approval";
+      message.textContent = profileLoadError
+        ? "Your account details could not be loaded. Check your connection and refresh access. This does not mean you need approval again."
+        : "If your role was just updated, refresh access to check your latest permissions.";
+      button.textContent = "Refresh access";
     } else {
       title.textContent = "Sign in to FoodBrokerBase";
       message.textContent = "Sign in to open your personal work and the shared team sections.";
@@ -380,7 +399,7 @@
     } else if (passwordRecoveryActive) {
       setStatus("Choose and confirm a new password.", "pending");
     } else if (currentUser && !isApproved()) {
-      setStatus("This account is waiting for an administrator to approve team access.", "pending");
+      setStatus(profileLoadError ? "Could not load your account permissions. Refresh the page to retry." : "This account is waiting for an administrator to approve team access.", "pending");
     } else {
       setStatus(currentUser ? "You are signed in and approved." : "Enter your email and password to sign in.", "");
     }
@@ -890,4 +909,7 @@
   }
 
   ready(init);
+  window.addEventListener("online", () => { if (currentUser && !isApproved()) refreshAccess(); });
+  window.addEventListener("focus", () => { if (currentUser && !isApproved()) refreshAccess(); });
+  window.setInterval(() => { if (currentUser && !isApproved() && !document.hidden) refreshAccess(); }, 15000);
 })();
