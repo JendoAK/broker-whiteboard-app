@@ -802,6 +802,8 @@ document.querySelector("#calendarNext").addEventListener("click", showNextCalend
 document.querySelector("#printCalendar").addEventListener("click", printCalendarView);
 document.querySelector("#cancelForm").addEventListener("click", closeForm);
 document.querySelector("#clearFilters").addEventListener("click", clearFilters);
+setupDatePicker(document.querySelector('#sampleForm [name="orderedDate"]'));
+document.querySelector('#sundayCalendarStart').addEventListener('change', event => changeCalendarWeekStart(event.target.checked));
 setupDatePicker(elements.due);
 setupDatePicker(elements.todoDue);
 setupDatePicker(elements.sampleExpected);
@@ -2971,6 +2973,7 @@ function showNextCalendarRange() {
 
 function renderCalendar() {
   document.querySelector("#showCalendarHolidays").checked = showCalendarHolidays();
+  document.querySelector("#sundayCalendarStart").checked = sundayCalendarStart();
   const isWeekView = calendarView === "week";
   const isDayView = calendarView === "day";
   const gridStart = getCalendarGridStart();
@@ -2989,7 +2992,7 @@ function renderCalendar() {
     weekdayRow.classList.toggle("day-view", isDayView);
     weekdayRow.innerHTML = isDayView
       ? `<span>${gridStart.toLocaleDateString(undefined, { weekday: "long" })}</span>`
-      : "<span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>";
+      : calendarWeekdayLabels();
   }
   setActiveCalendarButton();
 
@@ -3160,7 +3163,7 @@ function renderCalendarPrintDocument({ isWeekView, isDayView, title, days }) {
         ${renderPrintBrandHeader()}
         <h1>Broker Whiteboard Calendar</h1>
         <div class="muted">${escapeHtml(title)} &middot; Printed ${escapeHtml(new Date().toLocaleDateString())}</div>
-        <div class="weekdays">${isDayView ? `<span>${escapeHtml(days[0].date.toLocaleDateString(undefined, { weekday: "long" }))}</span>` : "<span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>"}</div>
+        <div class="weekdays">${isDayView ? `<span>${escapeHtml(days[0].date.toLocaleDateString(undefined, { weekday: "long" }))}</span>` : calendarWeekdayLabels()}</div>
         <div class="calendar">
           ${days.map(renderCalendarPrintDay).join("")}
         </div>
@@ -3432,6 +3435,9 @@ function setupSuggestionMenus() {
 }
 
 function setupDatePicker(input) {
+  if (!input || input.dataset.datePickerReady) return;
+  input.dataset.datePickerReady = "true";
+  if (input.type === "date") { input.type = "text"; input.placeholder = "YYYY-MM-DD"; input.pattern = "[0-9]{4}-[0-9]{2}-[0-9]{2}"; }
   input.addEventListener("click", () => openDatePicker(input));
   input.addEventListener("focus", () => openDatePicker(input));
 }
@@ -3501,8 +3507,9 @@ function renderDatePicker() {
       <strong>${datePickerMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</strong>
       <button type="button" data-picker-next>Next</button>
     </div>
-    <div class="date-picker-weekdays"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+    <div class="date-picker-weekdays">${calendarWeekdayLabels()}</div>
     <div class="date-picker-grid">${days.join("")}</div>
+    <label class="calendar-holiday-toggle"><input type="checkbox" data-picker-sunday ${sundayCalendarStart() ? "checked" : ""} /> Start week on Sunday</label>
     <div class="date-picker-actions">
       <button type="button" data-picker-clear>Clear</button>
       <button type="button" data-picker-today>Today</button>
@@ -3511,6 +3518,7 @@ function renderDatePicker() {
   `;
   picker.hidden = false;
   positionDatePicker();
+  picker.querySelector("[data-picker-sunday]").addEventListener("change", event => changeCalendarWeekStart(event.target.checked));
   picker.querySelector("[data-picker-prev]").addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -10298,7 +10306,7 @@ function startOfNextWeek() {
 function startOfCalendarWeek(date) {
   const start = new Date(date);
   const day = start.getDay();
-  const daysSinceMonday = day === 0 ? 6 : day - 1;
+  const daysSinceMonday = sundayCalendarStart() ? day : (day + 6) % 7;
   start.setDate(start.getDate() - daysSinceMonday);
   return start;
 }
@@ -10308,7 +10316,8 @@ function startOfMarketVisitWorkWeek(visit) {
   const day = start.getDay();
   if (day === 0) start.setDate(start.getDate() + 1);
   if (day === 6) start.setDate(start.getDate() + 2);
-  return startOfCalendarWeek(start);
+  start.setDate(start.getDate() - (start.getDay() + 6) % 7);
+  return start;
 }
 
 function toDateKey(date) {

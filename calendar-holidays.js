@@ -1,8 +1,8 @@
 "use strict";
 
 function normalizeCalendarPreferences(value) {
-  return Array.isArray(value) ? value.filter((item) => item && item.id === "holidays").map((item) => ({
-    id: "holidays", ownerId: String(item.ownerId || ""), enabled: item.enabled === true, updatedAt: item.updatedAt || ""
+  return Array.isArray(value) ? value.filter((item) => item && ["holidays", "sundayStart"].includes(item.id)).map((item) => ({
+    id: item.id, ownerId: String(item.ownerId || ""), enabled: item.enabled === true, updatedAt: item.updatedAt || ""
   })) : [];
 }
 
@@ -27,12 +27,12 @@ function persistCalendarPreferences() {
 }
 
 function showCalendarHolidays() {
-  return getCurrentCalendarPreferences().some((item) => item.enabled);
+  return getCurrentCalendarPreferences().some((item) => item.id === "holidays" && item.enabled);
 }
 
 function setupCalendarHolidayToggle() {
   document.querySelector("#showCalendarHolidays").addEventListener("change", (event) => {
-    setCurrentCalendarPreferences([{ id: "holidays", enabled: event.target.checked, updatedAt: new Date().toISOString() }]);
+    setCurrentCalendarPreferences([...getCurrentCalendarPreferences().filter(item => item.id !== "holidays"), { id: "holidays", enabled: event.target.checked, updatedAt: new Date().toISOString() }]);
     persistCalendarPreferences();
     renderCalendar();
   });
@@ -82,4 +82,19 @@ function getCalendarHolidays(dateKey) {
 
 function renderCalendarHoliday(holiday) {
   return `<div class="calendar-holiday"><strong>${escapeHtml(holiday.title)}</strong></div>`;
+}
+
+function sundayCalendarStart() {
+  return getCurrentCalendarPreferences().some(item => item.id === "sundayStart" && item.enabled);
+}
+function calendarWeekdayLabels() {
+  const days = sundayCalendarStart() ? ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"] : ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  return days.map(day => '<span>' + day + '</span>').join('');
+}
+function changeCalendarWeekStart(enabled) {
+  setCurrentCalendarPreferences([...getCurrentCalendarPreferences().filter(item => item.id !== "sundayStart"), {id:"sundayStart",enabled,updatedAt:new Date().toISOString()}]);
+  persistCalendarPreferences();
+  calendarRangeStart = startOfCalendarWeek(calendarMonth);
+  renderCalendar();
+  if (datePickerInput) renderDatePicker();
 }

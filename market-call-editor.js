@@ -62,6 +62,7 @@ function openMarketCallEditor(visitId, callId) {
   if (visit.startDate) form.elements.namedItem("date").min = minDate;
   if (visit.endDate || visit.startDate) form.elements.namedItem("date").max = maxDate;
   dialog.querySelectorAll("[data-cancel-call-edit]").forEach((button) => button.addEventListener("click", () => dialog.close()));
+  setupDatePicker(form.elements.namedItem("date"));
   form.addEventListener("submit", saveMarketCallEdit);
   dialog.showModal();
 }
@@ -77,6 +78,8 @@ function saveMarketCallEdit(event) {
   const call = visit?.calls.find((item) => item.id === context?.callId);
   if (!call) { fail("This appointment was removed. Close this window and refresh the visit."); return; }
   const values = Object.fromEntries(new FormData(form));
+  const dateInput = form.elements.namedItem("date");
+  if ((dateInput.min && values.date < dateInput.min) || (dateInput.max && values.date > dateInput.max)) { fail("Choose a date within the visit dates."); return; }
   if (!values.startTime || !values.endTime || values.endTime <= values.startTime) { fail("End time must be after start time."); return; }
   if (!(call.kind === "appointment" ? values.title : values.operatorName).trim()) { fail("Enter a title or operator name."); return; }
   const patch = {};

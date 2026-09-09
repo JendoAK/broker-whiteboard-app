@@ -393,6 +393,7 @@
           <button class="ghost-action calendar-step-control" id="calendarNext" type="button" aria-label="Next calendar range">&rarr;</button>
           <button class="ghost-action print-action" id="printCalendar" type="button">Print Calendar</button>
         </div>
+        <label class="calendar-holiday-toggle"><input type="checkbox" id="sundayCalendarStart" /> Start week on Sunday</label>
         <label class="calendar-holiday-toggle" title="U.S. federal holidays, including observed weekdays"><input type="checkbox" id="showCalendarHolidays" /> Show U.S. holidays</label>
         <div class="calendar-weekdays" aria-hidden="true">
           <span>Mon</span>
@@ -1390,9 +1391,9 @@
     <script src="supabase-auth.js?v=20260909-2"></script>
   <script src="market-events.js?v=20260908-7"></script>
   <script src="personal-visit-calendar.js?v=20260908-7"></script>
-  <script src="calendar-holidays.js?v=20260908-8"></script>
-  <script src="market-call-editor.js?v=20260908-9"></script>
-  <script src="app.js?v=20260909-4"></script>
+  <script src="calendar-holidays.js?v=20260909-5"></script>
+  <script src="market-call-editor.js?v=20260909-5"></script>
+  <script src="app.js?v=20260909-5"></script>
     <script>
       if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
         window.addEventListener("load", () => {
