@@ -1,2 +1,21 @@
 .address-book-actions-row { display: flex; flex-wrap: wrap; gap: 10px; }
 .people-directory > h2 { margin: 0 0 8px; }
+
+.contacts-view-switch { display:flex; flex-wrap:wrap; gap:8px; margin: 4px 0 16px; padding:6px; background:#d6e2e4; border-radius:12px; width:fit-content; }
+.contacts-view-switch button { padding:12px 22px; border:0; border-radius:8px; background:transparent; color:#24424a; font-weight:800; font-size:16px; box-shadow:none; }
+.contacts-view-switch button[aria-pressed="true"] { background:#205d59; color:#fff; box-shadow:0 2px 5px #163e3926; }
+.contacts-view-switch button:hover { outline:2px solid #438680; }
+#operatorsView[hidden], #otherContactsView[hidden] { display:none !important; }
+#operatorsView .address-book-controls { background:#e2ece3; border:0; border-radius:12px; padding:14px 18px; }
+#operatorsView .address-book-table-panel { background:#edf3eb; border:0; border-radius:14px; padding:0 16px 16px; overflow:hidden; box-shadow:0 3px 12px #294b3420; }
+#operatorsView .quick-list-header { margin:0 -16px 14px; padding:18px 22px; background:#416c54; color:#fff; }
+#operatorsView .quick-list-header h2, #operatorsView .quick-list-header .eyebrow { color:#fff; }
+#operatorsView .quick-list-header .eyebrow { display:none; }
+#operatorsView .count-pill { background:#fff; color:#315640; }
+#operatorsView .quick-table th { background:#d5e3d4; color:#284a35; }
+#otherContactsView { background:#e5eff4; border:0; border-top:6px solid #376981; border-radius:14px; padding:22px; margin:0; box-shadow:0 3px 12px #234d6420; }
+#otherContactsView > h2 { color:#254f67; font-size:25px; margin:0 0 8px; }
+#otherContactsView > p { color:#39586a; }
+#otherContactsView #peopleContactsPanel { max-height:60vh; gap:12px; }
+#otherContactsView .compact-operator { background:#f4f8fc; border:1px solid #b3cbd9; border-left:5px solid #50869e; border-radius:10px; padding:14px; color:#203f52; box-shadow:0 2px 4px #24445912; }
+#otherContactsView .compact-operator:hover { background:#d3e6f1; border-color:#50869e; }

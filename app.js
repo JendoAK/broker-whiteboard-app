@@ -3602,6 +3602,7 @@ function closeVendorReportWindow() {
 }
 
 function openAddressBookWindow() {
+  setContactsView("operators");
   elements.todoDialog.hidden = true;
   elements.vendorReportDialog.hidden = true;
   elements.stockListsDialog.hidden = true;

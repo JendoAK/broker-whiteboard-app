@@ -12,7 +12,7 @@
     <link rel="icon" href="pwa-icon-192.png" />
     <link rel="apple-touch-icon" href="pwa-icon-192.png" />
   <link rel="stylesheet" href="styles.css?v=20260909-kitchencolors1" />
-  <link rel="stylesheet" href="contacts-layout.css?v=20260909-contacts2" />
+  <link rel="stylesheet" href="contacts-layout.css?v=20260909-contacttabs1" />
   </head>
   <body class="auth-pending">
     <datalist id="timelineSearchSuggestions"></datalist>
@@ -644,6 +644,8 @@
           <button class="primary-action" type="button" id="addPeopleContact">+ Add Contact</button>
         </section>
 
+        <nav class="contacts-view-switch" aria-label="Contacts and operators views"><button type="button" id="showOperatorsView" aria-pressed="true" aria-controls="operatorsView">Operators</button><button type="button" id="showOtherContactsView" aria-pressed="false" aria-controls="otherContactsView">Show other contacts</button></nav>
+        <div id="operatorsView">
         <section class="controls address-book-controls" aria-label="Operator filters">
           <label class="search-box"><span>Search</span><input id="addressBookSearch" type="search" placeholder="Operation, contact, phone, email, account #..." /></label>
           <button class="ghost-action" id="clearAddressBookSearch" type="button">Clear</button>
@@ -651,12 +653,13 @@
 
         <main class="address-book-table-panel">
           <div class="quick-list-header">
-            <div><p class="eyebrow">Operators</p><h2>Customer address book</h2></div>
+            <div><p class="eyebrow">Operators</p><h2>Operators</h2></div>
             <span class="count-pill" id="addressBookCount">0</span>
           </div>
           <div class="quick-table-wrap" id="addressBookTable"></div>
         </main>
-        <section class="people-directory" aria-label="Other contacts"><h2>Other contacts</h2><p>Distributor employees, sales reps, regional managers, and other contacts.</p><input id="peopleContactSearch" type="search" placeholder="Search name, company, or role" aria-label="Search other contacts" /><div id="peopleContactsPanel"></div></section>
+        </div>
+        <section class="people-directory" id="otherContactsView" aria-label="Other contacts" hidden><h2>Other contacts</h2><p>Distributor employees, sales reps, regional managers, and other contacts.</p><input id="peopleContactSearch" type="search" placeholder="Search name, company, or role" aria-label="Search other contacts" /><div id="peopleContactsPanel"></div></section>
       </div>
     </section>
 
@@ -1398,7 +1401,7 @@
   <script src="personal-visit-calendar.js?v=20260909-visitcolors1"></script>
   <script src="calendar-holidays.js?v=20260909-5"></script>
   <script src="market-call-editor.js?v=20260909-visitcolors1"></script>
-  <script src="team-work-view.js?v=20260909-roles1"></script><script src="market-week-calendar.js?v=20260909-visitcolors1"></script><script src="market-operator-conversion.js?v=20260909-visitcolors1"></script><script src="testkitchen-layout.js?v=20260909-kitchencolors1"></script><script src="vendor-visit-print.js?v=20260909-visitcolors1"></script><script src="market-visit-layout.js?v=20260909-visitcolors1"></script><script src="people-contacts.js?v=20260909-contacts2"></script><script src="app.js?v=20260909-contactname1"></script>
+  <script src="team-work-view.js?v=20260909-roles1"></script><script src="market-week-calendar.js?v=20260909-visitcolors1"></script><script src="market-operator-conversion.js?v=20260909-visitcolors1"></script><script src="testkitchen-layout.js?v=20260909-kitchencolors1"></script><script src="vendor-visit-print.js?v=20260909-visitcolors1"></script><script src="market-visit-layout.js?v=20260909-visitcolors1"></script><script src="people-contacts.js?v=20260909-contacttabs1"></script><script src="app.js?v=20260909-contacttabs1"></script>
     <script>
       if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
         window.addEventListener("load", () => {

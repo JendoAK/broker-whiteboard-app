@@ -140,8 +140,18 @@ async function correctPeteTeamRecords() {
   peteCorrectionUser = user.id;
 }
 
+function setContactsView(view) {
+  const contacts = view === 'contacts';
+  document.getElementById('operatorsView').hidden = contacts;
+  document.getElementById('otherContactsView').hidden = !contacts;
+  document.getElementById('showOperatorsView').setAttribute('aria-pressed', String(!contacts));
+  document.getElementById('showOtherContactsView').setAttribute('aria-pressed', String(contacts));
+  if (contacts) renderPeopleContacts();
+}
 window.addEventListener('DOMContentLoaded', () => {
-  document.querySelector('#addPeopleContact')?.addEventListener('click',()=>openPeopleContactForm());
+  document.getElementById('showOperatorsView').onclick = () => setContactsView('operators');
+  document.getElementById('showOtherContactsView').onclick = () => setContactsView('contacts');
+  document.querySelector('#addPeopleContact')?.addEventListener('click',()=>{ setContactsView('contacts'); openPeopleContactForm(); });
   document.querySelector('#peopleContactSearch')?.addEventListener('input',renderPeopleContacts);
   ['salesRepInput','syscoSalesRepInput'].forEach(id=>attachPeopleSuggestions(document.getElementById(id)));
   attachPeopleSuggestions(elements.marketSalesReps);
