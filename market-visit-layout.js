@@ -1,5 +1,21 @@
 "use strict";
 
+function renderMarketArchiveButton(visit) {
+  return `<button class="edit-card market-card-action" type="button" data-market-archive="${escapeAttribute(visit.id)}">${visit.archivedAt ? "Restore" : "Archive"}</button>`;
+}
+
+function bindMarketArchiveActions(container) {
+  container.querySelectorAll("[data-market-archive]").forEach(button => button.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const visit = marketVisits.find(item => item.id === button.dataset.marketArchive);
+    if (!visit) return;
+    activeMarketDetailId = "";
+    updateMarketVisit(visit.id, { archivedAt: visit.archivedAt ? "" : new Date().toISOString() });
+    renderCalendar();
+  }));
+}
+
 function renderCompactMarketVisit(panel, visit) {
   const products = getMarketVisitProducts(visit);
   const operators = getMarketVisitOperators(visit).sort((a, b) => getMarketOperatorDisplayName(a).localeCompare(getMarketOperatorDisplayName(b)));
@@ -10,8 +26,9 @@ function renderCompactMarketVisit(panel, visit) {
         <h2>${escapeHtml(getMarketVisitDisplayName(visit))}</h2>
         ${visit.visitorName ? `<p>Regional manager: ${escapeHtml(visit.visitorName)}</p>` : ""}
       </div>
-      <div class="table-actions">${renderPersonalVisitCalendarButton(visit)}<button class="edit-card" type="button" data-detail-close>Back to Events &amp; Visits</button></div>
+      <div class="table-actions">${renderMarketArchiveButton(visit)}${renderPersonalVisitCalendarButton(visit)}<button class="edit-card" type="button" data-detail-close>Back to Events &amp; Visits</button></div>
     </div>
+    ${visit.archivedAt ? `<p class="market-section-help">Archived visit. Restore it to return it to active visits and selected personal calendars.</p>` : ""}
     <div class="compact-visit-actions" role="group" aria-label="Add to visit">
       <button class="primary-action" type="button" data-visit-add-products>Add products</button>
       <button class="primary-action" type="button" data-visit-add-call>Add call</button>

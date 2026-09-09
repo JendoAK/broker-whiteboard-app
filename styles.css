@@ -5620,3 +5620,10 @@ button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-
   .compact-visit-header { flex-direction: column; align-items: stretch; }
   .compact-visit-actions button { flex: 1 1 140px; }
 }
+
+.market-controls { grid-template-columns: 170px minmax(180px, 1fr) auto; }
+.market-controls > label.market-archive-filter { display: grid; grid-column: auto; }
+@media (max-width: 760px) {
+  .market-controls { grid-template-columns: minmax(0, 1fr) auto; }
+  .market-controls > label.market-archive-filter { grid-column: 1 / -1; }
+}

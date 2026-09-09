@@ -461,6 +461,7 @@ const elements = {
   marketVisitsDialog: document.querySelector("#marketVisitsDialog"),
   marketContent: document.querySelector("#marketContent"),
   marketSearch: document.querySelector("#marketSearch"),
+  marketArchiveFilter: document.querySelector("#marketArchiveFilter"),
   marketManufacturerFilter: document.querySelector("#marketManufacturerFilter"),
   marketRepFilter: document.querySelector("#marketRepFilter"),
   marketStatusFilter: document.querySelector("#marketStatusFilter"),
@@ -792,6 +793,7 @@ document.querySelector("#closeMarketVisitForm").addEventListener("click", closeM
 document.querySelector("#cancelMarketVisitForm").addEventListener("click", closeMarketVisitForm);
 document.querySelector("#clearTodoFilters").addEventListener("click", clearTodoFilters);
 document.querySelector("#clearMarketFilters").addEventListener("click", clearMarketFilters);
+elements.marketArchiveFilter.addEventListener("change", () => { activeMarketDetailId = ""; renderMarketVisits(); });
 document.querySelector("#calendarPrevious").addEventListener("click", showPreviousCalendarRange);
 document.querySelector("#calendarThisMonth").addEventListener("click", showThisCalendarMonth);
 document.querySelector("#calendarNextMonth").addEventListener("click", showNextCalendarMonth);
@@ -1283,6 +1285,7 @@ function normalizeMarketVisit(visit) {
     productNotes: visit.productNotes || {},
     operatorLinks: Array.isArray(visit.operatorLinks) ? visit.operatorLinks.map(normalizeMarketOperatorLink) : [],
     calls: Array.isArray(visit.calls) ? visit.calls.map(normalizeMarketCall) : [],
+    archivedAt: visit.archivedAt || "",
     createdAt: visit.createdAt || new Date().toISOString(),
     updatedAt: visit.updatedAt || "",
     _audit: normalizeAuditRecord(visit._audit)
@@ -5146,7 +5149,7 @@ function renderMarketVisits() {
         <div><p class="eyebrow">${escapeHtml(title)}</p></div>
         <span class="count-pill">${visits.length}</span>
       </div>
-      ${visits.length ? `<div class="market-card-grid">${visits.map(renderMarketVisitCard).join("")}</div>` : `<div class="empty-state">No events or visits yet</div>`}
+      ${visits.length ? `<div class="market-card-grid">${visits.map(renderMarketVisitCard).join("")}</div>` : `<div class="empty-state">${elements.marketArchiveFilter.value === "archived" ? "No archived events or visits" : "No active events or visits"}</div>`}
     </section>
     <section class="market-detail-panel" id="marketDetailPanel"></section>
   `;
@@ -5197,8 +5200,9 @@ function renderMarketVisits() {
       updateMarketVisit(select.dataset.marketStatusCard, { status: select.value });
     });
   });
+  bindMarketArchiveActions(elements.marketContent);
   if (activeMarketDetailId) {
-    const visit = marketVisits.find((item) => item.id === activeMarketDetailId);
+    const visit = visits.find((item) => item.id === activeMarketDetailId);
     if (visit) renderMarketVisitDetail(visit);
   }
   bindPersonalVisitCalendarButtons(elements.marketContent);
@@ -5207,6 +5211,7 @@ function renderMarketVisits() {
 function openMarketVisitDetail(id, shouldScroll = true) {
   if (!id) return;
   activeMarketDetailId = id;
+  elements.marketArchiveFilter.value = marketVisits.find(visit => visit.id === id)?.archivedAt ? "archived" : "active";
   activeMarketView = "list";
   renderMarketVisits();
   if (!shouldScroll) return;
@@ -5223,6 +5228,7 @@ function renderMarketVisitCard(visit) {
         <h3>${escapeHtml(getMarketVisitDisplayName(visit))}</h3>
         ${dateText ? `<p class="market-card-date">${escapeHtml(dateText)}</p>` : `<p class="market-card-date">No date</p>`}
         ${visit.type !== "personal" ? renderAuditStamp(visit) : ""}
+        ${visit.archivedAt ? `<span class="badge">Archived</span>` : ""}
       </div>
       <div class="market-card-status-row">
         <label>
@@ -5233,6 +5239,7 @@ function renderMarketVisitCard(visit) {
         </label>
       </div>
       <div class="table-actions">
+        ${renderMarketArchiveButton(visit)}
         <button class="edit-card market-card-action" type="button" data-market-view-detail="${escapeAttribute(visit.id)}">View</button>
         ${renderPersonalVisitCalendarButton(visit)}
         <button class="edit-card market-card-action" type="button" data-market-edit="${escapeAttribute(visit.id)}">Edit</button>
@@ -5641,6 +5648,7 @@ function renderMarketAgendaCall(call, selectedCallId = "") {
 }
 
 function bindMarketDetailActions(panel, visit) {
+  bindMarketArchiveActions(panel);
   bindMarketCallListEditing(panel, visit);
   panel.querySelector("[data-detail-close]")?.addEventListener("click", () => {
     activeMarketDetailId = "";
@@ -5894,6 +5902,7 @@ function saveMarketVisit() {
   if (type !== "personal") stampSharedRecord(visit, existing ? "Updated" : "Created");
   marketVisits = existing ? marketVisits.map((item) => (item.id === id ? visit : item)) : [visit, ...marketVisits];
   activeMarketType = type;
+  elements.marketArchiveFilter.value = visit.archivedAt ? "archived" : "active";
   activeMarketDetailId = id;
   persistMarketVisits();
   closeMarketVisitForm();
@@ -5916,7 +5925,7 @@ function updateMarketVisit(id, patch) {
     if (visit.id !== id) return visit;
     const next = normalizeMarketVisit({ ...visit, ...patch, updatedAt: new Date().toISOString() });
     if (next.type !== "personal") {
-      stampSharedRecord(next, Object.prototype.hasOwnProperty.call(patch, "status") ? "Status changed" : "Updated");
+      stampSharedRecord(next, Object.prototype.hasOwnProperty.call(patch, "archivedAt") ? (patch.archivedAt ? "Archived" : "Restored") : Object.prototype.hasOwnProperty.call(patch, "status") ? "Status changed" : "Updated");
     }
     return next;
   });
@@ -6081,6 +6090,7 @@ function getVisibleMarketVisits() {
   return marketVisits
     .filter((visit) => {
       if (visit.type !== activeMarketType) return false;
+      if (Boolean(visit.archivedAt) !== (elements.marketArchiveFilter.value === "archived")) return false;
       if (!query) return true;
       const products = getMarketVisitProducts(visit).map((product) => product.description).join(" ");
       const operators = getMarketVisitOperators(visit).map((operator) => operator.operatorName || getOperatorName(operator.operatorId)).join(" ");
@@ -6317,6 +6327,8 @@ function getMarketVisitCalendarCalls(visit) {
 }
 
 function clearMarketFilters() {
+  elements.marketArchiveFilter.value = "active";
+  activeMarketDetailId = "";
   elements.marketSearch.value = "";
   elements.marketManufacturerFilter.value = "";
   elements.marketRepFilter.value = "";

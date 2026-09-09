@@ -69,7 +69,7 @@ function bindPersonalVisitCalendarButtons(container) {
 
 function getPersonalCalendarVisits(dateKey) {
   return marketVisits.filter((visit) => {
-    if (!getPersonalVisitCalendarSelection(visit.id) || !visit.startDate) return false;
+    if (visit.archivedAt || !getPersonalVisitCalendarSelection(visit.id) || !visit.startDate) return false;
     return dateKey >= visit.startDate && dateKey <= (visit.endDate || visit.startDate);
   }).map((visit) => ({ id: visit.id, title: getPersonalVisitCalendarSelection(visit.id).title || getShortVisitCalendarTitle(visit) }));
 }

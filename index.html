@@ -11,7 +11,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="pwa-icon-192.png" />
     <link rel="apple-touch-icon" href="pwa-icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=20260909-popups1" />
+  <link rel="stylesheet" href="styles.css?v=20260909-archive1" />
   </head>
   <body class="auth-pending">
     <datalist id="timelineSearchSuggestions"></datalist>
@@ -791,6 +791,7 @@
         </section>
 
         <section class="controls market-controls" aria-label="Market visit filters">
+          <label class="market-archive-filter"><span>Show</span><select id="marketArchiveFilter"><option value="active">Active visits</option><option value="archived">Archived visits</option></select></label>
           <label class="search-box"><span>Search</span><input id="marketSearch" type="search" placeholder="Search events and visits..." /></label>
           <label class="market-extra-filter"><span>Manufacturer</span><select id="marketManufacturerFilter"><option value="">All</option></select></label>
           <label class="market-extra-filter"><span>Sales rep</span><input id="marketRepFilter" autocomplete="off" /></label>
@@ -1390,10 +1391,10 @@
     <script src="supabase-config.js"></script>
     <script src="supabase-auth.js?v=20260909-access1"></script>
   <script src="market-events.js?v=20260908-7"></script>
-  <script src="personal-visit-calendar.js?v=20260908-7"></script>
+  <script src="personal-visit-calendar.js?v=20260909-archive1"></script>
   <script src="calendar-holidays.js?v=20260909-5"></script>
-  <script src="market-call-editor.js?v=20260909-popups1"></script>
-  <script src="team-work-view.js?v=20260909-roles1"></script><script src="market-visit-layout.js?v=20260909-popups1"></script><script src="app.js?v=20260909-popups1"></script>
+  <script src="market-call-editor.js?v=20260909-archive1"></script>
+  <script src="team-work-view.js?v=20260909-roles1"></script><script src="market-visit-layout.js?v=20260909-archive1"></script><script src="app.js?v=20260909-archive1"></script>
     <script>
       if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
         window.addEventListener("load", () => {
