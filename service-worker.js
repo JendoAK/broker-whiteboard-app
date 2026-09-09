@@ -1,11 +1,11 @@
-const CACHE_NAME = "foodbrokerbase-initials1";
+const CACHE_NAME = "foodbrokerbase-contacticons1";
 const APP_SHELL = [
   "./team-initials.js?v=20260909-initials1",
   "./team-work-view.css?v=20260909-activity1",
   "./action-buttons.css?v=20260909-actions1",
   "./action-buttons.js?v=20260909-actions1",
-  "./contacts-layout.css?v=20260909-contactfields1",
-  "./people-contacts.js?v=20260909-contactfields1",
+  "./contacts-layout.css?v=20260909-contacticons1",
+  "./people-contacts.js?v=20260909-contacticons1",
   "./",
   "./index.html",
   "./styles.css?v=20260909-kitchencolors1",

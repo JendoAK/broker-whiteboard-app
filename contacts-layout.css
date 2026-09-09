@@ -38,3 +38,15 @@
 .contact-filter-buttons button:hover { transform:translateY(-1px); }
 .contact-filter-buttons button:focus-visible { outline:3px solid #1c4057; outline-offset:3px; }
 .contact-match-count { font-size:13px; font-weight:700; margin:12px 0 4px; }
+
+.contact-card-summary { flex:1; min-width:0; padding:6px; color:#203f52; }
+.contact-card-summary strong, .contact-card-summary span { display:block; overflow-wrap:anywhere; }
+.contact-card-summary strong { margin-bottom:4px; font-size:14px; }
+.contact-card-summary span { font-size:13px; line-height:1.4; }
+.contact-card-actions { display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
+.contact-icon-action { display:grid; place-items:center; width:32px; height:32px; padding:6px; border:1px solid #bdced8; border-radius:8px; background:#e4eef5; color:#315d76; box-shadow:none; }
+.contact-icon-action svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.contact-icon-action:hover { background:#ccdfeb; border-color:#6c98b1; }
+.contact-icon-action.contact-delete { color:#96463f; background:#f7eeed; }
+.contact-icon-action.contact-delete:hover { background:#f0d4d0; }
+.contact-icon-action:focus-visible { outline:3px solid #32627e; outline-offset:2px; }
