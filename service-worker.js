@@ -1,8 +1,8 @@
-const CACHE_NAME = "foodbrokerbase-app-v51";
+const CACHE_NAME = "foodbrokerbase-app-v52";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=20260909-6",
+  "./styles.css?v=20260909-7",
   "./market-events.js?v=20260908-7",
   "./personal-visit-calendar.js?v=20260908-7",
   "./calendar-holidays.js?v=20260909-5",

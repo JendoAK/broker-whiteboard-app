@@ -5525,6 +5525,7 @@ html {
 #supabaseAuthDialog [hidden] { display: none !important; }
 #sampleForm fieldset input[type=checkbox] { width: 18px; height: 18px; margin: 0; flex: 0 0 auto; }
 .sample-product-link { white-space: pre-line; }
+#sampleTrackerDialog .tracker-tabs + .view-actions { margin-bottom: 18px; }
 #sampleForm label span,
 #sampleForm .eyebrow,
 #sampleForm .sample-attachment-label span,
