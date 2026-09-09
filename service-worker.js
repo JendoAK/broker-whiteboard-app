@@ -1,4 +1,4 @@
-const CACHE_NAME = "foodbrokerbase-contacts2";
+const CACHE_NAME = "foodbrokerbase-contactname1";
 const APP_SHELL = [
   "./contacts-layout.css?v=20260909-contacts2",
   "./people-contacts.js?v=20260909-contacts2",
@@ -9,7 +9,7 @@ const APP_SHELL = [
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
   "./market-call-editor.js?v=20260909-visitcolors1",
-  "./team-work-view.js?v=20260909-roles1", "./app.js?v=20260909-contacts2",
+  "./team-work-view.js?v=20260909-roles1", "./app.js?v=20260909-contactname1",
   "./market-week-calendar.js?v=20260909-visitcolors1",
   "./market-operator-conversion.js?v=20260909-visitcolors1",
   "./testkitchen-layout.js?v=20260909-visitcolors1",

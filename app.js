@@ -259,7 +259,7 @@ const cloudSectionConfigs = [
   },
   {
     key: addressBookStorageKey,
-    label: "Address Book",
+    label: "Contacts & Operators",
     scope: "team",
     get: () => addressBook,
     set: (value) => (addressBook = Array.isArray(value) ? value.map(normalizeAddressBookEntry) : [])
