@@ -5525,12 +5525,16 @@ html {
 #supabaseAuthDialog [hidden] { display: none !important; }
 #sampleForm fieldset input[type=checkbox] { width: 18px; height: 18px; margin: 0; flex: 0 0 auto; }
 .sample-product-link { white-space: pre-line; }
+#sampleForm label span,
+#sampleForm .eyebrow,
+#sampleForm .sample-attachment-label span,
+#sampleForm .sample-order-details legend { color: #246b79; }
 .sample-order-header { display: grid; grid-template-columns: 1.3fr 1.2fr 1fr 1fr; gap: 12px; }
 .sample-order-header label { min-width: 0; }
 .sample-order-header input { min-width: 0; width: 100%; }
 #sampleForm .sample-order-options { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 #sampleForm .sample-order-options label { margin: 4px 0; white-space: nowrap; }
-#sampleForm .sample-order-details legend { font-family: inherit; font-size: 0.76rem; font-weight: 800; text-transform: uppercase; color: var(--muted); }
+#sampleForm .sample-order-details legend { font-family: inherit; font-size: 0.76rem; font-weight: 800; text-transform: uppercase; color: #246b79; }
 @media (max-width: 640px) { .sample-order-header { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* Consistent, high-contrast creation actions across every section. */

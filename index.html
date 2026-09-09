@@ -11,7 +11,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="pwa-icon-192.png" />
     <link rel="apple-touch-icon" href="pwa-icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=20260909-4" />
+  <link rel="stylesheet" href="styles.css?v=20260909-6" />
   </head>
   <body class="auth-pending">
     <datalist id="timelineSearchSuggestions"></datalist>
@@ -1029,12 +1029,10 @@
           <div class="wide sample-order-header">
             <label><span>Who ordered</span><input id="sampleOrderedBy" autocomplete="off" /></label>
             <label><span>Ordered date</span><input name="orderedDate" type="date" /></label>
-            <label><span>PO #</span><input name="poNumber" /></label>
-            <label><span>DOT order #</span><input name="dotNumber" /></label>
+            <label><span>Status</span><select id="sampleStatus"><option>Need to Order</option><option>In Transit</option><option>Delivered</option><option>Requested</option><option>Ordered</option><option>Added to PO</option><option>Received</option><option>Delivered / Shown</option><option>Cancelled</option></select></label>
+            <label><span>Storage type</span><select name="storageType"><option value="">Choose type</option><option>Freeze</option><option>Dry</option><option>Chill</option></select></label>
           </div>
           <label class="wide"><span>Products ordered</span><textarea id="sampleProduct" rows="3" required placeholder="Enter one product per line, including quantities..."></textarea></label>
-          <label><span>Storage type</span><select name="storageType"><option value="">Choose type</option><option>Freeze</option><option>Dry</option><option>Chill</option></select></label>
-          <label><span>Status</span><select id="sampleStatus"><option>Need to Order</option><option>In Transit</option><option>Delivered</option><option>Requested</option><option>Ordered</option><option>Added to PO</option><option>Received</option><option>Delivered / Shown</option><option>Cancelled</option></select></label>
           <fieldset class="wide sample-order-details"><legend>Order details</legend><div class="sample-order-options">
             <label><input type="checkbox" name="isDot" /> DOT order</label>
             <label><input type="checkbox" name="directFromManufacturer" /> Direct from manufacturer</label>
@@ -1042,9 +1040,11 @@
             <label><input type="checkbox" name="fedex" /> FedEx</label>
             <label><input type="checkbox" name="usps" /> USPS</label>
           </div></fieldset>
-          <label><span>Expected date</span><input id="sampleExpected" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
-          <label><span>Manufacturer / vendor</span><input name="vendor" list="vendorSuggestions" /></label>
-          <label class="wide"><span>Shipment confirmation / tracking #</span><input name="shipmentConfirmation" /></label>
+<label><span>PO #</span><input name="poNumber" /></label>
+<label><span>DOT order #</span><input name="dotNumber" /></label>
+          <label><span>Expected arrival date</span><input id="sampleExpected" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
+<label><span>Shipment confirmation / tracking #</span><input name="shipmentConfirmation" /></label>
+<label class="wide"><span>Manufacturer / vendor</span><input name="vendor" list="vendorSuggestions" /></label>
           <label class="wide"><span>Note</span><textarea id="sampleNote" rows="4" placeholder="Account or distributor, vendor contact, what needs to happen next..."></textarea></label>
           <div class="sample-attachment-label wide"><span>Attachments</span></div>
           <div class="attachments-section wide">
