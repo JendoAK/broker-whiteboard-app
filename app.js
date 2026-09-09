@@ -5264,15 +5264,7 @@ function renderMarketVisitDetail(visit) {
 }
 
 function bindMarketWeekPreview(panel, visit) {
-  panel.querySelectorAll("[data-week-call]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const call = getMarketVisitCalendarCalls(visit).find((item) => item.id === button.dataset.weekCall);
-      panel.querySelectorAll("[data-week-call]").forEach((item) => item.classList.toggle("active-week-call", item === button));
-      const preview = panel.querySelector("[data-market-call-preview]");
-      if (preview) preview.innerHTML = renderMarketCallPreview(visit, call);
-      openMarketCallEditor(visit.id, button.dataset.weekCall);
-    });
-  });
+  panel.querySelectorAll("[data-week-call]").forEach(button => button.addEventListener("click", () => openMarketCallEditor(visit.id, button.dataset.weekCall)));
 }
 
 function renderMarketOverview(visit) {
@@ -5524,34 +5516,8 @@ function renderMarketCallRow(visit, call) {
   </tr>`;
 }
 
-function renderManufacturerWeekGrid(visit, selectedCallId = "") {
-  const weekStart = startOfMarketVisitWorkWeek(visit);
-  const days = Array.from({ length: 5 }, (_, index) => {
-    const date = new Date(weekStart);
-    date.setDate(weekStart.getDate() + index);
-    return date;
-  });
-  const calls = getMarketVisitCalendarCalls(visit).filter((call) => call.date);
-  const hours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
-  return `
-    <div class="manufacturer-week-grid">
-      <div class="week-time-heading">Time</div>
-      ${days.map((date) => `<div class="week-day-heading ${isDateInMarketVisit(visit, date) ? "" : "week-day-outside"}"><strong>${escapeHtml(date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }))}</strong><span>${calls.filter((call) => call.date === toDateKey(date)).length} appointments</span></div>`).join("")}
-      ${hours
-        .map(
-          (hour) => `
-            <div class="week-time-slot">${formatHourLabel(hour)}</div>
-            ${days
-              .map((date) => {
-                const dayCalls = calls.filter((call) => call.date === toDateKey(date) && getCallHour(call) === hour);
-                return `<div class="week-cell ${isDateInMarketVisit(visit, date) ? "" : "week-day-outside"}">${dayCalls.map((call) => renderWeekCallBlock(call, selectedCallId)).join("")}</div>`;
-              })
-              .join("")}
-          `
-        )
-        .join("")}
-    </div>
-  `;
+function renderManufacturerWeekGrid(visit) {
+  return renderPreciseMarketWeek(visit);
 }
 
 function isDateInMarketVisit(visit, date) {
@@ -5573,6 +5539,7 @@ function getCallHour(call) {
 }
 
 function formatHourLabel(hour) {
+  if (hour === 0) return "12 AM";
   if (hour === 12) return "12 PM";
   if (hour > 12) return `${hour - 12} PM`;
   return `${hour} AM`;

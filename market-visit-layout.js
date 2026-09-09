@@ -36,7 +36,7 @@ function renderCompactMarketVisit(panel, visit) {
     </div>
     <section class="manufacturer-week-panel">
       <div class="quick-list-header market-calendar-overview-header"><div><p class="eyebrow">Weekly overview</p><h2>Monday to Friday schedule</h2></div>${renderMarketCalendarActions(visit)}</div>
-      <div class="manufacturer-calendar-layout">${renderManufacturerWeekGrid(visit, calls[0]?.id || "")}<aside class="market-call-preview" data-market-call-preview>${renderMarketCallPreview(visit, calls[0])}</aside></div>
+      <div class="visit-calendar-full-width">${renderManufacturerWeekGrid(visit)}</div>
     </section>
     <div class="compact-visit-lists market-detail-tabs">
       <section><h3>Products</h3><div class="section-label-row"><span>${products.length} selected</span><button class="edit-card" type="button" data-market-print-products="${escapeAttribute(visit.id)}">Print products</button></div>
