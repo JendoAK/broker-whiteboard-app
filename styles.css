@@ -5525,3 +5525,26 @@ html {
 #supabaseAuthDialog [hidden] { display: none !important; }
 #sampleForm fieldset input[type=checkbox] { width: 18px; height: 18px; margin: 0; flex: 0 0 auto; }
 .sample-product-link { white-space: pre-line; }
+
+/* Consistent, high-contrast creation actions across every section. */
+button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-market-call], [data-add-market-appointment], [data-add-market-operator], [data-scroll-add-call]),
+:is([data-event-attendee-form], [data-event-library-form], [data-event-organization-form]) button[type="submit"] {
+  background: #17645b;
+  color: #fff;
+  border: 2px solid #104b44;
+  min-height: 46px;
+  padding: 11px 18px;
+  font-size: 1rem;
+  font-weight: 800;
+  box-shadow: 0 3px 0 #104b44;
+  cursor: pointer;
+}
+button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-market-call], [data-add-market-appointment], [data-add-market-operator], [data-scroll-add-call]):hover,
+:is([data-event-attendee-form], [data-event-library-form], [data-event-organization-form]) button[type="submit"]:hover {
+  background: #104b44;
+}
+button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-market-call], [data-add-market-appointment], [data-add-market-operator], [data-scroll-add-call]):focus-visible,
+:is([data-event-attendee-form], [data-event-library-form], [data-event-organization-form]) button[type="submit"]:focus-visible {
+  outline: 3px solid #e7b82f;
+  outline-offset: 3px;
+}
