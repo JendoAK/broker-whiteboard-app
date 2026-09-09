@@ -1,5 +1,6 @@
-const CACHE_NAME = "foodbrokerbase-activity1";
+const CACHE_NAME = "foodbrokerbase-initials1";
 const APP_SHELL = [
+  "./team-initials.js?v=20260909-initials1",
   "./team-work-view.css?v=20260909-activity1",
   "./action-buttons.css?v=20260909-actions1",
   "./action-buttons.js?v=20260909-actions1",
@@ -12,14 +13,14 @@ const APP_SHELL = [
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
   "./market-call-editor.js?v=20260909-visitcolors1",
-  "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260909-activity1",
+  "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260909-initials1",
   "./market-week-calendar.js?v=20260909-visitcolors1",
   "./market-operator-conversion.js?v=20260909-visitcolors1",
   "./testkitchen-layout.js?v=20260909-contactfields1",
   "./vendor-visit-print.js?v=20260909-visitcolors1",
   "./market-visit-layout.js?v=20260909-visitcolors1",
   "./supabase-config.js",
-  "./supabase-auth.js?v=20260909-access1",
+  "./supabase-auth.js?v=20260909-initials1",
   "./manifest.webmanifest",
   "./broker-whiteboard-logo.png",
   "./pwa-icon-192.png",

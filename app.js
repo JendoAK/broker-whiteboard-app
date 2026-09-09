@@ -1733,7 +1733,7 @@ function getCloudUser() {
 
 function normalizeAuditRecord(audit) {
   if (!audit || typeof audit !== "object") return null;
-  const initials = String(audit.initials || "").trim().slice(0, 4).toUpperCase();
+  const initials = String(currentAuditInitials(audit)).trim().slice(0, 4).toUpperCase();
   if (!initials) return null;
   return {
     initials,
@@ -1988,7 +1988,7 @@ async function saveCloudSections(sectionKeys = cloudSectionConfigs.map((section)
       updated_by: user.id,
       data: {
         label: section.label,
-        value: correctContactNames(section.get()),
+        value: updateRecordedInitials(correctContactNames(section.get())),
         backupVersion,
         savedAt: now
       }
@@ -2120,6 +2120,7 @@ async function loadCloudSections(options = {}) {
   cloudSyncUserId = user.id;
 
   try {
+    await syncSavedTeamInitials().catch(error => console.warn("Saved initials will retry on next sync:", error.message));
     await correctPeteTeamRecords().catch(() => { peteCorrectionUser = ""; });
     const { data: personalData, error: personalError } = await client
       .from("app_records")

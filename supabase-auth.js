@@ -344,6 +344,7 @@
         const { data, error } = await client.auth.updateUser({ data: { initials } });
         if (error) throw error;
         currentUser = data.user;
+        window.dispatchEvent(new Event("foodbrokerbase:initials"));
         dialog.querySelector("#authInitials").value = initials;
         setStatus("Your initials have been saved.", "success");
       } catch (error) { setStatus(error.message || "Could not save initials. Please try again.", "error"); }
@@ -551,6 +552,7 @@
             const { error } = await client.rpc("set_team_user_initials", { target_user: profile.user_id, new_initials: initials });
             if (error) throw error;
             profile.initials = initials;
+            window.dispatchEvent(new Event("foodbrokerbase:initials"));
             input.value = initials;
             if (profile.user_id === currentUser?.id) currentUser = { ...currentUser, user_metadata: { ...currentUser.user_metadata, initials } };
             setTeamStatus("Initials saved. This member will see them after refreshing the app.", "success");
