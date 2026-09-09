@@ -69,6 +69,7 @@ function openMarketCallEditor(visitId, callId, newKind = "") {
   dialog.querySelectorAll("[data-cancel-call-edit]").forEach((button) => button.addEventListener("click", () => dialog.close()));
   setupDatePicker(form.elements.namedItem("date"));
   form.addEventListener("submit", saveMarketCallEdit);
+  ['salesReps','manufacturerContact'].forEach(name => attachPeopleSuggestions(dialog.querySelector(`[name=${name}]`)));
   dialog.showModal();
 }
 

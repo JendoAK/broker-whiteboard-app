@@ -1,3 +1,4 @@
+const peopleContactsStorageKey = "broker-whiteboard-people-contacts";
 const columns = [
   "New Lead",
   "Need Action",
@@ -235,6 +236,7 @@ function replaceMarketVisitsByCloudType(type, value) {
 }
 
 const cloudSectionConfigs = [
+  { key: peopleContactsStorageKey, label: "People & Contacts", scope: "team", get: () => peopleContacts, set: value => peopleContacts = Array.isArray(value) ? value.map(normalizePeopleContact) : [] },
   { key: calendarPreferencesKey, label: "My Calendar Preferences", scope: "personal", get: getCurrentCalendarPreferences, set: setCurrentCalendarPreferences },
   { key: personalVisitCalendarKey, label: "My Events & Visits Calendar", scope: "personal",
     get: getCurrentPersonalVisitCalendar, set: setCurrentPersonalVisitCalendar },
@@ -314,6 +316,7 @@ const cloudSectionConfigs = [
 ];
 
 const localCloudCacheConfigs = [
+  { key: peopleContactsStorageKey, get: () => peopleContacts },
   { key: calendarPreferencesKey, get: () => calendarPreferences },
   { key: personalVisitCalendarKey, get: () => personalVisitCalendar },
   { key: eventProductStorageKey, get: () => eventProducts },
@@ -339,6 +342,7 @@ let manualVendorReports = loadManualVendorReports();
 let addressBook = loadAddressBook();
 let stockProducts = loadStockProducts();
 let eventProducts = loadEventProducts();
+let peopleContacts = loadPeopleContacts();
 let personalVisitCalendar = loadPersonalVisitCalendar();
 let calendarPreferences = loadCalendarPreferences();
 migrateStockProductData();
@@ -1915,6 +1919,8 @@ function writeCloudSectionsToLocalStorage(sectionKeys = cloudSectionConfigs.map(
 }
 
 function renderAfterCloudSync() {
+  applyContactNameCorrections();
+  updateSalesRepSuggestions();
   render();
   renderTodoBoard();
   renderVendorReport();
@@ -1970,7 +1976,7 @@ async function saveCloudSections(sectionKeys = cloudSectionConfigs.map((section)
       updated_by: user.id,
       data: {
         label: section.label,
-        value: section.get(),
+        value: correctContactNames(section.get()),
         backupVersion,
         savedAt: now
       }
@@ -1984,7 +1990,7 @@ async function saveCloudSections(sectionKeys = cloudSectionConfigs.map((section)
       data: {
         ...(sharedTrackerKeys.has(section.key) ? { migratedTrackerOwners: trackerMigrationOwners.get(section.key) || [] } : {}),
         label: section.label,
-        value: section.get(),
+        value: correctContactNames(section.get()),
         backupVersion,
         savedAt: now
       }
@@ -2102,6 +2108,7 @@ async function loadCloudSections(options = {}) {
   cloudSyncUserId = user.id;
 
   try {
+    await correctPeteTeamRecords().catch(() => { peteCorrectionUser = ""; });
     const { data: personalData, error: personalError } = await client
       .from("app_records")
       .select("record_key,data,updated_at")
@@ -2453,6 +2460,7 @@ function exportBackup() {
     addressBook,
     stockProducts,
     eventProducts,
+    peopleContacts,
     personalVisitCalendar: getCurrentPersonalVisitCalendar(),
     calendarPreferences: getCurrentCalendarPreferences(),
     samples,
@@ -2491,6 +2499,8 @@ function importBackup(event) {
       addressBook = Array.isArray(parsed.addressBook) ? parsed.addressBook.map(normalizeAddressBookEntry) : [];
       stockProducts = Array.isArray(parsed.stockProducts) ? parsed.stockProducts.map(normalizeStockProduct) : [];
       eventProducts = Array.isArray(parsed.eventProducts) ? parsed.eventProducts.map(normalizeEventProduct) : [];
+      peopleContacts = Array.isArray(parsed.peopleContacts) ? parsed.peopleContacts.map(normalizePeopleContact) : peopleContacts;
+      persistPeopleContacts();
       setCurrentPersonalVisitCalendar(parsed.personalVisitCalendar);
       setCurrentCalendarPreferences(parsed.calendarPreferences);
       samples = Array.isArray(parsed.samples) ? parsed.samples.map(normalizeSample) : [];
@@ -4155,6 +4165,7 @@ function clearAddressBookSearch() {
 }
 
 function renderAddressBook() {
+  renderPeopleContacts();
   if (!elements.addressBookTable) return;
   const entries = getVisibleAddressBookEntries();
   elements.addressBookCount.textContent = entries.length;
@@ -9377,16 +9388,7 @@ function updateTimelineSearchSuggestions() {
 }
 
 function getSalesRepDirectory() {
-  return [
-    ...new Set(
-      cards
-        .map((card) => card.salesRep)
-        .concat(cards.map((card) => card.syscoSalesRep))
-        .concat(addressBook.flatMap((entry) => [entry.usfSalesRep, entry.syscoSalesRep]))
-        .map((rep) => String(rep || "").trim())
-        .filter(Boolean)
-    )
-  ].sort((a, b) => a.localeCompare(b));
+  return [...new Set(getPeopleDirectory().map(person => person.name))].sort((a,b)=>a.localeCompare(b));
 }
 
 function updateSalesRepSuggestions() {

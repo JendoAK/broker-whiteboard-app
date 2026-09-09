@@ -25,19 +25,12 @@ function kitchenPersonKey(person) {
   return JSON.stringify([normalizeOperatorKey(person.name), normalizeOperatorKey(person.organization)]);
 }
 
-function getKitchenAttendeeDirectory() {
-  const people = new Map();
-  // Reuse only people from shared events, including archived events.
-  marketVisits.filter(isMarketEvent).sort((a, b) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt)).forEach(visit => visit.attendees.forEach(person => {
-    if (person.name.trim() && !people.has(kitchenPersonKey(person))) people.set(kitchenPersonKey(person), person);
-  }));
-  return [...people.values()].sort((a, b) => a.name.localeCompare(b.name));
-}
+function getKitchenAttendeeDirectory() { return getPeopleDirectory(); }
 
 function openKitchenAttendeePicker(visitId) {
   const dialog = createVisitDialog('Add attendees');
   const body = dialog.querySelector('[data-visit-entry-body]');
-  body.innerHTML = `<div class="section-label-row"><p>Reuse people from previous shared events, including archived events.</p><button class="primary-action" type="button" data-new-kitchen-person>+ New attendee</button></div><div class="field-grid"><label><span>Search name or organization</span><input type="search" data-kitchen-person-search /></label><label><span>Attendee type</span><select data-kitchen-person-category><option value="">All types</option><option>Distributor</option><option>Operator / Restaurant</option><option>Our team</option><option>Vendor</option><option>Other</option></select></label></div><div class="visit-product-choices" data-kitchen-people></div><p role="status" data-kitchen-people-message></p><div class="form-actions"><button class="ghost-action" type="button" data-kitchen-done>Done</button><button class="primary-action" type="button" data-kitchen-add-selected>Add selected attendees</button></div>`;
+  body.innerHTML = `<div class="section-label-row"><p>Choose people from your contacts, sales reps, and previous events.</p><button class="primary-action" type="button" data-new-kitchen-person>+ New attendee</button></div><div class="field-grid"><label><span>Search name or organization</span><input type="search" data-kitchen-person-search /></label><label><span>Attendee type</span><select data-kitchen-person-category><option value="">All types</option><option>Distributor</option><option>Operator / Restaurant</option><option>Our team</option><option>Vendor</option><option>Other</option></select></label></div><div class="visit-product-choices" data-kitchen-people></div><p role="status" data-kitchen-people-message></p><div class="form-actions"><button class="ghost-action" type="button" data-kitchen-done>Done</button><button class="primary-action" type="button" data-kitchen-add-selected>Add selected attendees</button></div>`;
   const selected = new Set();
   const render = () => {
     const visit = marketVisits.find(item => item.id === visitId);
@@ -71,6 +64,7 @@ function openKitchenAttendeeForm(visitId, personId = '', onSave) {
   const body = dialog.querySelector('[data-visit-entry-body]');
   const input = (key, label, required = false) => `<label><span>${label}</span><input name="${key}" value="${escapeAttribute(person[key] || '')}" ${required ? 'required' : ''} /></label>`;
   body.innerHTML = `<form><div class="field-grid">${input('name','Name',true)}${input('organization','Company / organization',true)}<label><span>Attendee type</span><select name="category">${['Distributor','Operator / Restaurant','Our team','Vendor','Other'].map(value => `<option ${value === person.category ? 'selected' : ''}>${value}</option>`).join('')}</select></label>${input('role','Role')}${input('contact','Email / phone')}</div><p role="alert" data-attendee-error></p><div class="form-actions"><button class="ghost-action" type="button" data-attendee-cancel>Cancel</button><button class="primary-action" type="submit">${personId ? 'Save attendee' : 'Add attendee'}</button></div></form>`;
+  attachPeopleSuggestions(body.querySelector('[name=name]'), person => { ['organization','role','contact','category'].forEach(key => body.querySelector(`[name=${key}]`).value = person[key] || ''); });
   body.querySelector('[data-attendee-cancel]').onclick = () => dialog.close();
   body.querySelector('form').onsubmit = event => {
     event.preventDefault();
@@ -80,6 +74,7 @@ function openKitchenAttendeeForm(visitId, personId = '', onSave) {
     const next = normalizeEventAttendee({ ...values, name: values.name.trim(), organization: values.organization.trim(), id: personId || crypto.randomUUID() });
     if (!next.name || !next.organization) return;
     if (current.attendees.some(item => item.id !== personId && kitchenPersonKey(item) === kitchenPersonKey(next))) { body.querySelector('[data-attendee-error]').textContent = 'This attendee is already on this event.'; return; }
+    rememberPeopleContact(next);
     updateMarketVisit(visitId, { attendees: personId ? current.attendees.map(item => item.id === personId ? next : item) : [...current.attendees, next] });
     dialog.close(); onSave?.();
   };

@@ -11,7 +11,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="pwa-icon-192.png" />
     <link rel="apple-touch-icon" href="pwa-icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=20260909-printcalendar1" />
+  <link rel="stylesheet" href="styles.css?v=20260909-people1" />
   </head>
   <body class="auth-pending">
     <datalist id="timelineSearchSuggestions"></datalist>
@@ -652,7 +652,7 @@
             <div><p class="eyebrow">Operators</p><h2>Customer address book</h2></div>
             <span class="count-pill" id="addressBookCount">0</span>
           </div>
-          <div class="quick-table-wrap" id="addressBookTable"></div>
+          <section class="people-directory"><div class="section-label-row"><h2>People &amp; Contacts</h2><button class="primary-action" type="button" id="addPeopleContact">+ Add contact</button></div><p>Distributor employees, sales reps, regional managers, and other contacts.</p><input id="peopleContactSearch" type="search" placeholder="Search name, company, or role" aria-label="Search people and contacts" /><div id="peopleContactsPanel"></div></section><div class="quick-table-wrap" id="addressBookTable"></div>
         </main>
       </div>
     </section>
@@ -1391,11 +1391,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
     <script src="supabase-auth.js?v=20260909-access1"></script>
-  <script src="market-events.js?v=20260909-printcalendar1"></script>
-  <script src="personal-visit-calendar.js?v=20260909-printcalendar1"></script>
+  <script src="market-events.js?v=20260909-people1"></script>
+  <script src="personal-visit-calendar.js?v=20260909-people1"></script>
   <script src="calendar-holidays.js?v=20260909-5"></script>
-  <script src="market-call-editor.js?v=20260909-printcalendar1"></script>
-  <script src="team-work-view.js?v=20260909-roles1"></script><script src="market-week-calendar.js?v=20260909-printcalendar1"></script><script src="market-operator-conversion.js?v=20260909-printcalendar1"></script><script src="testkitchen-layout.js?v=20260909-printcalendar1"></script><script src="vendor-visit-print.js?v=20260909-printcalendar1"></script><script src="market-visit-layout.js?v=20260909-printcalendar1"></script><script src="app.js?v=20260909-printcalendar1"></script>
+  <script src="market-call-editor.js?v=20260909-people1"></script>
+  <script src="team-work-view.js?v=20260909-roles1"></script><script src="market-week-calendar.js?v=20260909-people1"></script><script src="market-operator-conversion.js?v=20260909-people1"></script><script src="testkitchen-layout.js?v=20260909-people1"></script><script src="vendor-visit-print.js?v=20260909-people1"></script><script src="market-visit-layout.js?v=20260909-people1"></script><script src="people-contacts.js?v=20260909-people1"></script><script src="app.js?v=20260909-people1"></script>
     <script>
       if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
         window.addEventListener("load", () => {

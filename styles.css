@@ -5679,3 +5679,7 @@ button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-
 .kitchen-person-name span { font-size: .9rem; font-weight: 500; }
 .kitchen-organizations { margin-top: 14px; }
 .kitchen-operator-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; }
+
+.people-directory { margin: 16px 0; padding: 16px; border: 1px solid #c6b9ac; border-radius: 10px; background: #fffaf4; }
+#peopleContactsPanel { display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 8px; max-height: 360px; overflow:auto; margin-top: 12px; }
+#peopleContactSearch { width: min(100%,540px); }
