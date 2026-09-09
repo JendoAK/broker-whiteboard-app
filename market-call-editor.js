@@ -93,9 +93,9 @@ function saveMarketCallEdit(event) {
     const next = normalizeMarketCall({ ...values, kind: context.newKind,
       startTime: marketCallTimeLabel(values.startTime), endTime: marketCallTimeLabel(values.endTime),
       salesReps: normalizeStringList(values.salesReps), operatorId: operator?.operatorId || "",
-      operatorName: operator?.operatorName || "", productIds: context.newKind === "call" ? [...visit.productIds] : [] });
+      operatorName: operator?.operatorName || "", productIds: context.newKind === "call" ? getMarketVisitProducts(visit).map(product => product.id) : [] });
     const operatorLinks = operator && !isMarketOperatorAlreadyAttached(visit, operator.operatorId, operator.operatorName)
-      ? [...visit.operatorLinks, normalizeMarketOperatorLink({ ...operator, productIds: [...visit.productIds] })]
+      ? [...visit.operatorLinks, normalizeMarketOperatorLink({ ...operator, productIds: getMarketVisitProducts(visit).map(product => product.id) })]
       : visit.operatorLinks;
     updateMarketVisit(visit.id, { calls: [...visit.calls, next], operatorLinks });
     dialog.close();

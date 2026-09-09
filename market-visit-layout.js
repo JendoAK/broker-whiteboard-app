@@ -70,28 +70,64 @@ function openVisitProductsDialog(visitId) {
   if (!marketVisits.some(visit => visit.id === visitId)) return;
   const dialog = createVisitDialog("Add products");
   const body = dialog.querySelector("[data-visit-entry-body]");
-  body.innerHTML = `<label><span>Search products, vendor, APN or SUPC</span><input type="search" data-visit-product-filter /></label><div class="visit-product-choices"></div><p data-visit-product-message role="status"></p><div class="form-actions"><button class="primary-action" type="button" data-save-visit-products>Add selected products</button></div>`;
+  body.innerHTML = `<div class="section-label-row"><p>Choose stocked products or shared new products.</p><button class="primary-action" type="button" data-create-visit-product>+ New product</button></div><label><span>Search products, vendor, APN or SUPC</span><input type="search" data-visit-product-filter /></label><div class="visit-product-choices"></div><p data-visit-product-message role="status"></p><div class="form-actions"><button class="ghost-action" type="button" data-products-done>Done</button><button class="primary-action" type="button" data-save-visit-products>Add selected products</button></div>`;
   const selected = new Set();
   const renderChoices = () => {
     const visit = marketVisits.find(item => item.id === visitId);
     const query = normalizeProductSearchText(body.querySelector("input").value);
-    const candidates = visit ? getMarketProductCandidates(visit).filter(product => !query || normalizeProductSearchText(formatMarketProductOption(product)).includes(query)) : [];
-    body.querySelector(".visit-product-choices").innerHTML = candidates.map(product => `<label class="visit-product-choice"><input type="checkbox" value="${escapeAttribute(product.id)}" ${selected.has(product.id) ? "checked" : ""} /><span><strong>${escapeHtml(product.description)}</strong><small>${escapeHtml([product.apn || product.supc, product.vendor, product.packaging].filter(Boolean).join(" · "))}</small></span></label>`).join("") || `<p>No matching products available to add.</p>`;
+    const candidates = visit ? getVisitProductPickerCandidates(visit).filter(product => !query || normalizeProductSearchText(formatMarketProductOption(product)).includes(query)) : [];
+    body.querySelector(".visit-product-choices").innerHTML = candidates.map(product => `<label class="visit-product-choice"><input type="checkbox" value="${escapeAttribute(product.id)}" ${selected.has(product.id) ? "checked" : ""} /><span><strong>${escapeHtml(product.description)}</strong><small>${escapeHtml([product.isNewEventProduct ? "New · Not yet stocked" : "Stocked", product.apn || product.supc, product.vendor, product.packaging].filter(Boolean).join(" · "))}</small></span></label>`).join("") || `<p>No matching products available to add. Use New product to create one.</p>`;
     body.querySelectorAll("input[type=checkbox]").forEach(input => input.onchange = () => { if (input.checked) selected.add(input.value); else selected.delete(input.value); });
   };
   body.querySelector("[data-visit-product-filter]").oninput = renderChoices;
+  body.querySelector("[data-products-done]").onclick = () => dialog.close();
+  body.querySelector("[data-create-visit-product]").onclick = () => openNewVisitProductDialog(visitId, product => {
+    renderChoices();
+    body.querySelector("[data-visit-product-message]").textContent = `${product.description} added to this visit and the shared new-product library.`;
+  });
   body.querySelector("[data-save-visit-products]").onclick = () => {
     const visit = marketVisits.find(item => item.id === visitId);
     if (!visit) return;
-    const available = new Set(getMarketProductCandidates(visit).map(product => product.id));
+    const candidates = getVisitProductPickerCandidates(visit);
+    const available = new Set(candidates.map(product => product.id));
     const added = [...selected].filter(id => available.has(id));
     if (!added.length) { body.querySelector("[data-visit-product-message]").textContent = "Select at least one product to add."; return; }
-    updateMarketVisit(visit.id, { productIds: [...visit.productIds, ...added] });
+    const newIds = new Set(candidates.filter(product => product.isNewEventProduct).map(product => product.id));
+    updateMarketVisit(visit.id, { productIds: [...visit.productIds, ...added.filter(id => !newIds.has(id))], newProductIds: [...visit.newProductIds, ...added.filter(id => newIds.has(id))] });
     dialog.close();
   };
   renderChoices();
   dialog.showModal();
   body.querySelector("input").focus();
+}
+
+function getVisitProductPickerCandidates(visit) {
+  const upcoming = eventProducts.filter(product => !product.linkedStockId && !visit.newProductIds.includes(product.id)).map(product => resolveEventProduct(product.id)).filter(Boolean);
+  return [...getMarketProductCandidates(visit), ...upcoming];
+}
+
+function openNewVisitProductDialog(visitId, onSave) {
+  const visit = marketVisits.find(item => item.id === visitId);
+  if (!visit) return;
+  const dialog = createVisitDialog("New product — not yet stocked");
+  const body = dialog.querySelector("[data-visit-entry-body]");
+  body.innerHTML = `<p>No distributor, APN or Sysco code is needed. This product will be available to the team in the shared new-product library.</p><form class="event-entry-grid visit-new-product-form">${renderEventProductFields({ vendor: visit.vendor })}<div class="form-actions"><button class="ghost-action" type="button" data-cancel-new-product>Cancel</button><button class="primary-action" type="submit">Save &amp; add to visit</button></div></form>`;
+  body.querySelector("[data-cancel-new-product]").onclick = () => dialog.close();
+  body.querySelector("form").onsubmit = event => {
+    event.preventDefault();
+    const current = marketVisits.find(item => item.id === visitId);
+    if (!current) return;
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    if (!values.description.trim() || !values.vendor.trim()) return;
+    const product = normalizeEventProduct({ ...values, description: values.description.trim(), vendor: values.vendor.trim() });
+    stampSharedRecord(product, "Created");
+    eventProducts = [...eventProducts, product];
+    persistEventProducts();
+    updateMarketVisit(visitId, { newProductIds: [...current.newProductIds, product.id] });
+    dialog.close();
+    onSave?.(product);
+  };
+  dialog.showModal();
 }
 
 function openVisitOperatorDialog(visitId, operatorId = "") {

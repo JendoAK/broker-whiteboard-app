@@ -5411,7 +5411,7 @@ function renderMarketProductChip(product) {
     <div class="market-product-chip">
       <div>
         <strong>${escapeHtml(product.description || "Product")}</strong>
-        <span>${escapeHtml([number, product.vendor, product.brandName].filter(Boolean).join(" | "))}</span>
+        <span>${escapeHtml([product.isNewEventProduct ? "New · Not yet stocked" : "", number, product.vendor, product.brandName].filter(Boolean).join(" | "))}</span>
       </div>
       <button class="remove-product" type="button" data-remove-market-product="${escapeAttribute(product.id)}">Remove</button>
     </div>
@@ -5667,6 +5667,7 @@ function bindMarketDetailActions(panel, visit) {
     button.addEventListener("click", () => {
       updateMarketVisit(visit.id, {
         productIds: visit.productIds.filter((id) => id !== button.dataset.removeMarketProduct),
+        newProductIds: visit.newProductIds.filter((id) => id !== button.dataset.removeMarketProduct),
         operatorLinks: visit.operatorLinks.map((link) => ({ ...link, productIds: link.productIds.filter((id) => id !== button.dataset.removeMarketProduct) })),
         calls: visit.calls.map((call) => ({ ...call, productIds: call.productIds.filter((id) => id !== button.dataset.removeMarketProduct) }))
       });

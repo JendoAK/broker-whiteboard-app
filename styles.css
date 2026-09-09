@@ -5655,3 +5655,9 @@ button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-
 .precise-week-call strong { display: block; font-size: 12px; line-height: 13px; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .precise-week-call span { display: block; font-size: 10px; line-height: 11px; color: #e3efff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .precise-week-call:hover, .precise-week-call:focus-visible { outline: 2px solid #c98043; outline-offset: 1px; z-index: 2; }
+
+.visit-new-product-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.visit-new-product-form > label:last-of-type, .visit-new-product-form > .form-actions { grid-column: 1 / -1; }
+.visit-new-product-form > .form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
+.visit-new-product-form .form-actions button { width: auto; min-width: 100px; }
+@media (max-width: 600px) { .visit-new-product-form { grid-template-columns: 1fr; } }
