@@ -1481,6 +1481,10 @@ function normalizeStockAttachment(file) {
 
 function normalizeManualVendorReport(report) {
   return {
+    sourceMarketVisitId: report.sourceMarketVisitId || "",
+    sourceMarketOperatorId: report.sourceMarketOperatorId || "",
+    sourceMarketOperatorName: report.sourceMarketOperatorName || "",
+    sourceMarketProductId: report.sourceMarketProductId || "",
     id: report.id || crypto.randomUUID(),
     account: report.account || "",
     vendor: report.vendor || "",
@@ -4078,6 +4082,7 @@ function saveManualVendorReport() {
   const existing = manualVendorReports.find((report) => report.id === id);
   const operatorMatch = syncOperatorToAddressBook(elements.manualVendorAccount.value);
   const next = normalizeManualVendorReport({
+    ...(existing || {}),
     id,
     account: operatorMatch?.operatorName || elements.manualVendorAccount.value.trim(),
     vendor: elements.manualVendorVendor.value.trim(),
@@ -5309,11 +5314,12 @@ function renderMarketOperator(visit, operator) {
         <span class="market-operator-actions">
           <button class="edit-card market-save-operator" type="button" data-save-market-operator="${escapeAttribute(operator.id)}">Save Operator</button>
           <button class="edit-card market-convert-lead" type="button" data-convert-market-operator="${escapeAttribute(operator.id)}">Convert to Lead</button>
+          <button class="edit-card" type="button" data-report-market-operator="${escapeAttribute(operator.id)}">Convert to Vendor Report</button>
           <button class="remove-product" type="button" data-remove-market-operator="${escapeAttribute(operator.id)}" data-remove-market-operator-id="${escapeAttribute(operator.operatorId || "")}" data-remove-market-operator-name="${escapeAttribute(operatorName)}">Remove</button>
         </span>
       </summary>
       <div class="market-operator-detail">
-        ${isMarketEvent(visit) ? `<label>Lead distributor<select data-event-lead-distributor="${escapeAttribute(operator.id)}"><option>US Foods</option><option>Sysco</option><option>Other</option></select></label>` : ""}
+        <label>Lead distributor<select data-event-lead-distributor="${escapeAttribute(operator.id)}"><option>US Foods</option><option>Sysco</option><option>Other</option></select></label>
         ${products.length ? `<div class="operator-product-notes">${products.map((product) => renderOperatorProductNote(operator, product)).join("")}</div>` : `<div class="empty-state">Add products to this visit, then they will show here for this operator.</div>`}
         <label class="operator-general-note"><span>Operator note</span><textarea class="market-operator-note" data-market-operator-notes="${escapeAttribute(operator.id)}" placeholder="Operator notes, feedback, next step...">${escapeHtml(operator.notes)}</textarea></label>
       </div>
@@ -5716,6 +5722,10 @@ function bindMarketDetailActions(panel, visit) {
       });
     })
   );
+  panel.querySelectorAll("[data-report-market-operator]").forEach(button => button.addEventListener("click", event => {
+    event.preventDefault(); event.stopPropagation();
+    convertMarketOperatorToVendorReport(visit, button.dataset.reportMarketOperator, panel);
+  }));
   panel.querySelectorAll("[data-convert-market-operator]").forEach((button) =>
     button.addEventListener("click", (event) => {
       event.preventDefault();
@@ -6000,18 +6010,13 @@ function saveMarketOperatorDetails(visitId, operatorId, panel) {
 }
 
 function convertMarketOperatorToLead(visit, operatorId, panel) {
-  const currentVisit = marketVisits.find((item) => item.id === visit.id) || visit;
-  const operator = currentVisit.operatorLinks.find((link) => link.id === operatorId) || getMarketVisitOperators(currentVisit).find((link) => link.id === operatorId);
-  if (!operator) return;
-  if (isMarketEvent(currentVisit) && cards.some((card) => card.sourceMarketVisitId === currentVisit.id && card.sourceMarketOperatorId === operatorId && !card.deletedAt)) {
-    alert("This organization already has a lead from this event in your Leads section.");
-    return;
-  }
-  const selectedProductIds = [...panel.querySelectorAll("[data-operator-lead-product]")]
-    .filter((input) => input.dataset.operatorLeadProduct === operatorId && input.checked)
-    .map((input) => input.value);
-  const products = getMarketVisitProducts(currentVisit).filter((product) => selectedProductIds.includes(product.id));
+  const snapshot = readMarketOperatorConversion(visit.id, operatorId, panel);
+  if (!snapshot) return;
+  const { visit: currentVisit, operator, products, distributor } = snapshot;
+  const existingLead = cards.find(card => !card.deletedAt && marketConversionSourceMatches(card, currentVisit, operator));
+  if (existingLead) { showMarketConversionDestination(panel, "lead", existingLead); return; }
   if (!products.length && !confirm("No products are selected. Create the lead without products?")) return;
+  saveMarketOperatorDetails(visit.id, operatorId, panel);
   const operatorName = operator.operatorName || getOperatorName(operator.operatorId) || getMarketVisitDisplayName(currentVisit);
   const addressEntry = operator.operatorId ? addressBook.find((entry) => entry.id === operator.operatorId) : null;
   const now = new Date().toISOString();
@@ -6027,19 +6032,21 @@ function convertMarketOperatorToLead(visit, operatorId, panel) {
     account: operatorName,
     accountNumber: addressEntry?.accountNumber || "",
     syscoAccountNumber: addressEntry?.syscoAccountNumber || "",
-    distributor: isMarketEvent(currentVisit) ? [...panel.querySelectorAll("[data-event-lead-distributor]")].find((input) => input.dataset.eventLeadDistributor === operatorId)?.value || "US Foods" : "US Foods",
+    distributor,
     note: [`Created from ${marketVisitTypes[currentVisit.type]}: ${getMarketVisitDisplayName(currentVisit)}`, operator.notes, productNotes,
       isMarketEvent(currentVisit) ? currentVisit.attendees.filter((person) => normalizeOperatorKey(person.organization) === normalizeOperatorKey(operatorName)).map((person) => [person.name, person.role, person.contact].filter(Boolean).join(" | ")).join("\n") : ""].filter(Boolean).join("\n\n"),
     sourceMarketVisitId: currentVisit.id,
     sourceMarketOperatorId: operatorId,
+    sourceMarketOperatorName: normalizeOperatorKey(operatorName),
     priority: "Medium",
     due: currentVisit.endDate || currentVisit.startDate || "",
     status: "New Lead",
     source: "Market Visit",
-    salesRep: currentVisit.salesReps.join(", "),
+    salesRep: distributor === "Sysco" ? "" : currentVisit.salesReps.join(", "),
+    syscoSalesRep: distributor === "Sysco" ? currentVisit.salesReps.join(", ") : "",
     products: products.map((product) => ({
       id: crypto.randomUUID(),
-      apn: product.apn || product.supc || product.manufacturerNumber || "",
+      apn: (distributor === "Sysco" ? product.supc : product.apn) || product.manufacturerNumber || "",
       description: product.description || "",
       vendor: product.vendor || product.brandName || ""
     })),
@@ -6050,10 +6057,10 @@ function convertMarketOperatorToLead(visit, operatorId, panel) {
     archiveOutcome: "",
     deletedAt: ""
   });
+  const previousCards = cards;
   cards = [lead, ...cards];
-  if (!persist()) return;
-  render();
-  alert(`Lead created for ${operatorName}.`);
+  if (!persist()) { cards = previousCards; return; }
+  showMarketConversionDestination(panel, "lead", lead);
 }
 
 function getVisibleMarketVisits() {
@@ -8257,6 +8264,7 @@ function saveCard() {
     syscoSalesRep: elements.syscoSalesRep.value.trim()
   });
   const next = {
+    ...(existing || {}),
     id,
     account: operatorMatch?.operatorName || elements.account.value.trim(),
     accountNumber: elements.accountNumber.value.trim(),

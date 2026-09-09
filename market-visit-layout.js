@@ -47,7 +47,7 @@ function renderCompactMarketVisit(panel, visit) {
       </section>
     </div>
     <details class="compact-visit-extra"><summary>Schedule list (${visit.calls.length})</summary>${visit.calls.length ? `<table class="quick-table market-call-table"><thead><tr><th>Date</th><th>Time</th><th>Operator / Appointment</th><th>Location</th><th>Reps</th><th>Notes</th><th></th></tr></thead><tbody>${visit.calls.map(call => renderMarketCallRow(visit, call)).join("")}</tbody></table>` : `<p>No calls scheduled yet.</p>`}</details>
-    <details class="compact-visit-extra"><summary>Visit notes${visit.notes ? " · Notes added" : ""}</summary>${renderMarketNotesSection(visit)}<button class="edit-card" type="button" data-detail-followup>Create follow-up</button></details>`;
+    <details class="compact-visit-extra"><summary>Visit notes${visit.notes ? " · Notes added" : ""}</summary>${renderMarketNotesSection(visit)}</details>`;
   bindMarketDetailActions(panel, visit);
   panel.querySelector("[data-visit-add-products]").onclick = () => openVisitProductsDialog(visit.id);
   panel.querySelector("[data-visit-add-call]").onclick = () => openMarketCallEditor(visit.id, "", "call");
