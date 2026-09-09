@@ -5593,3 +5593,30 @@ button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-
 .manufacturer-visit-hero > div {
   min-width: 0;
 }
+
+/* Compact visit workspace and focused entry windows. */
+.compact-visit-header { align-items: center; }
+.compact-visit-header h2 { margin: 6px 0; font-size: clamp(1.5rem, 3vw, 2.4rem); }
+.compact-visit-header p { margin: 6px 0; }
+.compact-visit-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.compact-visit-actions button { min-height: 44px; font-size: 1rem; }
+.compact-visit-lists { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 16px; }
+.compact-visit-list { max-height: 280px; overflow-y: auto; display: grid; gap: 8px; }
+.compact-operator { display: flex; flex-direction: column; gap: 5px; text-align: left; padding: 12px; background: #fffaf5; border: 1px solid #c68d83; border-radius: 8px; color: #30251f; font-size: 1rem; }
+.compact-operator span { font-size: .9rem; font-weight: 500; }
+.compact-visit-extra { margin-top: 14px; border: 1px solid #c9b6a1; border-radius: 9px; background: #fffaf5; padding: 12px; overflow-x: auto; }
+.compact-visit-extra > summary { cursor: pointer; font-size: 1rem; font-weight: 800; }
+.visit-entry-dialog { width: min(900px, calc(100vw - 32px)); max-height: 90vh; }
+.visit-entry-dialog .edit-card { min-height: 40px; font-size: .95rem; padding: 8px 12px; }
+.visit-product-choices { max-height: 50vh; overflow-y: auto; margin-top: 12px; }
+.visit-product-choice { display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid #d8c1a6; }
+.visit-product-choice input { width: 20px; height: 20px; flex-shrink: 0; }
+.visit-product-choice span { display: grid; gap: 4px; }
+.visit-product-choice small { font-weight: 500; text-transform: none; }
+.visit-entry-dialog .market-operator-summary { flex-wrap: wrap; }
+.visit-entry-dialog .market-operator-actions { flex-wrap: wrap; }
+@media (max-width: 760px) {
+  .compact-visit-lists { grid-template-columns: 1fr; }
+  .compact-visit-header { flex-direction: column; align-items: stretch; }
+  .compact-visit-actions button { flex: 1 1 140px; }
+}
