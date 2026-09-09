@@ -1,5 +1,18 @@
 "use strict";
 
+function formatVisitProductCodes(product) {
+  return [`MF#: ${product.manufacturerNumber || '—'}`, product.apn && `APN: ${product.apn}`, product.supc && `SUPC: ${product.supc}`].filter(Boolean).join(' · ');
+}
+
+function renderVisitProductPrintTable(products, mode = 'mf', includeNotes = false) {
+  const choices = { mf: ['manufacturerNumber'], apn: ['apn'], supc: ['supc'], 'mf-apn': ['manufacturerNumber', 'apn'], 'mf-supc': ['manufacturerNumber', 'supc'], all: ['manufacturerNumber', 'apn', 'supc'] };
+  const keys = choices[mode] || choices.mf;
+  const labels = { manufacturerNumber: 'MF#', apn: 'US Foods APN', supc: 'Sysco SUPC' };
+  const columns = ['vendor', 'description', ...keys, 'packaging', 'storage', ...(includeNotes ? ['notes'] : [])];
+  const headers = ['Vendor', 'Product', ...keys.map(key => labels[key]), 'Packaging', 'Storage', ...(includeNotes ? ['Notes'] : [])];
+  return `<table><thead><tr>${headers.map(label => `<th>${escapeHtml(label)}</th>`).join('')}</tr></thead><tbody>${products.map(product => `<tr>${columns.map(key => `<td>${escapeHtml(product[key] || '')}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${columns.length}">No products selected.</td></tr>`}</tbody></table>`;
+}
+
 function renderMarketArchiveButton(visit) {
   return `<button class="edit-card market-card-action" type="button" data-market-archive="${escapeAttribute(visit.id)}">${visit.archivedAt ? "Restore" : "Archive"}</button>`;
 }
@@ -35,7 +48,7 @@ function renderCompactMarketVisit(panel, visit) {
       <button class="primary-action" type="button" data-visit-add-appointment>Add appointment</button>
     </div>
     <section class="manufacturer-week-panel">
-      <div class="quick-list-header market-calendar-overview-header"><div><p class="eyebrow">Weekly overview</p><h2>Monday to Friday schedule</h2></div>${renderMarketCalendarActions(visit)}</div>
+      <div class="quick-list-header market-calendar-overview-header"><div><h2 class="visit-weekly-heading">Weekly overview</h2></div>${renderMarketCalendarActions(visit)}</div>
       <div class="visit-calendar-full-width">${renderManufacturerWeekGrid(visit)}</div>
     </section>
     <div class="compact-visit-lists market-detail-tabs">
@@ -70,13 +83,13 @@ function openVisitProductsDialog(visitId) {
   if (!marketVisits.some(visit => visit.id === visitId)) return;
   const dialog = createVisitDialog("Add products");
   const body = dialog.querySelector("[data-visit-entry-body]");
-  body.innerHTML = `<div class="section-label-row"><p>Choose stocked products or shared new products.</p><button class="primary-action" type="button" data-create-visit-product>+ New product</button></div><label><span>Search products, vendor, APN or SUPC</span><input type="search" data-visit-product-filter /></label><div class="visit-product-choices"></div><p data-visit-product-message role="status"></p><div class="form-actions"><button class="ghost-action" type="button" data-products-done>Done</button><button class="primary-action" type="button" data-save-visit-products>Add selected products</button></div>`;
+  body.innerHTML = `<div class="section-label-row"><p>Choose stocked products or shared new products.</p><button class="primary-action" type="button" data-create-visit-product>+ New product</button></div><label><span>Search products, vendor, MF#, APN or SUPC</span><input type="search" data-visit-product-filter /></label><div class="visit-product-choices"></div><p data-visit-product-message role="status"></p><div class="form-actions"><button class="ghost-action" type="button" data-products-done>Done</button><button class="primary-action" type="button" data-save-visit-products>Add selected products</button></div>`;
   const selected = new Set();
   const renderChoices = () => {
     const visit = marketVisits.find(item => item.id === visitId);
     const query = normalizeProductSearchText(body.querySelector("input").value);
     const candidates = visit ? getVisitProductPickerCandidates(visit).filter(product => !query || normalizeProductSearchText(formatMarketProductOption(product)).includes(query)) : [];
-    body.querySelector(".visit-product-choices").innerHTML = candidates.map(product => `<label class="visit-product-choice"><input type="checkbox" value="${escapeAttribute(product.id)}" ${selected.has(product.id) ? "checked" : ""} /><span><strong>${escapeHtml(product.description)}</strong><small>${escapeHtml([product.isNewEventProduct ? "New · Not yet stocked" : "Stocked", product.apn || product.supc, product.vendor, product.packaging].filter(Boolean).join(" · "))}</small></span></label>`).join("") || `<p>No matching products available to add. Use New product to create one.</p>`;
+    body.querySelector(".visit-product-choices").innerHTML = candidates.map(product => `<label class="visit-product-choice"><input type="checkbox" value="${escapeAttribute(product.id)}" ${selected.has(product.id) ? "checked" : ""} /><span><strong>${escapeHtml(product.description)}</strong><small>${escapeHtml([product.isNewEventProduct ? "New · Not yet stocked" : "Stocked", formatVisitProductCodes(product), product.vendor, product.packaging].filter(Boolean).join(" · "))}</small></span></label>`).join("") || `<p>No matching products available to add. Use New product to create one.</p>`;
     body.querySelectorAll("input[type=checkbox]").forEach(input => input.onchange = () => { if (input.checked) selected.add(input.value); else selected.delete(input.value); });
   };
   body.querySelector("[data-visit-product-filter]").oninput = renderChoices;

@@ -53,6 +53,7 @@ function renderEventAttendees(visit) {
 function renderEventProductFields(product = {}) {
   return `<label>Product description<input name="description" required value="${escapeAttribute(product.description || "")}" /></label>
     <label>Vendor / brand<input name="vendor" required value="${escapeAttribute(product.vendor || "")}" /></label>
+    <label>Manufacturer product number (MF#)<input name="manufacturerNumber" value="${escapeAttribute(product.manufacturerNumber || "")}" placeholder="Optional" /></label>
     <label>Packaging<input name="packaging" value="${escapeAttribute(product.packaging || "")}" placeholder="Case / pack size" /></label>
     <label>Storage<input name="storage" value="${escapeAttribute(product.storage || "")}" placeholder="Frozen, refrigerated, dry…" /></label>
     <label>Product notes<textarea name="notes">${escapeHtml(product.notes || "")}</textarea></label>`;
@@ -209,7 +210,7 @@ function bindMarketEventActions(panel, visit) {
 
 function renderMarketEventPrintDocument(visit, sections) {
   const products = getMarketVisitProducts(visit);
-  const productTable = (list) => `<table><thead><tr><th>Vendor / brand</th><th>Product</th><th>APN</th><th>Sysco code</th><th>Packaging</th><th>Storage</th><th>Notes</th></tr></thead><tbody>${list.map((product) => `<tr>${[product.vendor, product.description, product.apn, product.supc, product.packaging, product.storage, product.notes].map((value) => `<td>${escapeHtml(value || "")}</td>`).join("")}</tr>`).join("") || '<tr><td colspan="7">No products selected.</td></tr>'}</tbody></table>`;
+  const productTable = list => renderVisitProductPrintTable(list, sections.codeMode, true);
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(visit.name)} — Product list</title><style>${renderPrintBrandStyles()}@page { size: landscape; margin: .4in; } body { font: 12px Arial,sans-serif; color: #211d18; } table { width: 100%; border-collapse: collapse; margin-bottom: 18px; } th,td { border: 1px solid #ccc; padding: 7px; text-align: left; overflow-wrap: anywhere; } th { background: #f5e3df; } tr { break-inside: avoid; } thead { display: table-header-group; } p,td { white-space: pre-wrap; } h2 { font-size: 17px; }</style></head><body>
     ${renderPrintBrandHeader({ title: visit.name, lines: [marketVisitTypes[visit.type], formatDateRange(visit.startDate, visit.endDate), [visit.startTime, visit.endTime].filter(Boolean).join(" – "), visit.location].filter(Boolean) })}
     ${sections.products ? `<h2>Stocked products</h2>${productTable(products.filter((product) => !product.isNewEventProduct))}<h2>New products — not yet stocked</h2>${productTable(products.filter((product) => product.isNewEventProduct))}` : ""}

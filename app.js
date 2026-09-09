@@ -929,7 +929,8 @@ elements.marketPrintForm.addEventListener("submit", (event) => {
   event.preventDefault();
   printMarketVisit(elements.marketPrintVisitId.value, {
     schedule: elements.marketPrintSchedule.checked,
-    products: elements.marketPrintProducts.checked
+    products: elements.marketPrintProducts.checked,
+    codeMode: document.querySelector("#marketPrintCodeMode").value
   });
 });
 document.querySelector("#closeMarketPrint").addEventListener("click", closeMarketPrintOptions);
@@ -5328,7 +5329,7 @@ function renderMarketOperator(visit, operator) {
 }
 
 function renderOperatorProductNote(operator, product) {
-  const number = product.apn || product.supc || product.manufacturerNumber || "";
+  const number = formatVisitProductCodes(product);
   const note = operator.productNotes?.[product.id]?.note || "";
   const checked = (operator.productIds || []).includes(product.id);
   return `
@@ -5412,7 +5413,7 @@ function renderPcMarketProductRow(product) {
 }
 
 function renderMarketProductChip(product) {
-  const number = product.apn || product.supc || product.manufacturerNumber || "";
+  const number = formatVisitProductCodes(product);
   return `
     <div class="market-product-chip">
       <div>
@@ -5632,7 +5633,7 @@ function bindMarketDetailActions(panel, visit) {
   });
   panel.querySelector("[data-detail-print]")?.addEventListener("click", () => openMarketPrintOptions(visit.id));
   panel.querySelector("[data-detail-followup]")?.addEventListener("click", () => createMarketFollowUp(visit));
-  panel.querySelector("[data-market-print-products]")?.addEventListener("click", () => printMarketVisit(visit.id, { schedule: false, products: true }));
+  panel.querySelector("[data-market-print-products]")?.addEventListener("click", () => openMarketPrintOptions(visit.id, true));
   panel.querySelector("[data-market-print-calendar]")?.addEventListener("click", () => printMarketVisit(visit.id, { schedule: true, products: false }));
   panel.querySelector("[data-market-download-calendar]")?.addEventListener("click", () => exportMarketVisitIcs(visit.id));
   panel.querySelector("[data-market-share-calendar]")?.addEventListener("click", () => shareMarketVisitCalendar(visit.id));
@@ -6127,7 +6128,7 @@ function getMarketProductCandidates(visit) {
 }
 
 function formatMarketProductOption(product) {
-  const number = product.apn || product.supc || product.manufacturerNumber || "";
+  const number = formatVisitProductCodes(product);
   return [number, product.description, product.vendor, product.packaging, product.storage].filter(Boolean).join(" | ");
 }
 
@@ -6353,12 +6354,12 @@ function createMarketFollowUp(visit) {
   alert("Follow-up task added to the To-Do List.");
 }
 
-function openMarketPrintOptions(id) {
+function openMarketPrintOptions(id, productsOnly = false) {
   const visit = marketVisits.find((item) => item.id === id);
   if (!visit) return;
   document.querySelector("#marketPrintScheduleLabel").textContent = isMarketEvent(visit) ? "Attendees, notes & leads" : "Schedule";
   elements.marketPrintVisitId.value = id;
-  elements.marketPrintSchedule.checked = true;
+  elements.marketPrintSchedule.checked = !productsOnly;
   elements.marketPrintProducts.checked = true;
   elements.marketPrintDialog.showModal();
 }
@@ -6388,8 +6389,6 @@ function renderMarketVisitPrintDocument(visit, sections = { schedule: true, prod
     return String(a.description || "").localeCompare(String(b.description || ""), undefined, { sensitivity: "base" });
   });
   const titleSuffix = [sections.schedule ? "Schedule" : "", sections.products ? "Product List" : ""].filter(Boolean).join(" + ");
-  const printedNumberKey = pcMarketNumberMode === "supc" ? "supc" : "apn";
-  const printedNumberLabel = printedNumberKey === "supc" ? "Sysco #" : "US Foods #";
   const visitDateText = formatDateRange(visit.startDate, visit.endDate) || "No date";
   const printHeaderLines = [visitDateText, visit.location || "", titleSuffix].filter(Boolean);
   return `<!doctype html>
@@ -6418,11 +6417,7 @@ function renderMarketVisitPrintDocument(visit, sections = { schedule: true, prod
             ${calls.map((call) => `<tr><td>${call.date ? formatDate(call.date) : ""}</td><td>${escapeHtml([call.startTime, call.endTime].filter(Boolean).join(" - "))}</td><td>${escapeHtml(getMarketCallTitle(call))}</td><td>${escapeHtml(call.location || visit.location || "")}</td><td>${escapeHtml(call.salesReps.join(", ") || visit.salesReps.join(", "))}</td><td>${escapeHtml(call.notes || "")}</td></tr>`).join("") || `<tr><td colspan="6">No calls scheduled yet.</td></tr>`}
           </tbody>
         </table>` : ""}
-        ${sections.products ? `
-        <table>
-          <thead><tr><th>Vendor</th><th>Product</th><th>${escapeHtml(printedNumberLabel)}</th><th>Packaging</th><th>Storage</th></tr></thead>
-          <tbody>${sortedProducts.map((product) => `<tr><td>${escapeHtml(product.vendor || "")}</td><td>${escapeHtml(product.description || "")}</td><td>${escapeHtml(product[printedNumberKey] || "")}</td><td>${escapeHtml(product.packaging || "")}</td><td>${escapeHtml(product.storage || "")}</td></tr>`).join("") || `<tr><td colspan="5">No products selected.</td></tr>`}</tbody>
-        </table>` : ""}
+        ${sections.products ? renderVisitProductPrintTable(sortedProducts, sections.codeMode) : ""}
         ${visit.notes ? `<h2>General notes</h2><p>${escapeHtml(visit.notes)}</p>` : ""}
       </body>
     </html>`;

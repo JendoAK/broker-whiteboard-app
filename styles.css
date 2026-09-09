@@ -5661,3 +5661,12 @@ button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-
 .visit-new-product-form > .form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
 .visit-new-product-form .form-actions button { width: auto; min-width: 100px; }
 @media (max-width: 600px) { .visit-new-product-form { grid-template-columns: 1fr; } }
+
+.visit-weekly-heading { font-size: 1.55rem; margin: 4px 0 10px; color: #49342c; }
+.precise-week-call strong { font-size: 14px; line-height: 16px; }
+.precise-week-call span { font-size: 12px; line-height: 14px; }
+.precise-time-axis > span { font-size: .9rem; }
+.precise-day-heading, .precise-time-heading { font-size: 1rem; }
+.precise-day-heading span { font-size: .85rem; }
+.visit-product-choice strong { font-size: 1rem; text-transform: none; }
+.visit-product-choice small { font-size: .9rem; line-height: 1.4; }

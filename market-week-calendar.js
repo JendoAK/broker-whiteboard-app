@@ -12,7 +12,7 @@ function positionMarketDayCalls(calls) {
     const start = marketWeekMinutes(call.startTime);
     const end = Math.max(start + 1, marketWeekMinutes(call.endTime, start + 30));
     // Short appointments need a readable hit target, without shifting their start time.
-    return { call, start, end, displayEnd: Math.max(end, start + 30) };
+    return { call, start, end, displayEnd: Math.max(end, start + 40) };
   }).sort((a, b) => a.start - b.start || a.end - b.end);
   let group = [], groupEnd = -1, lanes = [];
   const finishGroup = () => group.forEach(item => item.lanes = lanes.length);
@@ -57,7 +57,7 @@ function renderPreciseMarketWeek(visit) {
         (call.manufacturerContact || visit.visitorName) && `Vendor contact: ${call.manufacturerContact || visit.visitorName}`,
         call.notes].filter(Boolean).join("\n");
       const top = (item.start - start) * pixelsPerMinute;
-      const blockHeight = Math.min(Math.max(26, (item.end - item.start) * pixelsPerMinute), height - top);
+      const blockHeight = Math.min(Math.max(34, (item.end - item.start) * pixelsPerMinute), height - top);
       return `<button class="precise-week-call" type="button" data-week-call="${escapeAttribute(call.id)}" title="${escapeAttribute(details)}" aria-label="${escapeAttribute(`${details}\nClick to edit`)}" style="top:${top}px;height:${blockHeight}px;left:calc(${item.lane * 100 / item.lanes}% + 3px);width:calc(${100 / item.lanes}% - 6px)"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(time)}</span></button>`;
     }).join("")}</div>`).join("")}
   </div></div>`;
