@@ -22,7 +22,7 @@ const trackerMigrationOwners = new Map();
 const marketVisitStorageKey = "broker-whiteboard-market-visits";
 const stockFileDbName = "foodbrokerbase-stock-files";
 const stockFileStoreName = "files";
-const sampleStatuses = ["Requested", "Ordered", "Added to PO", "Received", "Delivered / Shown", "Cancelled"];
+const sampleStatuses = ["Need to Order", "In Transit", "Delivered", "Requested", "Ordered", "Added to PO", "Received", "Delivered / Shown", "Cancelled"];
 const dotOrderStatuses = ["Need to Order", "Ordered", "In Transit", "Received", "Delivered", "Cancelled"];
 const nestleMachineStatuses = ["Requested", "Approved", "Ordered", "Installed", "Needs Service", "Returned", "Cancelled"];
 const marketVisitTypes = { personal: "Personal Market Visit", manufacturer: "Vendor Market Visit", testkitchen: "Testkitchen", foodshow: "Foodshow" };
@@ -1350,6 +1350,15 @@ function normalizeSample(sample) {
   return {
     id: sample.id || crypto.randomUUID(),
     product: sample.product || "",
+    directFromManufacturer: sample.directFromManufacturer ?? (sample.orderType === "Direct from manufacturer"),
+    addedToPo: sample.addedToPo ?? (sample.orderType === "Added to PO" || sample.status === "Added to PO"),
+    isDot: sample.isDot ?? false,
+    shipmentConfirmation: sample.shipmentConfirmation || "",
+    poNumber: sample.poNumber || "",
+    dotNumber: sample.dotNumber || "",
+    vendor: sample.vendor || "",
+    orderedDate: sample.orderedDate || "",
+    storageType: sample.storageType || "",
     orderedBy: sample.orderedBy || "",
     expected: sample.expected || "",
     orderType: sample.orderType || "Direct from manufacturer",
@@ -1576,11 +1585,15 @@ function normalizeDotOrder(order) {
     dotNumber: order.dotNumber || "",
     orderedDate: order.orderedDate || "",
     poNumber: order.poNumber || "",
+    directFromManufacturer: order.directFromManufacturer ?? (order.orderType === "Direct from manufacturer"),
+    addedToPo: order.addedToPo ?? (order.orderType === "Added to PO" || order.status === "Added to PO"),
+    isDot: order.isDot ?? true,
+    shipmentConfirmation: order.shipmentConfirmation || "",
     orderedBy: order.orderedBy || "",
     expected: order.expected || "",
     storageType: order.storageType || "",
     requestedFor: order.requestedFor || "",
-    status: dotOrderStatuses.includes(order.status) ? order.status : "Need to Order",
+    status: sampleStatuses.includes(order.status) ? order.status : "Need to Order",
     note: order.note || "",
     attachments: Array.isArray(order.attachments) ? order.attachments.map(normalizeAttachment) : [],
     createdAt: order.createdAt || new Date().toISOString(),
@@ -7048,6 +7061,7 @@ function openTimelineItem(type, id) {
 }
 
 function setActiveTrackerTab(tab) {
+  if (tab === "dot") tab = "samples";
   activeTrackerTab = ["samples", "dot", "nestle"].includes(tab) ? tab : "samples";
   elements.trackerTabs.forEach((button) => {
     const isActive = button.dataset.trackerTab === activeTrackerTab;
@@ -7058,7 +7072,7 @@ function setActiveTrackerTab(tab) {
     panel.hidden = panel.dataset.trackerPanel !== activeTrackerTab;
   });
   const labels = {
-    samples: "+ Add Sample",
+    samples: "+ Add Sample Order",
     dot: "+ Add DOT Order",
     nestle: "+ Add Nestle Machine"
   };
@@ -7118,7 +7132,7 @@ function renderSampleRow(sample) {
       <td>${sample.orderedBy ? escapeHtml(sample.orderedBy) : ""}</td>
       <td>${sample.expected ? formatDate(sample.expected) : "No date"}</td>
       <td>${sample.requestedFor ? escapeHtml(sample.requestedFor) : ""}</td>
-      <td>${escapeHtml(sample.orderType)}</td>
+      <td>${escapeHtml([sample.isDot && "DOT", sample.directFromManufacturer && "Direct from manufacturer", sample.addedToPo && "Added to PO", sample.poNumber && `PO # ${sample.poNumber}`, sample.dotNumber && `DOT # ${sample.dotNumber}`].filter(Boolean).join(" · ") || sample.orderType)}</td>
       <td>${renderInlineSelect("sample-status-select", sample.id, sample.status, sampleStatuses)}</td>
       <td class="note-cell">${sample.note ? escapeHtml(sample.note) : ""}${sample.attachments?.length ? `<div><span class="badge">${sample.attachments.length} file${sample.attachments.length === 1 ? "" : "s"}</span></div>` : ""}</td>
       <td><div class="audit-action-cell">${renderAuditStamp(sample)}<button class="edit-card" type="button" data-sample-edit="${escapeAttribute(sample.id)}">Edit</button></div></td>
@@ -7129,24 +7143,14 @@ function renderSampleRow(sample) {
 function bindSampleTableActions() {
   elements.sampleTable.querySelectorAll("[data-sample-edit]").forEach((button) => {
     button.addEventListener("click", () => {
-      const sample = samples.find((item) => item.id === button.dataset.sampleEdit);
+      const sample = getUnifiedSampleOrders().find((item) => item.id === button.dataset.sampleEdit);
       if (sample) openSampleForm(sample);
     });
   });
   elements.sampleTable.querySelectorAll(".sample-status-select").forEach((select) => {
     select.addEventListener("change", () => {
-      samples = samples.map((sample) => {
-        if (sample.id !== select.dataset.id) return sample;
-        const next = {
-          ...sample,
-          status: select.value,
-          archivedAt: select.value === "Delivered / Shown" ? sample.archivedAt || new Date().toISOString() : sample.archivedAt,
-          updatedAt: new Date().toISOString()
-        };
-        stampSharedRecord(next, "Status changed");
-        return next;
-      });
-      persistSamples();
+      const sample = getUnifiedSampleOrders().find(item => item.id === select.dataset.id);
+      if (sample) saveUnifiedSampleOrder({ ...sample, status: select.value, archivedAt: ["Delivered", "Delivered / Shown"].includes(select.value) ? new Date().toISOString() : sample.archivedAt, updatedAt: new Date().toISOString() });
       renderSamples();
     });
   });
@@ -7154,14 +7158,14 @@ function bindSampleTableActions() {
 
 function getVisibleSamples() {
   const query = elements.sampleSearch.value.trim().toLowerCase();
-  return samples
+  return getUnifiedSampleOrders()
     .filter((sample) => !sample.archivedAt)
     .filter((sample) => {
       if (activeSampleQuickFilter && activeSampleQuickFilter !== "all" && !matchesSampleQuickFilter(sample, activeSampleQuickFilter)) return false;
       if (elements.sampleDateFilter.value && !matchesSampleQuickFilter(sample, elements.sampleDateFilter.value)) return false;
       if (elements.sampleStatusFilter.value && sample.status !== elements.sampleStatusFilter.value) return false;
       if (!query) return true;
-      return [sample.product, sample.orderedBy, sample.requestedFor, sample.orderType, sample.status, sample.note].some((value) =>
+      return [sample.product, sample.orderedBy, sample.requestedFor, sample.orderType, sample.status, sample.note, sample.poNumber, sample.dotNumber, sample.vendor, sample.shipmentConfirmation].some((value) =>
         String(value || "").toLowerCase().includes(query)
       );
     })
@@ -7183,7 +7187,7 @@ function matchesSampleQuickFilter(sample, filter) {
 }
 
 function updateSampleSummary() {
-  const activeSamples = samples.filter((sample) => !sample.archivedAt && sample.status !== "Cancelled");
+  const activeSamples = getUnifiedSampleOrders().filter((sample) => !sample.archivedAt && sample.status !== "Cancelled");
   document.querySelector("#sampleAll").textContent = activeSamples.length;
   document.querySelector("#sampleToday").textContent = activeSamples.filter(isSampleDueToday).length;
   document.querySelector("#sampleWeek").textContent = activeSamples.filter(isSampleDueThisWeek).length;
@@ -7200,12 +7204,13 @@ function setActiveSampleQuickTile() {
 
 function openSampleForm(sample) {
   const existing = sample || null;
-  elements.sampleFormTitle.textContent = existing ? "Edit Sample" : "Add Sample";
+  elements.sampleFormTitle.textContent = existing ? "Edit Sample Order" : "Add Sample Order";
   elements.sampleId.value = existing?.id || "";
   elements.sampleProduct.value = existing?.product || "";
   elements.sampleOrderedBy.value = existing?.orderedBy || "";
   elements.sampleExpected.value = existing?.expected || "";
-  elements.sampleOrderType.value = existing?.orderType || "Direct from manufacturer";
+  for (const key of ["poNumber", "dotNumber", "vendor", "orderedDate", "storageType", "shipmentConfirmation"]) document.querySelector('#sampleForm [name="'+key+'"]').value = existing?.[key] || "";
+  for (const key of ["isDot", "directFromManufacturer", "addedToPo"]) document.querySelector('#sampleForm [name="'+key+'"]').checked = Boolean(existing?.[key]);
   elements.sampleRequestedFor.value = existing?.requestedFor || "";
   elements.sampleStatus.value = existing?.status || "Requested";
   elements.sampleNote.value = existing?.note || "";
@@ -7222,15 +7227,18 @@ function closeSampleForm() {
 
 function saveSample() {
   const id = elements.sampleId.value || crypto.randomUUID();
-  const existing = samples.find((sample) => sample.id === id);
+  const existing = getUnifiedSampleOrders().find((sample) => sample.id === id);
   const status = elements.sampleStatus.value;
   const operatorMatch = syncOperatorToAddressBook(elements.sampleRequestedFor.value);
   const sample = normalizeSample({
+    ...existing,
+    ...Object.fromEntries(["poNumber", "dotNumber", "vendor", "orderedDate", "storageType", "shipmentConfirmation"].map(key => [key, document.querySelector('#sampleForm [name="'+key+'"]').value.trim()])),
+    ...Object.fromEntries(["isDot", "directFromManufacturer", "addedToPo"].map(key => [key, document.querySelector('#sampleForm [name="'+key+'"]').checked])),
     id,
     product: elements.sampleProduct.value.trim(),
     orderedBy: elements.sampleOrderedBy.value.trim(),
     expected: elements.sampleExpected.value,
-    orderType: elements.sampleOrderType.value,
+    orderType: existing?.orderType || "Other",
     requestedFor: operatorMatch?.operatorName || elements.sampleRequestedFor.value.trim(),
     status,
     note: elements.sampleNote.value.trim(),
@@ -7240,8 +7248,7 @@ function saveSample() {
     archivedAt: status === "Delivered / Shown" ? existing?.archivedAt || new Date().toISOString() : ""
   });
   stampSharedRecord(sample, existing ? "Updated" : "Created");
-  samples = existing ? samples.map((item) => (item.id === id ? sample : item)) : [sample, ...samples];
-  persistSamples();
+  saveUnifiedSampleOrder({ ...sample, _dotId: existing?._dotId });
   closeSampleForm();
   renderSamples();
 }
@@ -7250,8 +7257,9 @@ function deleteCurrentSample() {
   const id = elements.sampleId.value;
   if (!id) return;
   if (!confirm("Delete this sample?")) return;
-  samples = samples.filter((sample) => sample.id !== id);
-  persistSamples();
+  const existing = getUnifiedSampleOrders().find(item => item.id === id);
+  if (existing?._dotId) { dotOrders = dotOrders.filter(item => item.id !== existing._dotId); persistDotOrders(); }
+  else { samples = samples.filter(item => item.id !== id); persistSamples(); }
   closeSampleForm();
   renderSamples();
 }
@@ -8510,23 +8518,7 @@ function setActiveDotQuickTile() {
 }
 
 function openDotForm(order) {
-  const existing = order || null;
-  elements.dotFormTitle.textContent = existing ? "Edit DOT Order" : "Add DOT Order";
-  elements.dotId.value = existing?.id || "";
-  elements.dotProduct.value = existing ? normalizeDotProducts(existing).map((product) => product.text).join("\n") : "";
-  elements.dotOrderedDate.value = existing?.orderedDate || "";
-  elements.dotPo.value = existing?.poNumber || "";
-  elements.dotOrderedBy.value = existing?.orderedBy || "";
-  elements.dotExpected.value = existing?.expected || "";
-  elements.dotStorageType.value = existing?.storageType || "";
-  elements.dotRequestedFor.value = existing?.requestedFor || "";
-  elements.dotStatus.value = existing?.status || "Need to Order";
-  elements.dotNote.value = existing?.note || "";
-  currentDotAttachments = existing?.attachments ? existing.attachments.map(normalizeAttachment) : [];
-  renderDotAttachmentList();
-  elements.deleteDotOrder.hidden = !existing;
-  elements.dotFormDialog.showModal();
-  elements.dotProduct.focus();
+  openSampleForm(order ? { ...order, id: 'dot:' + order.id, _dotId: order.id } : null);
 }
 
 function closeDotForm() {
@@ -10358,3 +10350,20 @@ function escapeAttribute(value) {
 }
 
 
+
+// One tracker UI over both existing shared collections keeps old links and backups valid.
+function getUnifiedSampleOrders() {
+  return [...samples, ...dotOrders.map(order => ({ ...order, id: "dot:" + order.id, _dotId: order.id }))];
+}
+function saveUnifiedSampleOrder(order) {
+  stampSharedRecord(order, "Updated");
+  if (order._dotId) {
+    const next = normalizeDotOrder({ ...order, id: order._dotId, products: [] });
+    dotOrders = dotOrders.map(item => item.id === order._dotId ? next : item);
+    persistDotOrders();
+  } else {
+    const next = normalizeSample(order);
+    samples = samples.some(item => item.id === order.id) ? samples.map(item => item.id === order.id ? next : item) : [next, ...samples];
+    persistSamples();
+  }
+}

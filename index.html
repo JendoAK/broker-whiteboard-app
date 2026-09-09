@@ -11,7 +11,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="pwa-icon-192.png" />
     <link rel="apple-touch-icon" href="pwa-icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=20260908-9" />
+  <link rel="stylesheet" href="styles.css?v=20260909-1" />
   </head>
   <body class="auth-pending">
     <datalist id="timelineSearchSuggestions"></datalist>
@@ -930,16 +930,15 @@
         </header>
 
         <div class="tracker-tabs" role="tablist" aria-label="Trackers">
-          <button class="tracker-tab active-tracker-tab" type="button" data-tracker-tab="samples">Sample Tracker</button>
-          <button class="tracker-tab" type="button" data-tracker-tab="dot">DOT Foods Orders</button>
+          <button class="tracker-tab active-tracker-tab" type="button" data-tracker-tab="samples">Sample Orders</button>
           <button class="tracker-tab" type="button" data-tracker-tab="nestle">Nestle Machines</button>
         </div>
 
         <div class="view-actions">
-          <button class="primary-action sample-add-action" id="addSample" type="button">+ Add Sample</button>
+          <button class="primary-action sample-add-action" id="addSample" type="button">+ Add Sample Order</button>
         </div>
 
-        <p class="market-section-help">Sample orders, DOT orders, and Nestlé machines are shared with the whole team.</p>
+        <p class="market-section-help">Sample orders (including DOT) and Nestlé machines are shared with the whole team.</p>
 
         <section class="summary-grid sample-summary-grid" data-tracker-panel="samples" aria-label="Sample tracker summary">
           <button class="summary-tile" data-sample-quick="all" type="button"><span id="sampleAll">0</span><small>All samples</small></button>
@@ -953,7 +952,7 @@
         <section class="controls sample-controls" data-tracker-panel="samples" aria-label="Sample filters">
           <label class="search-box"><span>Search</span><input id="sampleSearch" type="search" placeholder="Product, account, distributor, ordered by, note..." /></label>
           <label><span>Expected</span><select id="sampleDateFilter"><option value="">Any date</option><option value="overdue">Overdue</option><option value="today">Today</option><option value="week">This week</option><option value="none">No date</option></select></label>
-          <label><span>Status</span><select id="sampleStatusFilter"><option value="">All</option><option>Requested</option><option>Ordered</option><option>Added to PO</option><option>Received</option><option>Delivered / Shown</option><option>Cancelled</option></select></label>
+          <label><span>Status</span><select id="sampleStatusFilter"><option>Need to Order</option><option>In Transit</option><option>Delivered</option><option value="" selected>All</option><option>Requested</option><option>Ordered</option><option>Added to PO</option><option>Received</option><option>Delivered / Shown</option><option>Cancelled</option></select></label>
           <button class="ghost-action" id="clearSampleFilters" type="button">Clear</button>
         </section>
 
@@ -1001,7 +1000,7 @@
         <section class="controls sample-controls" data-tracker-panel="nestle" hidden aria-label="Nestle machine filters">
           <label class="search-box"><span>Search</span><input id="nestleSearch" type="search" placeholder="Machine, operator, serial, location, contact, note..." /></label>
           <label><span>Date</span><select id="nestleDateFilter"><option value="">Any date</option><option value="overdue">Overdue</option><option value="today">Today</option><option value="week">This week</option><option value="none">No date</option></select></label>
-          <label><span>Status</span><select id="nestleStatusFilter"><option value="">All</option><option>Requested</option><option>Approved</option><option>Ordered</option><option>Installed</option><option>Needs Service</option><option>Returned</option><option>Cancelled</option></select></label>
+          <label><span>Status</span><select id="nestleStatusFilter"><option value="" selected>All</option><option>Requested</option><option>Approved</option><option>Ordered</option><option>Installed</option><option>Needs Service</option><option>Returned</option><option>Cancelled</option></select></label>
           <button class="ghost-action" id="clearNestleFilters" type="button">Clear</button>
         </section>
 
@@ -1026,11 +1025,21 @@
         </div>
         <input id="sampleId" type="hidden" />
         <div class="field-grid">
-          <label class="wide"><span>Product ordered</span><input id="sampleProduct" required autocomplete="off" /></label>
+          <label class="wide"><span>Products ordered</span><textarea id="sampleProduct" rows="4" required placeholder="Enter one product per line, including quantities..."></textarea></label>
           <label><span>Who ordered</span><input id="sampleOrderedBy" autocomplete="off" /></label>
           <label><span>Expected date</span><input id="sampleExpected" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
-          <label><span>Order type</span><select id="sampleOrderType"><option>Direct from manufacturer</option><option>Added to PO</option><option>Other</option></select></label>
-          <label><span>Status</span><select id="sampleStatus"><option>Requested</option><option>Ordered</option><option>Added to PO</option><option>Received</option><option>Delivered / Shown</option><option>Cancelled</option></select></label>
+          <fieldset class="wide"><legend>Order details</legend>
+  <label><input type="checkbox" name="isDot" /> DOT order</label>
+  <label><input type="checkbox" name="directFromManufacturer" /> Direct from manufacturer</label>
+  <label><input type="checkbox" name="addedToPo" /> Added to PO</label>
+</fieldset>
+<label><span>PO #</span><input name="poNumber" /></label>
+<label><span>DOT order #</span><input name="dotNumber" /></label>
+<label><span>Manufacturer / vendor</span><input name="vendor" list="vendorSuggestions" /></label>
+<label><span>Ordered date</span><input name="orderedDate" type="date" /></label>
+<label><span>Storage type</span><select name="storageType"><option value="">Choose type</option><option>Freeze</option><option>Dry</option><option>Chill</option></select></label>
+<label><span>Shipment confirmation / tracking #</span><input name="shipmentConfirmation" /></label>
+          <label><span>Status</span><select id="sampleStatus"><option>Need to Order</option><option>In Transit</option><option>Delivered</option><option>Requested</option><option>Ordered</option><option>Added to PO</option><option>Received</option><option>Delivered / Shown</option><option>Cancelled</option></select></label>
           <label class="wide"><span>Account or distributor who wants sample</span><input id="sampleRequestedFor" autocomplete="off" /></label>
           <label class="wide"><span>Note</span><textarea id="sampleNote" rows="4" placeholder="Tracking number, vendor contact, what needs to happen next..."></textarea></label>
           <div class="sample-attachment-label wide"><span>Attachments</span></div>
@@ -1380,7 +1389,7 @@
   <script src="personal-visit-calendar.js?v=20260908-7"></script>
   <script src="calendar-holidays.js?v=20260908-8"></script>
   <script src="market-call-editor.js?v=20260908-9"></script>
-  <script src="app.js?v=20260908-11"></script>
+  <script src="app.js?v=20260909-1"></script>
     <script>
       if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
         window.addEventListener("load", () => {
