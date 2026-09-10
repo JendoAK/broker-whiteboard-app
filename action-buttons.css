@@ -11,3 +11,29 @@ button.app-highlight-action:hover:not(:disabled) { background: #e8b947 !importan
 button.app-highlight-action:active:not(:disabled) { box-shadow: 1px 1px 0 rgba(74, 53, 20, .22) !important; }
 button.app-highlight-action:focus-visible { outline: 3px solid #735018; outline-offset: 3px; }
 button.app-highlight-action:disabled { opacity: .5; cursor: not-allowed; box-shadow: none !important; }
+
+/* Keep the action name accessible while displaying a compact trash icon. */
+button.app-trash-action {
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px;
+  padding: 8px !important;
+  justify-self: end;
+  flex: 0 0 36px;
+  font-size: 0 !important;
+  color: #8c302a !important;
+  background: #fff8f4 !important;
+  border: 1px solid #cba79f;
+  border-radius: 7px;
+}
+button.app-trash-action::before {
+  content: '';
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: auto;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+button.app-trash-action:hover:not(:disabled) { background: #f8dfd9 !important; }
+button.app-trash-action:focus-visible { outline: 3px solid #8c302a; outline-offset: 2px; }

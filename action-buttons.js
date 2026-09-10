@@ -2,6 +2,12 @@
 // Apply the action palette to static controls and controls created by dialogs or lists.
 function refreshActionButton(button) {
   const label = (button.textContent || button.getAttribute('aria-label') || '').trim().replace(/^[^A-Za-z]+/, '');
+  const trashAction = /^(remove|delete|remove from event)$/i.test(label);
+  button.classList.toggle('app-trash-action', trashAction);
+  if (trashAction) {
+    button.setAttribute('aria-label', label);
+    button.setAttribute('title', label);
+  }
   const action = /^(add|print|upload|download|import|export|save|create|convert|share)\b/i.test(label) || /^\s*[+➕]/u.test(button.textContent || '') || /^add[A-Z]/.test(button.id) || [...button.attributes].some(attr => attr.name.startsWith('data-add-'));
   button.classList.toggle('app-highlight-action', action && !button.matches('.nav-button, .danger-action, .remove-product, [role="tab"]'));
 }

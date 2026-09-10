@@ -1,12 +1,12 @@
-const CACHE_NAME = "foodbrokerbase-leadcompact1";
+const CACHE_NAME = "foodbrokerbase-trashicons1";
 const APP_SHELL = [
   "./lead-products.css?v=20260909-leadcompact1",
   "./k12-stock.js?v=20260909-crossstock1",
   "./k12-stock.css?v=20260909-crossstock1",
   "./team-initials.js?v=20260909-initials1",
   "./team-work-view.css?v=20260909-activity1",
-  "./action-buttons.css?v=20260909-actions1",
-  "./action-buttons.js?v=20260909-actions1",
+  "./action-buttons.css?v=20260909-trashicons1",
+  "./action-buttons.js?v=20260909-trashicons1",
   "./contacts-layout.css?v=20260909-contacticons1",
   "./people-contacts.js?v=20260909-contacticons1",
   "./",
