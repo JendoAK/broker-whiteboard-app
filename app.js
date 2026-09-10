@@ -7076,7 +7076,7 @@ function renderSampleRow(sample) {
       <td>${sample.orderedBy ? escapeHtml(sample.orderedBy) : ""}</td>
       <td>${sample.expected ? formatDate(sample.expected) : "No date"}</td>
       <td>${sample.requestedFor ? escapeHtml(sample.requestedFor) : ""}</td>
-      <td>${escapeHtml([sample.fedex && "FedEx", sample.usps && "USPS", sample.isDot && "DOT", sample.directFromManufacturer && "Direct from manufacturer", sample.addedToPo && "Added to PO", sample.poNumber && `PO # ${sample.poNumber}`, sample.dotNumber && `DOT # ${sample.dotNumber}`].filter(Boolean).join(" · ") || sample.orderType)}</td>
+      <td>${escapeHtml([sample.fedex && "FedEx", sample.usps && "UPS", sample.isDot && "DOT", sample.directFromManufacturer && "Direct from manufacturer", sample.addedToPo && "Added to PO", sample.poNumber && `PO # ${sample.poNumber}`, sample.dotNumber && `DOT # ${sample.dotNumber}`].filter(Boolean).join(" · ") || sample.orderType)}</td>
       <td>${renderInlineSelect("sample-status-select", sample.id, sample.status, sampleStatuses)}</td>
       <td class="note-cell">${sample.note ? escapeHtml(sample.note) : ""}${sample.attachments?.length ? `<div><span class="badge">${sample.attachments.length} file${sample.attachments.length === 1 ? "" : "s"}</span></div>` : ""}</td>
       <td><div class="audit-action-cell">${renderAuditStamp(sample)}<button class="edit-card" type="button" data-sample-edit="${escapeAttribute(sample.id)}">Edit</button></div></td>
