@@ -7092,9 +7092,10 @@ function bindSampleTableActions() {
     });
   });
   elements.sampleTable.querySelectorAll(".sample-status-select").forEach((select) => {
-    select.addEventListener("change", () => {
+    select.addEventListener("change", async () => {
       const sample = getUnifiedSampleOrders().find(item => item.id === select.dataset.id);
-      if (sample) saveUnifiedSampleOrder({ ...sample, status: select.value, archivedAt: ["Delivered", "Delivered / Shown"].includes(select.value) ? new Date().toISOString() : sample.archivedAt, updatedAt: new Date().toISOString() });
+      try { if (sample) await saveUnifiedSampleOrder({ ...sample, status: select.value, archivedAt: ["Delivered", "Delivered / Shown"].includes(select.value) ? new Date().toISOString() : sample.archivedAt, updatedAt: new Date().toISOString() }); }
+      catch (error) { document.getElementById("sampleSaveNotice").textContent = "Status was not saved: " + error.message; }
       renderSamples();
     });
   });
@@ -7147,6 +7148,7 @@ function setActiveSampleQuickTile() {
 }
 
 function openSampleForm(sample) {
+  document.getElementById("sampleSaveMessage").textContent = "";
   const existing = sample || null;
   elements.sampleFormTitle.textContent = existing ? "Edit Sample Order" : "Add Sample Order";
   elements.sampleId.value = existing?.id || "";
@@ -7169,7 +7171,12 @@ function closeSampleForm() {
   elements.sampleFormDialog.close();
 }
 
-function saveSample() {
+async function saveSample() {
+  const button = elements.sampleForm.querySelector('[type="submit"]');
+  const message = document.getElementById("sampleSaveMessage");
+  if (button.disabled) return;
+  button.disabled = true; button.textContent = "Saving…"; message.textContent = "";
+  try {
   const id = elements.sampleId.value || crypto.randomUUID();
   const existing = getUnifiedSampleOrders().find((sample) => sample.id === id);
   const status = elements.sampleStatus.value;
@@ -7192,9 +7199,13 @@ function saveSample() {
     archivedAt: status === "Delivered / Shown" ? existing?.archivedAt || new Date().toISOString() : ""
   });
   stampSharedRecord(sample, existing ? "Updated" : "Created");
-  saveUnifiedSampleOrder({ ...sample, _dotId: existing?._dotId });
+  const saved = await saveUnifiedSampleOrder({ ...sample, _dotId: existing?._dotId });
+  document.getElementById("sampleSaveNotice").textContent = saved === "cloud" ? "Sample saved to the team cloud. This browser’s storage is full." : "Sample saved.";
   closeSampleForm();
-  renderSamples();
+  clearSampleFilters();
+  } catch (error) {
+    message.textContent = "Could not save this order. " + (error.message || "Please try again.") + " Your entries are still here.";
+  } finally { button.disabled = false; button.textContent = "Save Sample"; }
 }
 
 function deleteCurrentSample() {
@@ -10292,15 +10303,24 @@ function escapeAttribute(value) {
 function getUnifiedSampleOrders() {
   return [...samples, ...dotOrders.map(order => ({ ...order, id: "dot:" + order.id, _dotId: order.id }))];
 }
-function saveUnifiedSampleOrder(order) {
-  stampSharedRecord(order, "Updated");
+async function saveUnifiedSampleOrder(order) {
+  const previousSamples = samples, previousDotOrders = dotOrders;
+  const key = order._dotId ? dotOrderStorageKey : sampleStorageKey;
+  stampSharedRecord(order, (order._dotId ? dotOrders.some(item => item.id === order._dotId) : samples.some(item => item.id === order.id)) ? "Updated" : "Created");
   if (order._dotId) {
     const next = normalizeDotOrder({ ...order, id: order._dotId, products: [] });
     dotOrders = dotOrders.map(item => item.id === order._dotId ? next : item);
-    persistDotOrders();
   } else {
     const next = normalizeSample(order);
     samples = samples.some(item => item.id === order.id) ? samples.map(item => item.id === order.id ? next : item) : [next, ...samples];
-    persistSamples();
   }
+  try {
+    try { if (order._dotId) persistDotOrders(); else persistSamples(); return "local"; }
+    catch (error) {
+      if (!cloudSyncReady || !getCloudClient() || !getCloudUser()) throw new Error("Browser storage is unavailable. Connect and finish cloud sync, then try Save Sample again.");
+      const saved = await saveCloudSections([key]);
+      if (!saved) throw new Error(lastCloudError || "Cloud save failed. Check your connection and try again.");
+      return "cloud";
+    }
+  } catch (error) { samples = previousSamples; dotOrders = previousDotOrders; throw error; }
 }
