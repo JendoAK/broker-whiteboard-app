@@ -4881,7 +4881,7 @@ function deleteCurrentStockProduct() {
 
 function openStockImportDialog() {
   elements.stockImportForm.reset();
-  elements.stockImportDistributor.value = elements.stockDistributorFilter.value || getActiveStockDefaultDistributor();
+  elements.stockImportDistributor.value = activeStockList === "k12" ? "K-12" : elements.stockDistributorFilter.value || getActiveStockDefaultDistributor();
   elements.stockImportVendor.value = elements.stockVendorFilter.value.trim();
   elements.stockImportCategory.value = elements.stockCategoryFilter.value.trim();
   elements.stockImportDialog.showModal();
@@ -5018,7 +5018,8 @@ function parseStockText(text) {
   if (headerIndex < 0) return [];
   const headers = rows[headerIndex].map(normalizeHeader);
   const defaults = {
-    distributor: elements.stockImportDistributor.value,
+    distributor: elements.stockImportDistributor.value === "K-12" ? "Not stocked" : elements.stockImportDistributor.value,
+    k12: elements.stockImportDistributor.value === "K-12",
     vendor: elements.stockImportVendor.value.trim(),
     category: elements.stockImportCategory.value.trim(),
     storage: elements.stockImportStorage.value
@@ -5069,6 +5070,7 @@ function mapStockRow(row, headers, defaults, currentCategory, currentVendor) {
   return {
     id: crypto.randomUUID(),
     distributor: defaults.distributor,
+    k12: Boolean(defaults.k12),
     distributorNumber,
     apn,
     supc,

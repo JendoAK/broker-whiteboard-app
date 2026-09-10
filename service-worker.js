@@ -1,4 +1,4 @@
-const CACHE_NAME = "foodbrokerbase-todoarchive1";
+const CACHE_NAME = "foodbrokerbase-k12import1";
 const APP_SHELL = [
   "./todo-archive.js?v=20260909-todoarchive1",
   "./todo-archive.css?v=20260909-todoarchive1",
@@ -18,7 +18,7 @@ const APP_SHELL = [
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
   "./market-call-editor.js?v=20260909-visitcolors1",
-  "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260909-leadcompact1",
+  "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260909-k12import1",
   "./market-week-calendar.js?v=20260909-visitcolors1",
   "./market-operator-conversion.js?v=20260909-visitcolors1",
   "./testkitchen-layout.js?v=20260909-contactfields1",
