@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="action-buttons.css?v=20260909-actions1" />
   <link rel="stylesheet" href="team-work-view.css?v=20260909-activity1" />
   <link rel="stylesheet" href="k12-stock.css?v=20260909-crossstock1" />
+  <link rel="stylesheet" href="lead-products.css?v=20260909-leadcompact1" />
   </head>
   <body class="auth-pending">
     <datalist id="timelineSearchSuggestions"></datalist>
@@ -294,10 +295,11 @@
             <div class="lead-product-search">
               <label>
                 <span>Search product</span>
-                <input id="productSearchInput" list="productSearchSuggestions" autocomplete="off" placeholder="Search APN, SUPC, product, vendor..." />
+                <input id="productSearchInput" data-suggestions-typing list="productSearchSuggestions" autocomplete="off" placeholder="Search APN, SUPC, product, vendor..." />
               </label>
               <button class="small-action product-search-add" id="addProductFromSearch" type="button">+ Add from Search</button>
             </div>
+            <div class="lead-product-headings" aria-hidden="true"><span id="leadProductNumberHeading">APN</span><span>Description</span><span>Vendor / brand</span><span></span></div>
             <div class="product-list" id="productList"></div>
             <div class="product-list-actions">
               <button class="small-action product-row-add" id="addProduct" type="button">+ Product</button>
@@ -1408,7 +1410,7 @@
   <script src="personal-visit-calendar.js?v=20260909-visitcolors1"></script>
   <script src="calendar-holidays.js?v=20260909-5"></script>
   <script src="market-call-editor.js?v=20260909-visitcolors1"></script>
-  <script src="team-work-view.js?v=20260909-activity1"></script><script src="market-week-calendar.js?v=20260909-visitcolors1"></script><script src="market-operator-conversion.js?v=20260909-visitcolors1"></script><script src="testkitchen-layout.js?v=20260909-contactfields1"></script><script src="vendor-visit-print.js?v=20260909-visitcolors1"></script><script src="market-visit-layout.js?v=20260909-visitcolors1"></script><script src="people-contacts.js?v=20260909-contacticons1"></script><script src="team-initials.js?v=20260909-initials1"></script><script src="k12-stock.js?v=20260909-crossstock1"></script><script src="app.js?v=20260909-samplesave1"></script>
+  <script src="team-work-view.js?v=20260909-activity1"></script><script src="market-week-calendar.js?v=20260909-visitcolors1"></script><script src="market-operator-conversion.js?v=20260909-visitcolors1"></script><script src="testkitchen-layout.js?v=20260909-contactfields1"></script><script src="vendor-visit-print.js?v=20260909-visitcolors1"></script><script src="market-visit-layout.js?v=20260909-visitcolors1"></script><script src="people-contacts.js?v=20260909-contacticons1"></script><script src="team-initials.js?v=20260909-initials1"></script><script src="k12-stock.js?v=20260909-crossstock1"></script><script src="app.js?v=20260909-leadcompact1"></script>
     <script>
       if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
         window.addEventListener("load", () => {

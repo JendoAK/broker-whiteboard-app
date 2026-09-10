@@ -1,0 +1,6 @@
+.lead-product-headings { display:grid; grid-template-columns:minmax(130px,.9fr) minmax(0,1.5fr) minmax(120px,.8fr) 78px; gap:8px; margin:12px 0 5px; color:#5e6975; font-size:11px; font-weight:800; text-transform:uppercase; }
+#productList .product-row { grid-template-columns:minmax(130px,.9fr) minmax(0,1.5fr) minmax(120px,.8fr) 78px; }
+#productList .product-row > label > span { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+#productList .product-row { margin-top:0; }
+@media(max-width:980px) { .lead-product-headings { display:none; } #productList .product-row > label > span { position:static; width:auto; height:auto; overflow:visible; clip:auto; white-space:normal; } }
+

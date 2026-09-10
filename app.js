@@ -831,6 +831,7 @@ elements.leadDistributor.addEventListener("change", () => {
   updateProductNumberLabels();
   updateVendorControls();
   elements.productSearch.value = "";
+  elements.productSearch.dispatchEvent(new Event("input", { bubbles:true }));
 });
 elements.addAttachment.addEventListener("click", () => elements.attachmentInput.click());
 elements.attachmentInput.addEventListener("change", handleAttachmentFiles);
@@ -3382,6 +3383,7 @@ function setupSuggestionMenus() {
 
   const showMenu = (input) => {
     enhanceInput(input);
+    if (input.hasAttribute("data-suggestions-typing") && !input.value.trim()) { hideMenu(); return; }
     // A modal dialog makes body-level menus inert and paints above their z-index.
     const host = input.closest("dialog[open]") || document.body;
     if (menu.parentElement !== host) host.appendChild(menu);
@@ -3434,6 +3436,7 @@ function setupSuggestionMenus() {
 
   document.addEventListener("focusin", (event) => {
     const input = event.target.closest?.("input[list], input[data-suggestion-list]");
+    if (input?.hasAttribute("data-suggestions-typing")) { hideMenu(); return; }
     if (input) showMenu(input);
   });
   document.addEventListener("input", (event) => {
@@ -9765,6 +9768,7 @@ function getDistributorItemLabel(distributor = elements.leadDistributor?.value |
 
 function updateProductNumberLabels() {
   const label = getDistributorItemLabel();
+  document.getElementById("leadProductNumberHeading").textContent = label;
   elements.productList.querySelectorAll(".product-number-label").forEach((item) => {
     item.textContent = label;
   });
@@ -9777,7 +9781,7 @@ function addProductRow(product = { vendor: "", description: "", apn: "" }) {
   row.innerHTML = `
     <label>
       <span class="product-number-label">${escapeHtml(getDistributorItemLabel())}</span>
-      <input class="product-apn" list="apnSuggestions" autocomplete="off" value="${escapeAttribute(product.apn)}" />
+      <input class="product-apn" data-suggestions-typing list="apnSuggestions" autocomplete="off" value="${escapeAttribute(product.apn)}" />
     </label>
     <label>
       <span>Description</span>
@@ -9785,7 +9789,7 @@ function addProductRow(product = { vendor: "", description: "", apn: "" }) {
     </label>
     <label>
       <span>Vendor / brand</span>
-      <input class="product-vendor-input" list="vendorSuggestions" autocomplete="off" value="${escapeAttribute(product.vendor)}" />
+      <input class="product-vendor-input" data-suggestions-typing list="vendorSuggestions" autocomplete="off" value="${escapeAttribute(product.vendor)}" />
     </label>
     <button class="remove-product" type="button">Remove</button>
   `;
