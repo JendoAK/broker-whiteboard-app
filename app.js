@@ -4535,6 +4535,7 @@ function renderStockLists() {
 }
 
 function renderStockVendorGroups(products) {
+  const crossStockIndex = getCrossStockIndex();
   const groups = new Map();
   products.forEach((product) => {
     const vendor = product.vendor || "No vendor";
@@ -4573,7 +4574,7 @@ function renderStockVendorGroups(products) {
               <th></th>
             </tr>
           </thead>
-          <tbody>${vendorProducts.map(renderStockRow).join("")}</tbody>
+          <tbody>${vendorProducts.map(product => renderStockRow(product, crossStockIndex)).join("")}</tbody>
         </table>
       </section>
     `;
@@ -4621,14 +4622,14 @@ function getStockSearchText(product) {
     .toLowerCase();
 }
 
-function renderStockRow(product) {
+function renderStockRow(product, crossStockIndex) {
   const attachmentCount = (product.attachments || []).filter((file) => file?.name && (file?.data || file?.storageId)).length;
   const attachmentIcon = attachmentCount
     ? `<span class="stock-attachment-clip" title="${attachmentCount} attached file${attachmentCount === 1 ? "" : "s"}" aria-label="${attachmentCount} attached file${attachmentCount === 1 ? "" : "s"}">&#128206;</span>`
     : "";
   return `
     <tr>
-      <td><button class="table-link stock-product-link" type="button" data-stock-edit="${escapeAttribute(product.id)}">${escapeHtml(product.description)}${attachmentIcon}</button>${renderK12Stocking(product)}</td>
+      <td><button class="table-link stock-product-link" type="button" data-stock-edit="${escapeAttribute(product.id)}">${escapeHtml(product.description)}${attachmentIcon}</button>${renderK12Stocking(product)}${renderCrossStockCheck(product, crossStockIndex)}</td>
       <td>${escapeHtml(product.brandName)}</td>
       <td>${escapeHtml(product.brandType)}</td>
       <td>${escapeHtml(product.apn)}</td>

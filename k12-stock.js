@@ -4,6 +4,23 @@ function k12ProductKey(product) {
   const number=String(product.manufacturerNumber||'').trim().toLowerCase();
   return vendor && number && !['n/a','na','none','tbd','seasonal only'].includes(number) ? JSON.stringify([vendor,number]) : 'id:'+product.id;
 }
+function getCrossStockIndex() {
+  const index=new Map();
+  stockProducts.forEach(product=>{
+    const key=k12ProductKey(product);
+    if(key.startsWith('id:') || product.so==='Yes')return;
+    const distributor=/^US Foods/i.test(product.distributor)?'US Foods':product.distributor==='Sysco'?'Sysco':'';
+    if(!distributor)return;
+    if(!index.has(key))index.set(key,new Set());
+    index.get(key).add(distributor);
+  });
+  return index;
+}
+function renderCrossStockCheck(product,index) {
+  const other=activeStockList==='usFoods'?'Sysco':activeStockList==='sysco'?'US Foods':'';
+  if(!other || !index?.get(k12ProductKey(product))?.has(other))return '';
+  return '<span class="cross-stock-check" title="Matched manufacturer and MF# in the '+other+' stock list">✓ Also stocked with '+other+'</span>';
+}
 function getK12Products() {
   const families=new Map();
   stockProducts.forEach(product=>{const key=k12ProductKey(product);if(!families.has(key))families.set(key,[]);families.get(key).push(product);});

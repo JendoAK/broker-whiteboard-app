@@ -6,3 +6,6 @@
 .k12-help { font-size:13px; color:#486036; }
 .k12-stocking { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
 .k12-stocking span { border-radius:5px; padding:3px 6px; background:#e5eddb; color:#354e2b; font-size:11px; white-space:nowrap; }
+
+.cross-stock-check { display:block; width:fit-content; margin-top:6px; padding:4px 8px; border-radius:6px; background:#dceee4; color:#225c40; font-size:12px; font-weight:700; }
+@media print { .cross-stock-check { display:none !important; } }

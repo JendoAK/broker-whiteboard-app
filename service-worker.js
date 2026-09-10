@@ -1,7 +1,7 @@
-const CACHE_NAME = "foodbrokerbase-k12a";
+const CACHE_NAME = "foodbrokerbase-crossstock1";
 const APP_SHELL = [
-  "./k12-stock.js?v=20260909-k12a",
-  "./k12-stock.css?v=20260909-k12a",
+  "./k12-stock.js?v=20260909-crossstock1",
+  "./k12-stock.css?v=20260909-crossstock1",
   "./team-initials.js?v=20260909-initials1",
   "./team-work-view.css?v=20260909-activity1",
   "./action-buttons.css?v=20260909-actions1",
@@ -15,7 +15,7 @@ const APP_SHELL = [
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
   "./market-call-editor.js?v=20260909-visitcolors1",
-  "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260909-k12a",
+  "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260909-crossstock1",
   "./market-week-calendar.js?v=20260909-visitcolors1",
   "./market-operator-conversion.js?v=20260909-visitcolors1",
   "./testkitchen-layout.js?v=20260909-contactfields1",
