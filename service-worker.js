@@ -1,5 +1,7 @@
-const CACHE_NAME = "foodbrokerbase-trashicons1";
+const CACHE_NAME = "foodbrokerbase-todoarchive1";
 const APP_SHELL = [
+  "./todo-archive.js?v=20260909-todoarchive1",
+  "./todo-archive.css?v=20260909-todoarchive1",
   "./lead-products.css?v=20260909-leadcompact1",
   "./k12-stock.js?v=20260909-crossstock1",
   "./k12-stock.css?v=20260909-crossstock1",

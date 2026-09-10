@@ -17,7 +17,8 @@
   <link rel="stylesheet" href="team-work-view.css?v=20260909-activity1" />
   <link rel="stylesheet" href="k12-stock.css?v=20260909-crossstock1" />
   <link rel="stylesheet" href="lead-products.css?v=20260909-leadcompact1" />
-  </head>
+  <link rel="stylesheet" href="todo-archive.css?v=20260909-todoarchive1" />
+</head>
   <body class="auth-pending">
     <datalist id="timelineSearchSuggestions"></datalist>
     <div class="app-shell">
@@ -522,6 +523,7 @@
           <button class="ghost-action" id="clearTodoFilters" type="button">Clear</button>
         </section>
 
+        <div class="todo-archive-toolbar"><span id="todoArchiveNotice" role="status"></span><button id="todoArchiveDrop" type="button" title="Drag a task here to archive it, or click to view archived tasks"><span aria-hidden="true"></span>Archive</button></div>
         <main class="todo-board" id="todoBoard" aria-label="To-do board"></main>
       </div>
     </section>
@@ -1419,6 +1421,8 @@
       }
     </script>
 <script src="action-buttons.js?v=20260909-trashicons1"></script>
+<dialog id="todoArchiveDialog" aria-labelledby="todoArchiveHeading"><header><h2 id="todoArchiveHeading">Archived to-dos</h2><button id="closeTodoArchive" type="button">Close</button></header><input id="todoArchiveSearch" type="search" aria-label="Search archived tasks" placeholder="Search archived tasks..." /><div id="todoArchiveItems"></div></dialog>
+<script src="todo-archive.js?v=20260909-todoarchive1"></script>
 </body>
 </html>
 
