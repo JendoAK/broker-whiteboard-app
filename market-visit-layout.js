@@ -54,7 +54,7 @@ function renderCompactMarketVisit(panel, visit) {
       <div class="visit-calendar-full-width">${renderManufacturerWeekGrid(visit)}</div>
     </section>
     <div class="compact-visit-lists market-detail-tabs">
-      <section class="visit-products-panel"><h3>Products</h3><div class="section-label-row"><span>${products.length} selected</span><button class="edit-card" type="button" data-view-visit-products="${escapeAttribute(visit.id)}">Manage product list</button><button class="edit-card" type="button" data-market-print-products="${escapeAttribute(visit.id)}">Print products</button></div>
+      <section class="visit-products-panel"><h3>Products</h3><div class="section-label-row"><span>${products.length} selected</span><button class="edit-card" type="button" data-view-visit-products="${escapeAttribute(visit.id)}">View product list</button><button class="edit-card" type="button" data-market-print-products="${escapeAttribute(visit.id)}">Print products</button></div>
         <div class="compact-visit-list">${products.length ? products.map(renderMarketProductChip).join("") : `<div class="empty-state">Use Add products to choose what you’re showing.</div>`}</div>
       </section>
       <section class="visit-operators-panel"><h3>Operators</h3><div class="section-label-row"><span>Click an operator for products &amp; notes</span></div>
@@ -77,7 +77,7 @@ function renderPersonalMarketVisit(panel, visit) {
   panel.innerHTML = `<div class="market-detail-header compact-visit-header"><div><p class="eyebrow">Personal market visit · ${escapeHtml(formatDateRange(visit.startDate, visit.endDate))}</p><h2>${escapeHtml(getMarketVisitDisplayName(visit))}</h2><p>Prepare your products, visit operators, and capture feedback.</p></div><div class="table-actions">${renderMarketArchiveButton(visit)}<button class="edit-card" type="button" data-detail-close>Back to Events &amp; Visits</button></div></div>
   ${visit.archivedAt ? '<p class="market-section-help">Archived visit. Restore it to return it to active visits.</p>' : ''}
   <div class="compact-visit-actions" role="group" aria-label="Add to visit"><button class="primary-action" type="button" data-visit-add-products>Add products</button><button class="primary-action" type="button" data-visit-add-operator>Add operator</button></div>
-  <div class="compact-visit-lists market-detail-tabs"><section class="visit-products-panel"><h3>Products (${products.length})</h3><div class="section-label-row"><span>Your product list for this visit</span><button class="edit-card" type="button" data-view-visit-products="${escapeAttribute(visit.id)}">Manage product list</button><button class="edit-card" type="button" data-market-print-products="${escapeAttribute(visit.id)}">Print products</button></div><div class="compact-visit-list">${products.map(renderMarketProductChip).join('') || '<p class="empty-state">Add the products you plan to show.</p>'}</div></section>
+  <div class="compact-visit-lists market-detail-tabs"><section class="visit-products-panel"><h3>Products (${products.length})</h3><div class="section-label-row"><span>Your product list for this visit</span><button class="edit-card" type="button" data-view-visit-products="${escapeAttribute(visit.id)}">View product list</button><button class="edit-card" type="button" data-market-print-products="${escapeAttribute(visit.id)}">Print products</button></div><div class="compact-visit-list">${products.map(renderMarketProductChip).join('') || '<p class="empty-state">Add the products you plan to show.</p>'}</div></section>
   <section class="visit-operators-panel"><h3>Operators (${operators.length})</h3><div class="section-label-row"><span>Click an operator to select products, write feedback, or create a lead.</span></div><div class="compact-visit-list">${operators.map(operator => `<button class="compact-operator" type="button" data-open-visit-operator="${escapeAttribute(operator.id)}"><strong>${escapeHtml(getMarketOperatorDisplayName(operator))}</strong><span>${(operator.productIds || []).filter(id=>products.some(product=>product.id===id)).length} products${operator.notes || Object.values(operator.productNotes || {}).some(note=>note.note) ? ' · Notes added' : ''} · Products, notes &amp; lead</span></button>`).join('') || '<p class="empty-state">Add an operator to record the products shown and their feedback.</p>'}</div></section></div>
   <details class="compact-visit-extra"><summary>Visit notes${visit.notes ? ' · Notes added' : ''}</summary>${renderMarketNotesSection(visit)}</details>`;
   bindMarketDetailActions(panel, visit);
@@ -208,10 +208,10 @@ function openVisitOperatorDialog(visitId, operatorId = "") {
 }
 
 function openVisitProductOverview(visitId) {
-  const dialog = createVisitDialog("Manage product list");
+  const dialog = createVisitDialog("View product list");
   dialog.style.width = "min(1100px, 94vw)";
   const body = dialog.querySelector('[data-visit-entry-body]');
-  body.innerHTML = '<p>Add or remove products from this event.</p><button class="primary-action" type="button" data-overview-add>Add products</button><input type="search" aria-label="Search event products" placeholder="Search product, brand, storage or product code" style="width:100%;margin-bottom:12px"><div data-product-overview-list></div>';
+  body.innerHTML = '<p>Products selected for this event. Use the trashcan to remove an item from the list.</p><input type="search" aria-label="Search event products" placeholder="Search product, brand, storage or product code" style="width:100%;margin-bottom:12px"><div data-product-overview-list></div>';
   const render = () => {
     const visit = marketVisits.find(item => item.id === visitId);
     const query = body.querySelector('input').value.toLowerCase();
@@ -231,10 +231,6 @@ function openVisitProductOverview(visitId) {
     });
   };
   body.querySelector('input').addEventListener('input',render);
-  body.querySelector('[data-overview-add]').onclick = () => {
-    const picker = openVisitProductsDialog(visitId);
-    picker?.addEventListener('close',render,{once:true});
-  };
   render(); dialog.showModal();
 }
 document.addEventListener('click', event => {
