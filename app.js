@@ -4,6 +4,7 @@ const columns = [
   "Need Action",
   "Samples Requested",
   "Ready to Show / Send Out",
+  "Samples Sent",
   "Showed / Waiting on Feedback",
   "Follow Up",
   "Done"
@@ -9083,6 +9084,7 @@ function renderWeeklyLeadRecapPrintDocument(leadCards, rangeKeys = ["this"]) {
           ul { margin: 0; padding: 8px 12px 10px 26px; }
           li { break-inside: avoid; margin: 0 0 8px; padding-bottom: 8px; border-bottom: 1px solid #ead8c5; line-height: 1.35; }
           li:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+          .recap-category { margin:0; padding:7px 12px; background:#eee9dc; border-top:1px solid #d8cdbc; font-size:14px; break-after:avoid; } .recap-category span { font-weight:normal; }
           .lead-title { font-weight: 900; }
           .meta { color: #4f453b; font-weight: 700; }
           .products { color: #3a332d; font-size: 11px; }
@@ -9132,10 +9134,28 @@ function renderWeeklyWorkItem(record) {
   return '<li><div class="lead-title">' + escapeHtml(title || "Untitled") + '</div><div class="meta">' + escapeHtml(meta) + '</div>' + (products ? '<div class="products">Products: ' + products + '</div>' : '') + (notes ? '<div class="note">' + notes + '</div>' : '') + '</li>';
 }
 
+function weeklyRecapCategory(record) {
+  const status = record.kind === "Lead" ? normalizeStatus(record.item.status) : record.item.status;
+  if (["Showed / Waiting on Feedback", "Waiting on Someone"].includes(status)) return "Waiting on feedback";
+  if (status === "Samples Sent") return "Samples sent out";
+  if (["Samples Requested", "Ready to Show / Send Out"].includes(status)) return "Samples requested / ready to send";
+  if (["Need Action", "Follow Up", "New", "In Progress"].includes(status)) return "Needs follow-up";
+  return "Other open work";
+}
 function renderWeeklyLeadRecapSection(section) {
   const range = formatDate(toDateKey(section.start)) + (section.key === "future" ? " onward" : " - " + formatDate(toDateKey(section.end)));
-  const group = (title,items,empty) => '<h3 style="margin:12px">' + title + ' (' + items.length + ')</h3>' + (items.length ? '<ul>' + items.map(renderWeeklyWorkItem).join('') + '</ul>' : '<div class="empty">' + empty + '</div>');
-  return '<section class="section"><div class="section-head"><h2>' + escapeHtml(section.title) + '</h2><span>' + escapeHtml(range) + '</span></div>' + group('Work recorded',section.activity,'No recorded activity in this period.') + group('Agenda / open follow-ups',section.agenda,'No open items scheduled for this period.') + '</section>';
+  const unique = new Map();
+  [...section.activity, ...section.agenda].forEach(record => {
+    const key = record.kind + ":" + (record.item.id || record.item.account || record.item.title);
+    if (!unique.has(key)) unique.set(key,record);
+  });
+  const records = [...unique.values()].sort((a,b) => (a.item.due || "9999").localeCompare(b.item.due || "9999") || String(a.item.account || a.item.title || "").localeCompare(String(b.item.account || b.item.title || "")));
+  const categories = ["Needs follow-up", "Waiting on feedback", "Samples sent out", "Samples requested / ready to send", "Other open work"];
+  const groups = categories.map(title => {
+    const items = records.filter(record => weeklyRecapCategory(record) === title);
+    return items.length ? '<h3 class="recap-category">' + title + ' <span>(' + items.length + ')</span></h3><ul>' + items.map(renderWeeklyWorkItem).join('') + '</ul>' : '';
+  }).join('');
+  return '<section class="section"><div class="section-head"><h2>' + escapeHtml(section.title) + '</h2><span>' + escapeHtml(range) + ' | ' + records.length + ' open items</span></div>' + (groups || '<div class="empty">No open work recorded or scheduled for this period.</div>') + '</section>';
 }
 
 function renderWeeklyLeadRecapBullet(card) {
