@@ -4679,6 +4679,25 @@ function updateStockVendorSuggestions() {
     .map((name) => `<option value="${escapeAttribute(name)}"></option>`).join("");
 }
 
+function getStockBrandSuggestions(vendor) {
+  const vendorKey = normalizeVendorName(vendor || "").trim().toLowerCase();
+  if (!vendorKey) return [];
+  const brands = new Map();
+  stockProducts.forEach(product => {
+    if (normalizeVendorName(product.vendor || "").trim().toLowerCase() !== vendorKey) return;
+    const brand = String(product.brandName || "").trim();
+    const key = brand.toLowerCase();
+    if (key && key !== vendorKey && !brands.has(key)) brands.set(key,brand);
+  });
+  return [...brands.values()].sort((a,b) => a.localeCompare(b));
+}
+function updateStockBrandSuggestions() {
+  document.getElementById("stockBrandSuggestions").innerHTML = getStockBrandSuggestions(elements.stockVendor.value).map(brand => '<option value="' + escapeAttribute(brand) + '"></option>').join('');
+}
+elements.stockVendor.addEventListener("input", updateStockBrandSuggestions);
+elements.stockVendor.addEventListener("change", updateStockBrandSuggestions);
+elements.stockBrandName.addEventListener("input", updateStockBrandSuggestions);
+
 function openStockForm(product) {
   elements.stockForm.reset();
   updateStockVendorSuggestions();
@@ -4700,6 +4719,7 @@ function openStockForm(product) {
   elements.stockVendor.value = existing?.vendor || "";
   elements.stockBrandType.value = existing?.brandType || "";
   elements.stockBrandName.value = existing?.brandName || "";
+  updateStockBrandSuggestions();
   elements.stockCategory.value = existing?.category || "";
   renderStockAttachmentList();
   elements.stockFormDialog.showModal();
