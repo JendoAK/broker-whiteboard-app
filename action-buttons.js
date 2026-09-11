@@ -2,7 +2,7 @@
 // Apply the action palette to static controls and controls created by dialogs or lists.
 function refreshActionButton(button) {
   const label = (button.textContent || button.getAttribute('aria-label') || '').trim().replace(/^[^A-Za-z]+/, '');
-  const trashAction = /^(remove|delete|remove from event)$/i.test(label);
+  const trashAction = /^(remove|delete|remove from event)$/i.test(label) && !button.querySelector("svg, img");
   button.classList.toggle('app-trash-action', trashAction);
   if (trashAction) {
     button.setAttribute('aria-label', label);

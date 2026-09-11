@@ -1,4 +1,4 @@
-const CACHE_NAME = "foodbrokerbase-newproductsave1";
+const CACHE_NAME = "foodbrokerbase-singletrash1";
 const APP_SHELL = [
   "./todo-archive.js?v=20260909-todoarchive1",
   "./todo-archive.css?v=20260909-todoarchive1",
@@ -8,7 +8,7 @@ const APP_SHELL = [
   "./team-initials.js?v=20260909-initials1",
   "./team-work-view.css?v=20260909-activity1",
   "./action-buttons.css?v=20260909-trashicons1",
-  "./action-buttons.js?v=20260909-trashicons1",
+  "./action-buttons.js?v=20260911-singletrash1",
   "./contacts-layout.css?v=20260909-contacticons1",
   "./people-contacts.js?v=20260909-contacticons1",
   "./",
