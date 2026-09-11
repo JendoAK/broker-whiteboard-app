@@ -4,7 +4,6 @@ const columns = [
   "Need Action",
   "Samples Requested",
   "Ready to Show / Send Out",
-  "Samples Sent",
   "Showed / Waiting on Feedback",
   "Follow Up",
   "Done"
@@ -191,6 +190,7 @@ const icons = {
 };
 const closedStatus = "Done";
 const statusMap = {
+  "Samples Sent": "Showed / Waiting on Feedback",
   New: "New Lead",
   "Follow Up": "Follow Up",
   Waiting: "Showed / Waiting on Feedback",
@@ -9137,7 +9137,6 @@ function renderWeeklyWorkItem(record) {
 function weeklyRecapCategory(record) {
   const status = record.kind === "Lead" ? normalizeStatus(record.item.status) : record.item.status;
   if (["Showed / Waiting on Feedback", "Waiting on Someone"].includes(status)) return "Waiting on feedback";
-  if (status === "Samples Sent") return "Samples sent out";
   if (["Samples Requested", "Ready to Show / Send Out"].includes(status)) return "Samples requested / ready to send";
   if (["Need Action", "Follow Up", "New", "In Progress"].includes(status)) return "Needs follow-up";
   return "Other open work";
@@ -9150,7 +9149,7 @@ function renderWeeklyLeadRecapSection(section) {
     if (!unique.has(key)) unique.set(key,record);
   });
   const records = [...unique.values()].sort((a,b) => (a.item.due || "9999").localeCompare(b.item.due || "9999") || String(a.item.account || a.item.title || "").localeCompare(String(b.item.account || b.item.title || "")));
-  const categories = ["Needs follow-up", "Waiting on feedback", "Samples sent out", "Samples requested / ready to send", "Other open work"];
+  const categories = ["Needs follow-up", "Waiting on feedback", "Samples requested / ready to send", "Other open work"];
   const groups = categories.map(title => {
     const items = records.filter(record => weeklyRecapCategory(record) === title);
     return items.length ? '<h3 class="recap-category">' + title + ' <span>(' + items.length + ')</span></h3><ul>' + items.map(renderWeeklyWorkItem).join('') + '</ul>' : '';
