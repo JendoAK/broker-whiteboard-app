@@ -1,7 +1,6 @@
 const peopleContactsStorageKey = "broker-whiteboard-people-contacts";
 const columns = [
   "New Lead",
-  "Need Action",
   "Samples Requested",
   "Ready to Show / Send Out",
   "Showed / Waiting on Feedback",
@@ -190,6 +189,7 @@ const icons = {
 };
 const closedStatus = "Done";
 const statusMap = {
+  "Need Action": "New Lead",
   "Samples Sent": "Showed / Waiting on Feedback",
   New: "New Lead",
   "Follow Up": "Follow Up",
@@ -9138,7 +9138,7 @@ function weeklyRecapCategory(record) {
   const status = record.kind === "Lead" ? normalizeStatus(record.item.status) : record.item.status;
   if (["Showed / Waiting on Feedback", "Waiting on Someone"].includes(status)) return "Waiting on feedback";
   if (["Samples Requested", "Ready to Show / Send Out"].includes(status)) return "Samples requested / ready to send";
-  if (["Need Action", "Follow Up", "New", "In Progress"].includes(status)) return "Needs follow-up";
+  if (["Follow Up", "New", "In Progress"].includes(status)) return "Needs follow-up";
   return "Other open work";
 }
 function renderWeeklyLeadRecapSection(section) {
@@ -10192,7 +10192,6 @@ function updateSummary() {
   setText("summaryNextWeek", activeCards.filter(isDueNextWeek).length);
   setText("summaryMonth", activeCards.filter(isDueThisMonth).length);
   setText("summaryHigh", activeCards.filter((card) => card.priority === "High").length);
-  setText("summaryWaiting", cards.filter((card) => !card.archivedAt && !card.deletedAt && normalizeStatus(card.status) === "Need Action").length);
 }
 
 function setText(id, value) {
