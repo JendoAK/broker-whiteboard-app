@@ -1,4 +1,4 @@
-const CACHE_NAME = "foodbrokerbase-viewlist2";
+const CACHE_NAME = "foodbrokerbase-newproductsave1";
 const APP_SHELL = [
   "./todo-archive.js?v=20260909-todoarchive1",
   "./todo-archive.css?v=20260909-todoarchive1",
@@ -23,7 +23,7 @@ const APP_SHELL = [
   "./market-operator-conversion.js?v=20260909-visitcolors1",
   "./testkitchen-layout.js?v=20260911-viewlist2",
   "./vendor-visit-print.js?v=20260909-visitcolors1",
-  "./market-visit-layout.js?v=20260911-viewlist2",
+  "./market-visit-layout.js?v=20260911-newproductsave1",
   "./supabase-config.js",
   "./supabase-auth.js?v=20260909-initials1",
   "./manifest.webmanifest",

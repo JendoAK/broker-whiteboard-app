@@ -142,21 +142,25 @@ function openNewVisitProductDialog(visitId, onSave) {
   if (!visit) return;
   const dialog = createVisitDialog("New product — not yet stocked");
   const body = dialog.querySelector("[data-visit-entry-body]");
-  body.innerHTML = `<p>No distributor, APN or Sysco code is needed. This product will be available to the team in the shared new-product library.</p><form class="event-entry-grid visit-new-product-form">${renderEventProductFields({ vendor: visit.vendor })}<div class="form-actions"><button class="ghost-action" type="button" data-cancel-new-product>Cancel</button><button class="primary-action" type="submit">Save &amp; add to visit</button></div></form>`;
+  body.innerHTML = `<p>No distributor, APN or Sysco code is needed. This product will be available to the team in the shared new-product library.</p><form class="event-entry-grid visit-new-product-form">${renderEventProductFields({ vendor: visit.vendor })}<p role="alert" data-new-product-error></p><div class="form-actions"><button class="ghost-action" type="button" data-cancel-new-product>Cancel</button><button class="primary-action" type="submit">Save &amp; add to visit</button></div></form>`;
   body.querySelector("[data-cancel-new-product]").onclick = () => dialog.close();
-  body.querySelector("form").onsubmit = event => {
+  body.querySelector("form").onsubmit = async event => {
     event.preventDefault();
-    const current = marketVisits.find(item => item.id === visitId);
-    if (!current) return;
-    const values = Object.fromEntries(new FormData(event.currentTarget));
-    if (!values.description.trim() || !values.vendor.trim()) return;
-    const product = normalizeEventProduct({ ...values, description: values.description.trim(), vendor: values.vendor.trim() });
-    stampSharedRecord(product, "Created");
-    eventProducts = [...eventProducts, product];
-    persistEventProducts();
-    updateMarketVisit(visitId, { newProductIds: [...current.newProductIds, product.id] });
-    dialog.close();
-    onSave?.(product);
+    const form = event.currentTarget;
+    const button = form.querySelector('[type="submit"]');
+    if (button.disabled) return;
+    const message = form.querySelector('[data-new-product-error]');
+    message.textContent = '';
+    button.disabled = true;
+    try {
+      const values = Object.fromEntries(new FormData(form));
+      const product = await saveNewVisitProduct(visitId, values);
+      dialog.close();
+      renderMarketVisits();
+      onSave?.(product);
+    } catch (error) {
+      message.textContent = error.message || 'Product could not be saved. Please try again.';
+    } finally { button.disabled = false; }
   };
   dialog.showModal();
 }
@@ -237,3 +241,29 @@ document.addEventListener('click', event => {
   const button = event.target.closest('[data-view-visit-products]');
   if (button) openVisitProductOverview(button.dataset.viewVisitProducts);
 });
+
+async function saveNewVisitProduct(visitId, values) {
+  const current = marketVisits.find(item => item.id === visitId);
+  if (!current) throw new Error('This visit is no longer available. Reopen the visit and try again.');
+  if (!String(values.description || '').trim() || !String(values.vendor || '').trim()) throw new Error('Enter a product description and vendor.');
+  const product = normalizeEventProduct({...values, distributor:'Not stocked', description:values.description.trim(),vendor:values.vendor.trim()});
+  stampSharedRecord(product,'Created');
+  const previousProducts = eventProducts, previousVisits = marketVisits;
+  const nextVisit = normalizeMarketVisit({...current,newProductIds:[...(current.newProductIds || []),product.id],updatedAt:new Date().toISOString()});
+  if (nextVisit.type !== 'personal') stampSharedRecord(nextVisit,'Updated');
+  eventProducts = [...eventProducts,product];
+  marketVisits = marketVisits.map(item => item.id === visitId ? nextVisit : item);
+  try {
+    try { persistEventProducts(); persistMarketVisits(); }
+    catch (error) {
+      if (!cloudSyncReady || !getCloudClient() || !getCloudUser()) throw new Error('Browser storage is unavailable. Connect and finish cloud sync, then try again. Your form is still here.');
+      const saved = await saveCloudSections([eventProductStorageKey,marketVisitStorageKey]);
+      if (!saved) throw new Error(lastCloudError || 'Cloud save failed. Check your connection and try again.');
+    }
+  } catch (error) {
+    eventProducts = previousProducts; marketVisits = previousVisits;
+    try { localStorage.setItem(eventProductStorageKey,JSON.stringify(previousProducts)); localStorage.setItem(marketVisitStorageKey,JSON.stringify(previousVisits)); } catch {}
+    throw error;
+  }
+  return product;
+}
