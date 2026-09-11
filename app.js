@@ -9086,7 +9086,7 @@ function renderWeeklyLeadRecapPrintDocument(leadCards, rangeKeys = ["this"]) {
           .lead-title { font-weight: 900; }
           .meta { color: #4f453b; font-weight: 700; }
           .products { color: #3a332d; font-size: 11px; }
-          .note { white-space: pre-wrap; }
+          .note { font-size:11px; line-height:1.3; margin-top:3px; } .recap-note + .recap-note { margin-top:2px; }
           .empty { padding: 10px 12px; color: #6e655c; font-weight: 700; }
           .footer { position: fixed; right: 0; bottom: -0.18in; left: 0; color: #5d554b; font-size: 10px; font-weight: 800; text-align: center; }
           @media print { body { padding: 0; } }
@@ -9097,7 +9097,7 @@ function renderWeeklyLeadRecapPrintDocument(leadCards, rangeKeys = ["this"]) {
         <h1>${escapeHtml(title)}</h1>
         <div class="muted">Printed ${escapeHtml(new Date().toLocaleDateString())}</div>
         ${sections.map(renderWeeklyLeadRecapSection).join("")}
-        <div class="footer">Represented by Pierce Cartwright</div>
+
       </body>
     </html>`;
 }
@@ -9116,12 +9116,20 @@ function getWeeklyWorkEvents(item, start, end) {
   return [...new Set(events)];
 }
 
+function getCompactRecapNotes(item) {
+  const entries = Array.isArray(item.noteHistory) && item.noteHistory.some(note => note.text?.trim())
+    ? item.noteHistory.map(note => note.text || "") : [item.note || item.notes || ""];
+  return entries.map(text => String(text).split(/\r?\n/).filter(line => !/^\s*[A-Za-z]{3,9} \d{1,2}, \d{4},?\s+\d{1,2}:\d{2}(?::\d{2})?\s*[AP]M\s*$/i.test(line)).join(" ").replace(/\s+/g," ").trim()).filter(Boolean);
+}
 function renderWeeklyWorkItem(record) {
   const item = record.item;
   const title = record.kind === "Lead" ? item.account : item.title;
   const products = record.kind === "Lead" ? getLeadRecapProductText(item) : "";
-  const meta = [record.kind, item.status, item.due ? "Due " + formatDate(item.due) : "No due date", item.archivedAt ? "Archived" : "", ...(record.events || [])].filter(Boolean).join(" | ");
-  return '<li><div class="lead-title">' + escapeHtml(title || "Untitled") + '</div><div class="meta">' + escapeHtml(meta) + '</div>' + (products ? '<div class="products">Products: ' + products + '</div>' : '') + '<div class="note">' + escapeHtml(shortenText(item.note || item.notes || "",260)) + '</div></li>';
+  const dates = [item.createdAt,item.updatedAt,item.completedAt,...(item.noteHistory || []).flatMap(note => [note.createdAt,note.updatedAt])].filter(Boolean).map(value => new Date(value)).filter(date => Number.isFinite(date.getTime()));
+  const lastUpdated = dates.length ? new Date(Math.max(...dates.map(date => date.getTime()))) : null;
+  const meta = [record.kind, item.status, item.due ? "Due " + formatDate(item.due) : "No due date", item.archivedAt ? "Archived" : "", lastUpdated ? "Last updated " + formatDate(toDateKey(lastUpdated)) : ""].filter(Boolean).join(" | ");
+  const notes = getCompactRecapNotes(item).map(text => '<div class="recap-note">' + escapeHtml(text) + '</div>').join('');
+  return '<li><div class="lead-title">' + escapeHtml(title || "Untitled") + '</div><div class="meta">' + escapeHtml(meta) + '</div>' + (products ? '<div class="products">Products: ' + products + '</div>' : '') + (notes ? '<div class="note">' + notes + '</div>' : '') + '</li>';
 }
 
 function renderWeeklyLeadRecapSection(section) {
