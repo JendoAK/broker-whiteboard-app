@@ -9057,7 +9057,7 @@ function renderWeeklyLeadRecapPrintDocument(leadCards, rangeKeys = ["this"]) {
     { key: "next", title: "Next Week", start: nextWeekStart, end: addDays(nextWeekStart, 6) }
   ];
   allSections.push({key:"future",title:"Beyond Next Week",start:addDays(nextWeekStart,7),end:new Date(9999,11,31)});
-  const records = [...leadCards.map(item => ({item,kind:"Lead"})), ...todos.filter(item => !item.deletedAt && item.status !== "Done").map(item => ({item,kind:"To-do"}))];
+  const records = [...leadCards.filter(item => !item.deletedAt && normalizeStatus(item.status) !== closedStatus).map(item => ({item,kind:"Lead"})), ...todos.filter(item => !item.deletedAt && item.status !== "Done").map(item => ({item,kind:"To-do"}))];
   const sections = allSections.filter(section => selectedRangeKeys.includes(section.key)).map(section => ({
     ...section,
     activity: records.map(record => ({...record,events:getWeeklyWorkEvents(record.item,section.start,section.end)})).filter(record => record.events.length),
