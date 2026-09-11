@@ -1659,6 +1659,19 @@ function recordWorkUpdateTimes(records, key) {
   const comparable = item => JSON.stringify(item, (name,value) => name === 'updatedAt' ? undefined : value);
   records.forEach(item => { const previous = old.get(item.id); if (previous && comparable(previous) !== comparable(item)) item.updatedAt = new Date().toISOString(); else if (previous?.updatedAt && !item.updatedAt) item.updatedAt = previous.updatedAt; });
 }
+function showBoardSaveFailure() {
+  let notice = document.getElementById('boardSaveFailure');
+  if (notice) return;
+  notice = document.createElement('div');
+  notice.id = 'boardSaveFailure';
+  notice.setAttribute('role','alert');
+  notice.style.cssText = 'position:fixed;bottom:16px;left:16px;right:16px;z-index:2147483647;background:#fff2cf;color:#402b12;border:2px solid #a16b20;padding:16px;border-radius:10px;display:flex;gap:16px;align-items:center;flex-wrap:wrap';
+  const text = document.createElement('span');
+  text.textContent = 'Latest changes could not be saved in this browser. Download a backup before refreshing or closing this page.';
+  const backup = document.createElement('button');
+  backup.type = 'button'; backup.textContent = 'Export Backup'; backup.onclick = exportBackup;
+  notice.append(text,backup); document.body.appendChild(notice);
+}
 function persist() {
   try {
     recordWorkUpdateTimes(cards, storageKey);
@@ -1666,7 +1679,7 @@ function persist() {
     scheduleCloudSave(storageKey);
     return true;
   } catch (error) {
-    alert("This browser could not save the board. One or more attachments may be too large for local storage.");
+    showBoardSaveFailure();
     console.error(error);
     return false;
   }
