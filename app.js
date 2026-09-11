@@ -3790,7 +3790,7 @@ function renderVendorReportPrintDocument(rows) {
       <body>
         ${renderPrintBrandHeader({ title: "Vendor Report", lines: [summary.period, summary.vendors] })}
         <h1>Vendor Report</h1>
-        <div class="muted">Printed ${escapeHtml(new Date().toLocaleDateString())}</div>
+        <div class="muted">Printed ${escapeHtml(new Date().toLocaleDateString())} · Leads and to-dos</div><p>Activity uses recorded creation, latest update, completion and note dates. Agenda shows open items by due date. Details and statuses are current.</p>
         <div class="summary">
           <div><span>Vendors</span><strong>${escapeHtml(summary.vendors)}</strong></div>
           <div><span>Month</span><strong>${escapeHtml(summary.period)}</strong></div>
@@ -9021,8 +9021,8 @@ function printSelectedWeeklyRecap() {
 }
 
 function printWeeklyLeadRecap(rangeKeys = ["this"]) {
-  const activeLeads = cards.filter((card) => !card.archivedAt && !card.deletedAt);
-  openPrintWindow(renderWeeklyLeadRecapPrintDocument(activeLeads, rangeKeys));
+  const recapLeads = cards.filter((card) => !card.deletedAt);
+  openPrintWindow(renderWeeklyLeadRecapPrintDocument(recapLeads, rangeKeys));
 }
 
 function renderWeeklyLeadRecapPrintDocument(leadCards, rangeKeys = ["this"]) {
@@ -9035,13 +9035,14 @@ function renderWeeklyLeadRecapPrintDocument(leadCards, rangeKeys = ["this"]) {
     { key: "this", title: "This Week", start: thisWeekStart, end: addDays(thisWeekStart, 6) },
     { key: "next", title: "Next Week", start: nextWeekStart, end: addDays(nextWeekStart, 6) }
   ];
-  const sections = allSections.filter((section) => selectedRangeKeys.includes(section.key)).map((section) => ({
+  allSections.push({key:"future",title:"Beyond Next Week",start:addDays(nextWeekStart,7),end:new Date(9999,11,31)});
+  const records = [...leadCards.map(item => ({item,kind:"Lead"})), ...todos.filter(item => !item.deletedAt).map(item => ({item,kind:"To-do"}))];
+  const sections = allSections.filter(section => selectedRangeKeys.includes(section.key)).map(section => ({
     ...section,
-    leads: leadCards
-      .filter((card) => isDateInRange(card.due, section.start, section.end))
-      .sort(compareCards)
+    activity: records.map(record => ({...record,events:getWeeklyWorkEvents(record.item,section.start,section.end)})).filter(record => record.events.length),
+    agenda: records.filter(({item,kind}) => !item.archivedAt && (kind === "Lead" ? normalizeStatus(item.status) !== "Done" : item.status !== "Done") && isDateInRange(item.due,section.start,section.end)).sort((a,b) => a.item.due.localeCompare(b.item.due))
   }));
-  const title = sections.length === 1 ? `${sections[0].title} Lead Recap` : "Weekly Lead Recap";
+  const title = "Weekly Work Recap";
 
   return `<!doctype html>
     <html>
@@ -9055,11 +9056,11 @@ function renderWeeklyLeadRecapPrintDocument(leadCards, rangeKeys = ["this"]) {
           h1 { margin: 0 0 4px; font-size: 25px; }
           h2 { margin: 0 0 5px; font-size: 17px; }
           .muted { margin-bottom: 16px; color: #5d554b; font-weight: 700; }
-          .section { margin: 0 0 14px; break-inside: avoid; border: 1px solid #d8cdbc; }
+          .section { margin: 0 0 14px; border: 1px solid #d8cdbc; }
           .section-head { display: flex; justify-content: space-between; gap: 12px; padding: 8px 10px; background: #f6d66f; }
           .section-head span { color: #5d554b; font-weight: 800; }
           ul { margin: 0; padding: 8px 12px 10px 26px; }
-          li { margin: 0 0 8px; padding-bottom: 8px; border-bottom: 1px solid #ead8c5; line-height: 1.35; }
+          li { break-inside: avoid; margin: 0 0 8px; padding-bottom: 8px; border-bottom: 1px solid #ead8c5; line-height: 1.35; }
           li:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
           .lead-title { font-weight: 900; }
           .meta { color: #4f453b; font-weight: 700; }
@@ -9080,21 +9081,32 @@ function renderWeeklyLeadRecapPrintDocument(leadCards, rangeKeys = ["this"]) {
     </html>`;
 }
 
+function getWeeklyWorkEvents(item, start, end) {
+  const events = [];
+  const add = (value,label) => {
+    if (!value) return;
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return;
+    const key = toDateKey(date);
+    if (isDateInRange(key,start,end)) events.push(label + " " + formatDate(key));
+  };
+  add(item.createdAt,"Added"); add(item.updatedAt,"Updated"); add(item.completedAt,"Completed");
+  (item.noteHistory || []).forEach(note => { add(note.createdAt,"Note added"); add(note.updatedAt,"Note updated"); });
+  return [...new Set(events)];
+}
+
+function renderWeeklyWorkItem(record) {
+  const item = record.item;
+  const title = record.kind === "Lead" ? item.account : item.title;
+  const products = record.kind === "Lead" ? getLeadRecapProductText(item) : "";
+  const meta = [record.kind, item.status, item.due ? "Due " + formatDate(item.due) : "No due date", item.archivedAt ? "Archived" : "", ...(record.events || [])].filter(Boolean).join(" | ");
+  return '<li><div class="lead-title">' + escapeHtml(title || "Untitled") + '</div><div class="meta">' + escapeHtml(meta) + '</div>' + (products ? '<div class="products">Products: ' + products + '</div>' : '') + '<div class="note">' + escapeHtml(shortenText(item.note || item.notes || "",260)) + '</div></li>';
+}
+
 function renderWeeklyLeadRecapSection(section) {
-  const dateRange = `${formatDate(toDateKey(section.start))} - ${formatDate(toDateKey(section.end))}`;
-  return `
-    <section class="section">
-      <div class="section-head">
-        <h2>${escapeHtml(section.title)}</h2>
-        <span>${escapeHtml(dateRange)} | ${section.leads.length} lead${section.leads.length === 1 ? "" : "s"}</span>
-      </div>
-      ${
-        section.leads.length
-          ? `<ul>${section.leads.map(renderWeeklyLeadRecapBullet).join("")}</ul>`
-          : `<div class="empty">No leads scheduled for this week.</div>`
-      }
-    </section>
-  `;
+  const range = formatDate(toDateKey(section.start)) + (section.key === "future" ? " onward" : " - " + formatDate(toDateKey(section.end)));
+  const group = (title,items,empty) => '<h3 style="margin:12px">' + title + ' (' + items.length + ')</h3>' + (items.length ? '<ul>' + items.map(renderWeeklyWorkItem).join('') + '</ul>' : '<div class="empty">' + empty + '</div>');
+  return '<section class="section"><div class="section-head"><h2>' + escapeHtml(section.title) + '</h2><span>' + escapeHtml(range) + '</span></div>' + group('Work recorded',section.activity,'No recorded activity in this period.') + group('Agenda / open follow-ups',section.agenda,'No open items scheduled for this period.') + '</section>';
 }
 
 function renderWeeklyLeadRecapBullet(card) {
