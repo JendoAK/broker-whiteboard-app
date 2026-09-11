@@ -217,6 +217,8 @@ let cloudSyncUserId = "";
 let cloudSaveTimer = null;
 let cloudAutoRefreshTimer = null;
 let cloudLastRowFingerprint = "";
+let cloudRowCache = new Map();
+let cloudRefreshChecking = false;
 let pendingCloudSections = readPendingCloudSections();
 let lastCloudError = "";
 const cloudAutoRefreshMs = 30000;
@@ -2042,7 +2044,7 @@ async function saveCloudSections(sectionKeys = cloudSectionConfigs.map((section)
       if (error) throw error;
     }
     lastCloudError = "";
-    refreshCloudRowFingerprint();
+    // Keep downloaded versions: a later check must still fetch concurrent remote changes.
     return true;
   } catch (error) {
     lastCloudError = error?.message || "Unknown cloud save error.";
@@ -2084,41 +2086,36 @@ function getCloudRowFingerprint(rows = []) {
     .join("|");
 }
 
-async function refreshCloudRowFingerprint() {
-  try {
-    cloudLastRowFingerprint = getCloudRowFingerprint(await fetchCloudRowSummary());
-  } catch (error) {
-    console.warn("FoodBrokerBase cloud status check failed.", error);
-  }
-}
-
 async function refreshCloudSectionsIfChanged(options = {}) {
-  if (!getCloudClient() || !getCloudUser() || cloudSyncLoading) return false;
+  if (!getCloudClient() || !getCloudUser() || cloudSyncLoading || cloudRefreshChecking) return false;
   if (!cloudSyncReady && !options.force) return false;
+  cloudRefreshChecking = true;
 
   try {
     const rows = await fetchCloudRowSummary();
     const nextFingerprint = getCloudRowFingerprint(rows);
     if (pendingCloudSections.size && nextFingerprint !== cloudLastRowFingerprint) {
-      return loadCloudSections();
+      return await loadCloudSections({ summary: rows });
     }
     if (pendingCloudSections.size && cloudSyncReady) await pushPendingCloudSections();
     if (pendingCloudSections.size) return false;
-    if (!options.force && nextFingerprint === cloudLastRowFingerprint) return false;
-    const loaded = await loadCloudSections();
+    if (cloudSyncReady && nextFingerprint === cloudLastRowFingerprint) return false;
+    const loaded = await loadCloudSections({ summary: rows });
     if (!loaded && !rows.length) cloudLastRowFingerprint = nextFingerprint;
     return loaded;
   } catch (error) {
     lastCloudError = error?.message || "Unknown cloud status error.";
     console.warn("FoodBrokerBase cloud refresh failed.", error);
     return false;
+  } finally {
+    cloudRefreshChecking = false;
   }
 }
 
 function startCloudAutoRefresh() {
   window.clearInterval(cloudAutoRefreshTimer);
   cloudAutoRefreshTimer = window.setInterval(() => {
-    refreshCloudSectionsIfChanged();
+    if (!document.hidden) refreshCloudSectionsIfChanged();
   }, cloudAutoRefreshMs);
 }
 
@@ -2126,6 +2123,40 @@ function stopCloudAutoRefresh() {
   window.clearInterval(cloudAutoRefreshTimer);
   cloudAutoRefreshTimer = null;
   cloudLastRowFingerprint = "";
+  cloudRowCache.clear();
+}
+
+function cloudRowCacheKey(row) {
+  return JSON.stringify([row.scope, row.record_key]);
+}
+
+async function downloadChangedCloudRows(client, user, summary, cache) {
+  const result = new Map();
+  for (const scope of ["personal", "team"]) {
+    const scoped = summary.filter(row => row.scope === scope);
+    const changed = scoped.filter(row => {
+      const cached = cache.get(cloudRowCacheKey(row));
+      return !cached || !row.updated_at || cached.updated_at !== row.updated_at;
+    });
+    scoped.forEach(row => {
+      const cached = cache.get(cloudRowCacheKey(row));
+      if (cached) result.set(cloudRowCacheKey(row), cached);
+    });
+    if (!changed.length) continue;
+    let query = client.from(scope === "personal" ? "app_records" : "team_app_records")
+      .select("record_key,data,updated_at")
+      .eq("record_type", scope === "personal" ? cloudRecordType : teamCloudRecordType)
+      .in("record_key", changed.map(row => row.record_key));
+    if (scope === "personal") query = query.eq("owner_id", user.id);
+    const { data, error } = await query;
+    if (error) throw error;
+    changed.forEach(row => result.delete(cloudRowCacheKey(row)));
+    (data || []).forEach(row => {
+      const scopedRow = { ...row, scope };
+      result.set(cloudRowCacheKey(scopedRow), scopedRow);
+    });
+  }
+  return [...result.values()];
 }
 
 async function loadCloudSections(options = {}) {
@@ -2133,6 +2164,10 @@ async function loadCloudSections(options = {}) {
   const user = getCloudUser();
   if (!client || !user || cloudSyncLoading) return false;
 
+  if (cloudSyncUserId !== user.id) {
+    cloudRowCache.clear();
+    cloudLastRowFingerprint = "";
+  }
   cloudSyncLoading = true;
   cloudSyncReady = false;
   cloudSyncUserId = user.id;
@@ -2140,25 +2175,10 @@ async function loadCloudSections(options = {}) {
   try {
     await syncSavedTeamInitials().catch(error => console.warn("Saved initials will retry on next sync:", error.message));
     await correctPeteTeamRecords().catch(() => { peteCorrectionUser = ""; });
-    const { data: personalData, error: personalError } = await client
-      .from("app_records")
-      .select("record_key,data,updated_at")
-      .eq("record_type", cloudRecordType)
-      .eq("owner_id", user.id);
-
-    if (personalError) throw personalError;
-
-    const { data: teamData, error: teamError } = await client
-      .from("team_app_records")
-      .select("record_key,data,updated_at")
-      .eq("record_type", teamCloudRecordType);
-
-    if (teamError) throw teamError;
-
-    const personalRows = (Array.isArray(personalData) ? personalData : []).map((row) => ({ ...row, scope: "personal" }));
-    const teamRows = (Array.isArray(teamData) ? teamData : []).map((row) => ({ ...row, scope: "team" }));
-    const rows = [...personalRows, ...teamRows];
-    cloudLastRowFingerprint = getCloudRowFingerprint(rows);
+    const summary = options.summary || await fetchCloudRowSummary();
+    const rows = await downloadChangedCloudRows(client, user, summary, cloudRowCache);
+    const personalRows = rows.filter(row => row.scope === "personal");
+    const teamRows = rows.filter(row => row.scope === "team");
     if (rows.length) {
       const personalRowMap = new Map(personalRows.map((row) => [row.record_key, row]));
       const teamRowMap = new Map(teamRows.map((row) => [row.record_key, row]));
@@ -2198,6 +2218,8 @@ async function loadCloudSections(options = {}) {
       }
     }
 
+    cloudRowCache = new Map(rows.map(row => [cloudRowCacheKey(row), row]));
+    cloudLastRowFingerprint = getCloudRowFingerprint(rows);
     cloudSyncReady = true;
     if (!rows.length && hasLocalAppData()) {
       const uploaded = await saveCloudSections(undefined, { force: true });
