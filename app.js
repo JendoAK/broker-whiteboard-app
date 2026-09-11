@@ -828,6 +828,7 @@ elements.productSearch.addEventListener("keydown", (event) => {
   addProductFromSearch();
 });
 elements.leadDistributor.addEventListener("change", () => {
+  rememberLeadDistributor(elements.leadDistributor.value);
   updateProductNumberLabels();
   updateVendorControls();
   elements.productSearch.value = "";
@@ -8246,6 +8247,22 @@ function compareDue(a, b) {
   return parseLocalDate(a.due) - parseLocalDate(b.due);
 }
 
+function leadDistributorPreferenceKey() {
+  const user = window.foodBrokerBaseAuth?.getCurrentUser?.();
+  return user?.id ? "lead-distributor:" + user.id : "lead-distributor:local";
+}
+function rememberLeadDistributor(value) {
+  if (!["US Foods", "Sysco", "Linford"].includes(value)) return;
+  try { localStorage.setItem(leadDistributorPreferenceKey(),value); } catch {}
+}
+function preferredLeadDistributor() {
+  try {
+    const value = localStorage.getItem(leadDistributorPreferenceKey());
+    if (["US Foods", "Sysco", "Linford"].includes(value)) return value;
+  } catch {}
+  return "US Foods";
+}
+
 function openForm(card) {
   elements.form.reset();
   updateAccountSuggestions();
@@ -8279,7 +8296,7 @@ function openForm(card) {
     elements.priority.value = "Medium";
     elements.accountNumber.value = "";
     elements.syscoAccountNumber.value = "";
-    elements.leadDistributor.value = "US Foods";
+    elements.leadDistributor.value = preferredLeadDistributor();
     elements.status.value = elements.statusFilter.value || "New Lead";
     elements.source.value = "Email";
     elements.salesRep.value = "";
@@ -8299,6 +8316,7 @@ function closeForm() {
 }
 
 function saveCard() {
+  rememberLeadDistributor(elements.leadDistributor.value);
   const id = elements.cardId.value || crypto.randomUUID();
   const existing = cards.find((card) => card.id === id);
   const noteHistory = buildLeadNoteHistoryForSave();
@@ -9072,7 +9090,7 @@ function renderWeeklyLeadRecapPrintDocument(leadCards, rangeKeys = ["this"]) {
         </style>
       </head>
       <body>
-        ${renderPrintBrandHeader()}
+        ${renderPrintBrandHeader({ hideDistributorLogo: true })}
         <h1>${escapeHtml(title)}</h1>
         <div class="muted">Printed ${escapeHtml(new Date().toLocaleDateString())}</div>
         ${sections.map(renderWeeklyLeadRecapSection).join("")}
@@ -9184,7 +9202,7 @@ function renderPrintBrandHeader(content = {}) {
     <div class="print-brand-header">
       <img class="print-brand-logo print-brand-pc" src="${escapeAttribute(pierceLogo)}" alt="Pierce Cartwright" />
       ${copy}
-      <img class="print-brand-logo print-brand-usf" src="${escapeAttribute(usFoodsLogo)}" alt="US Foods" />
+      ${content.hideDistributorLogo ? "" : `<img class="print-brand-logo print-brand-usf" src="${escapeAttribute(usFoodsLogo)}" alt="US Foods" />`}
     </div>
   `;
 }
