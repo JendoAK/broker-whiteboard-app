@@ -3436,6 +3436,7 @@ function setupSuggestionMenus() {
   }).observe(document.body, { childList: true, subtree: true });
 
   document.addEventListener("focusin", (event) => {
+    if (event.target.id === "dialogTitle") { hideMenu(); return; }
     const input = event.target.closest?.("input[list], input[data-suggestion-list]");
     if (input?.hasAttribute("data-suggestions-typing")) { hideMenu(); return; }
     if (input) showMenu(input);
@@ -8269,6 +8270,8 @@ function openForm(card) {
   updateSalesRepSuggestions();
   elements.cardId.value = card?.id || "";
   elements.dialogTitle.textContent = card ? "Edit Lead" : "Add Lead";
+  elements.dialogTitle.setAttribute("tabindex", "-1");
+  elements.dialogTitle.toggleAttribute("autofocus", Boolean(card));
   elements.deleteCard.hidden = !card;
   elements.archiveCard.hidden = !card || Boolean(card.archivedAt);
   elements.productList.innerHTML = "";
@@ -8308,7 +8311,7 @@ function openForm(card) {
   updateProductNumberLabels();
   elements.dialog.showModal();
   updateVendorControls();
-  setTimeout(() => elements.account.focus(), 0);
+  setTimeout(() => (card ? elements.dialogTitle : elements.account).focus(), 0);
 }
 
 function closeForm() {
