@@ -1,5 +1,7 @@
-const CACHE_NAME = "foodbrokerbase-savebanner1";
+const CACHE_NAME = "foodbrokerbase-storage1";
 const APP_SHELL = [
+  "./vendor/lz-string.js?v=1.5.0",
+  "./compact-storage.js?v=20260911-storage1",
   "./todo-archive.js?v=20260909-todoarchive1",
   "./todo-archive.css?v=20260909-todoarchive1",
   "./lead-products.css?v=20260909-leadcompact1",
