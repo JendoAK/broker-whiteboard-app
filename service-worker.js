@@ -1,4 +1,4 @@
-const CACHE_NAME = "foodbrokerbase-twocolumn1";
+const CACHE_NAME = "foodbrokerbase-vendorgroups1";
 const APP_SHELL = [
   "./vendor/lz-string.js?v=1.5.0",
   "./compact-storage.js?v=20260914-storagefast1",
@@ -15,17 +15,17 @@ const APP_SHELL = [
   "./people-contacts.js?v=20260909-contacticons1",
   "./",
   "./index.html",
-  "./styles.css?v=20260914-twocolumn1",
-  "./market-events.js?v=20260914-productnotes1",
+  "./styles.css?v=20260914-vendorgroups1",
+  "./market-events.js?v=20260914-vendorgroups1",
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
   "./market-call-editor.js?v=20260909-visitcolors1",
   "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260914-productnotes1",
   "./market-week-calendar.js?v=20260909-visitcolors1",
   "./market-operator-conversion.js?v=20260909-visitcolors1",
-  "./testkitchen-layout.js?v=20260914-compactnotes1",
+  "./testkitchen-layout.js?v=20260914-vendorgroups1",
   "./vendor-visit-print.js?v=20260909-visitcolors1",
-  "./market-visit-layout.js?v=20260914-compactnotes1",
+  "./market-visit-layout.js?v=20260914-vendorgroups1",
   "./supabase-config.js",
   "./supabase-auth.js?v=20260909-initials1",
   "./manifest.webmanifest",

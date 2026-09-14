@@ -5740,3 +5740,6 @@ button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-
 .kitchen-lists .section-label-row > span { margin-right: auto; }
 .kitchen-product-with-note strong { font-size: 1rem; margin-bottom: 3px; }
 @media (max-width: 800px) { .compact-visit-lists.kitchen-lists { grid-template-columns: minmax(0, 1fr); } .kitchen-lists .visit-attendees-panel .compact-visit-list { display: flex; flex-wrap: wrap; max-height: 140px; } }
+
+.visit-vendor-group { min-width: 0; display: grid; gap: 5px; margin-bottom: 8px; }
+.visit-vendor-heading { margin: 0; padding: 8px 10px; background: #b68b45; color: #241b0c; font: 800 1.1rem Arial, Helvetica, sans-serif; border-radius: 4px; }

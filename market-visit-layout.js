@@ -8,9 +8,9 @@ function renderVisitProductPrintTable(products, mode = 'mf', includeNotes = fals
   const choices = { mf: ['manufacturerNumber'], apn: ['apn'], supc: ['supc'], 'mf-apn': ['manufacturerNumber', 'apn'], 'mf-supc': ['manufacturerNumber', 'supc'], all: ['manufacturerNumber', 'apn', 'supc'] };
   const keys = choices[mode] || choices.mf;
   const labels = { manufacturerNumber: 'MF#', apn: 'US Foods APN', supc: 'Sysco SUPC' };
-  const columns = ['vendor', 'description', ...keys, 'packaging', 'storage', ...(includeNotes ? ['notes'] : [])];
-  const headers = ['Vendor', 'Product', ...keys.map(key => labels[key]), 'Packaging', 'Storage', ...(includeNotes ? ['Notes'] : [])];
-  return `<table><thead><tr>${headers.map(label => `<th>${escapeHtml(label)}</th>`).join('')}</tr></thead><tbody>${products.map(product => `<tr>${columns.map(key => `<td>${escapeHtml(product[key] || '')}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${columns.length}">No products selected.</td></tr>`}</tbody></table>`;
+  const columns = ['description', ...keys, 'packaging', 'storage', ...(includeNotes ? ['notes'] : [])];
+  const headers = ['Product', ...keys.map(key => labels[key]), 'Packaging', 'Storage', ...(includeNotes ? ['Notes'] : [])];
+  return `<table><thead><tr>${headers.map(label => `<th>${escapeHtml(label)}</th>`).join('')}</tr></thead><tbody>${groupVisitProducts(products).map(group => `<tr class="print-vendor-heading"><th colspan="${columns.length}" style="font-size:16px;background:#e8d4ae;text-align:left;break-after:avoid">${escapeHtml(group.vendor)}</th></tr>${group.products.map(product => `<tr>${columns.map(key => `<td>${escapeHtml(product[key] || '')}${key === 'description' && product.isNewEventProduct ? '<br><small>New · Not yet stocked</small>' : ''}</td>`).join('')}</tr>`).join('')}`).join('') || `<tr><td colspan="${columns.length}">No products selected.</td></tr>`}</tbody></table>`;
 }
 
 function renderMarketArchiveButton(visit) {
@@ -55,7 +55,7 @@ function renderCompactMarketVisit(panel, visit) {
     </section>
     <div class="compact-visit-lists market-detail-tabs">
       <section class="visit-products-panel"><h3>Products</h3><div class="section-label-row"><span>${products.length} selected</span><button class="edit-card" type="button" data-view-visit-products="${escapeAttribute(visit.id)}">View product list</button><button class="edit-card" type="button" data-market-print-products="${escapeAttribute(visit.id)}">Print products</button></div>
-        <div class="compact-visit-list">${products.length ? products.map(renderMarketProductChip).join("") : `<div class="empty-state">Use Add products to choose what you’re showing.</div>`}</div>
+        <div class="compact-visit-list">${products.length ? renderVisitVendorGroups(products, renderMarketProductChip) : `<div class="empty-state">Use Add products to choose what you’re showing.</div>`}</div>
       </section>
       <section class="visit-operators-panel"><h3>Operators</h3><div class="section-label-row"><span>Click an operator for products &amp; notes</span></div>
         <div class="compact-visit-list">${operators.length ? operators.map(operator => `<button class="compact-operator" type="button" data-open-visit-operator="${escapeAttribute(operator.id)}"><strong>${escapeHtml(getMarketOperatorDisplayName(operator))}</strong><span>${(operator.productIds || []).filter(id => products.some(product => product.id === id)).length} products${operator.notes ? " · Notes added" : ""}</span></button>`).join("") : `<div class="empty-state">Operators appear when you add sales calls. You can also add one directly.</div>`}</div>
@@ -77,7 +77,7 @@ function renderPersonalMarketVisit(panel, visit) {
   panel.innerHTML = `<div class="market-detail-header compact-visit-header"><div><p class="eyebrow">Personal market visit · ${escapeHtml(formatDateRange(visit.startDate, visit.endDate))}</p><h2>${escapeHtml(getMarketVisitDisplayName(visit))}</h2><p>Prepare your products, visit operators, and capture feedback.</p></div><div class="table-actions">${renderMarketArchiveButton(visit)}<button class="edit-card" type="button" data-detail-close>Back to Events &amp; Visits</button></div></div>
   ${visit.archivedAt ? '<p class="market-section-help">Archived visit. Restore it to return it to active visits.</p>' : ''}
   <div class="compact-visit-actions" role="group" aria-label="Add to visit"><button class="primary-action" type="button" data-visit-add-products>Add products</button><button class="primary-action" type="button" data-visit-add-operator>Add operator</button></div>
-  <div class="compact-visit-lists market-detail-tabs"><section class="visit-products-panel"><h3>Products (${products.length})</h3><div class="section-label-row"><span>Your product list for this visit</span><button class="edit-card" type="button" data-view-visit-products="${escapeAttribute(visit.id)}">View product list</button><button class="edit-card" type="button" data-market-print-products="${escapeAttribute(visit.id)}">Print products</button></div><div class="compact-visit-list">${products.map(renderMarketProductChip).join('') || '<p class="empty-state">Add the products you plan to show.</p>'}</div></section>
+  <div class="compact-visit-lists market-detail-tabs"><section class="visit-products-panel"><h3>Products (${products.length})</h3><div class="section-label-row"><span>Your product list for this visit</span><button class="edit-card" type="button" data-view-visit-products="${escapeAttribute(visit.id)}">View product list</button><button class="edit-card" type="button" data-market-print-products="${escapeAttribute(visit.id)}">Print products</button></div><div class="compact-visit-list">${renderVisitVendorGroups(products, renderMarketProductChip) || '<p class="empty-state">Add the products you plan to show.</p>'}</div></section>
   <section class="visit-operators-panel"><h3>Operators (${operators.length})</h3><div class="section-label-row"><span>Click an operator to select products, write feedback, or create a lead.</span></div><div class="compact-visit-list">${operators.map(operator => `<button class="compact-operator" type="button" data-open-visit-operator="${escapeAttribute(operator.id)}"><strong>${escapeHtml(getMarketOperatorDisplayName(operator))}</strong><span>${(operator.productIds || []).filter(id=>products.some(product=>product.id===id)).length} products${operator.notes || Object.values(operator.productNotes || {}).some(note=>note.note) ? ' · Notes added' : ''} · Products, notes &amp; lead</span></button>`).join('') || '<p class="empty-state">Add an operator to record the products shown and their feedback.</p>'}</div></section></div>
   <details class="compact-visit-extra"><summary>Visit notes${visit.notes ? ' · Notes added' : ''}</summary>${renderMarketNotesSection(visit)}</details>`;
   bindMarketDetailActions(panel, visit);
@@ -220,7 +220,7 @@ function openVisitProductOverview(visitId) {
     const visit = marketVisits.find(item => item.id === visitId);
     const query = body.querySelector('input').value.toLowerCase();
     const products = visit ? getMarketVisitProducts(visit).filter(product => [product.description,product.vendor,product.brandName,product.storage,product.apn,product.supc,product.manufacturerNumber].join(' ').toLowerCase().includes(query)) : [];
-    body.querySelector('[data-product-overview-list]').innerHTML = products.map(product => (visit.type === 'testkitchen' ? '<div class="kitchen-product-with-note">' : '') + '<div class="market-nested-card" style="display:flex;gap:16px;justify-content:space-between;align-items:center;padding:12px;margin-bottom:8px"><div><strong>' + escapeHtml(product.description) + '</strong><div>' + escapeHtml([product.vendor,product.brandName,product.storage,product.packaging,formatVisitProductCodes(product)].filter(Boolean).join(' · ')) + '</div></div><button class="edit-card" type="button" data-overview-remove="' + escapeAttribute(product.id) + '">Remove</button></div>' + renderKitchenProductNote(visit, product) + (visit.type === 'testkitchen' ? '</div>' : '')).join('') || '<p>No matching products.</p>';
+    body.querySelector('[data-product-overview-list]').innerHTML = renderVisitVendorGroups(products, product => (visit.type === 'testkitchen' ? '<div class="kitchen-product-with-note">' : '') + '<div class="market-nested-card" style="display:flex;gap:16px;justify-content:space-between;align-items:center;padding:12px;margin-bottom:8px"><div><strong>' + escapeHtml(product.description) + '</strong><div>' + escapeHtml([product.vendor,product.brandName,product.storage,product.packaging,formatVisitProductCodes(product)].filter(Boolean).join(' · ')) + '</div></div><button class="edit-card" type="button" data-overview-remove="' + escapeAttribute(product.id) + '">Remove</button></div>' + renderKitchenProductNote(visit, product) + (visit.type === 'testkitchen' ? '</div>' : '')) || '<p>No matching products.</p>';
     body.querySelectorAll('[data-overview-remove]').forEach(button => button.onclick = () => {
       const product = products.find(item => item.id === button.dataset.overviewRemove);
       const current = marketVisits.find(item => item.id === visitId);
@@ -266,4 +266,18 @@ async function saveNewVisitProduct(visitId, values) {
     throw error;
   }
   return product;
+}
+
+function groupVisitProducts(products) {
+  const groups = new Map();
+  products.forEach(product => {
+    const vendor = String(product.vendor || '').trim() || 'Other products';
+    const key = vendor.toLocaleLowerCase();
+    if (!groups.has(key)) groups.set(key, {vendor, products: []});
+    groups.get(key).products.push(product);
+  });
+  return [...groups.values()].sort((a,b)=>a.vendor.localeCompare(b.vendor,undefined,{sensitivity:'base'})).map(group => ({...group,products:[...group.products].sort((a,b)=>String(a.description||'').localeCompare(String(b.description||''),undefined,{sensitivity:'base',numeric:true}))}));
+}
+function renderVisitVendorGroups(products, renderProduct) {
+  return groupVisitProducts(products).map(group => '<div class="visit-vendor-group"><h4 class="visit-vendor-heading">' + escapeHtml(group.vendor) + '</h4>' + group.products.map(product => renderProduct({...product, vendor:'', brandName: String(product.brandName || '').trim().toLowerCase() === group.vendor.toLowerCase() ? '' : product.brandName})).join('') + '</div>').join('');
 }
