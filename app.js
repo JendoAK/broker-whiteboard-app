@@ -10456,5 +10456,5 @@ async function saveUnifiedSampleOrder(order) {
 }
 
 function getEventPrintLogo(choice) {
-  return ({usFoods: {src: printBrandLogos.usFoods, name: 'US Foods'}, sysco: {src: 'sysco-logo.svg', name: 'Sysco'}, linford: {src: 'linford-logo.svg', name: 'Linford'}})[choice] || null;
+  return ({usFoods: {src: printBrandLogos.usFoods, name: 'US Foods'}, sysco: {src: 'sysco-logo.svg?v=20260914-syscofix1', name: 'Sysco'}, linford: {src: 'linford-logo.svg', name: 'Linford'}})[choice] || null;
 }
