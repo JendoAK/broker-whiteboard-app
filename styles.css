@@ -5709,3 +5709,11 @@ button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-
 .visit-organizations-panel .compact-operator { background: #f7fafc; border: 1px solid #bdcedd; border-left: 5px solid #527d9e; color: #203f59; font-family: inherit; }
 .visit-organizations-panel .compact-operator:hover { background: #d9e7f1; }
 .visit-organizations-panel .compact-operator:focus-visible, .visit-attendees-panel .kitchen-person-name:focus-visible { outline: 3px solid #245e54; outline-offset: 2px; }
+
+.kitchen-product-with-note { background: #fffdf8; border: 1px solid #ddcdb5; border-radius: 6px; overflow: hidden; }
+.kitchen-product-note { display: grid; gap: 5px; padding: 8px 12px 12px; margin: 0 0 8px; font-family: inherit; }
+.kitchen-product-note > span { font: 600 .85rem Arial, Helvetica, sans-serif; text-transform: none; color: #62523b; }
+.kitchen-product-note textarea { width: 100%; resize: vertical; min-height: 56px; font: 1rem Arial, Helvetica, sans-serif; background: #fff; border: 1px solid #c8b89e; border-radius: 5px; padding: 8px; }
+#marketPrintDialog, #marketPrintDialog button, #marketPrintDialog select { font-family: Arial, Helvetica, sans-serif; }
+#marketPrintDialog .print-option-list label, #marketPrintDialog .print-option-list label > span { font: 600 1rem Arial, Helvetica, sans-serif; text-transform: none; color: #302b25; letter-spacing: normal; }
+#marketPrintDialog .print-option-list label[hidden] { display: none; }

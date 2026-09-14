@@ -940,6 +940,7 @@ elements.marketPrintForm.addEventListener("submit", (event) => {
   printMarketVisit(elements.marketPrintVisitId.value, {
     schedule: elements.marketPrintSchedule.checked,
     products: elements.marketPrintProducts.checked,
+    productNotes: document.querySelector("#marketPrintProductNotes").checked,
     codeMode: document.querySelector("#marketPrintCodeMode").value
   });
 });
@@ -6457,6 +6458,11 @@ function openMarketPrintOptions(id, productsOnly = false) {
   elements.marketPrintVisitId.value = id;
   elements.marketPrintSchedule.checked = !productsOnly;
   elements.marketPrintProducts.checked = true;
+  document.querySelector("#marketPrintProductNotesOption").hidden = visit.type !== "testkitchen";
+  const notesOption = document.querySelector("#marketPrintProductNotes");
+  notesOption.checked = true;
+  notesOption.disabled = false;
+  elements.marketPrintProducts.onchange = () => { notesOption.disabled = !elements.marketPrintProducts.checked; };
   elements.marketPrintDialog.showModal();
 }
 

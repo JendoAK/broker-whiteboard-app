@@ -211,7 +211,7 @@ function bindMarketEventActions(panel, visit) {
 
 function renderMarketEventPrintDocument(visit, sections) {
   const products = getMarketVisitProducts(visit);
-  const productTable = list => renderVisitProductPrintTable(list, sections.codeMode, true);
+  const productTable = list => renderVisitProductPrintTable(visit.type === "testkitchen" ? list.map(product => ({...product, notes: visit.productNotes?.[product.id]?.note || ""})) : list, sections.codeMode, visit.type === "testkitchen" ? Boolean(sections.productNotes) : true);
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(visit.name)} — Product list</title><style>${renderPrintBrandStyles()}@page { size: landscape; margin: .4in; } body { font: 12px Arial,sans-serif; color: #211d18; } table { width: 100%; border-collapse: collapse; margin-bottom: 18px; } th,td { border: 1px solid #ccc; padding: 7px; text-align: left; overflow-wrap: anywhere; } th { background: #f5e3df; } tr { break-inside: avoid; } thead { display: table-header-group; } p,td { white-space: pre-wrap; } h2 { font-size: 17px; }</style></head><body>
     ${renderPrintBrandHeader({ title: visit.name, lines: [marketVisitTypes[visit.type], formatDateRange(visit.startDate, visit.endDate), [visit.startTime, visit.endTime].filter(Boolean).join(" – "), visit.location].filter(Boolean) })}
     ${sections.products ? `<h2>Stocked products</h2>${productTable(products.filter((product) => !product.isNewEventProduct))}<h2>New products — not yet stocked</h2>${productTable(products.filter((product) => product.isNewEventProduct))}` : ""}
