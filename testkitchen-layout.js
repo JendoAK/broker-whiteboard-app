@@ -7,7 +7,7 @@ function renderCompactTestkitchen(panel, visit) {
     <div class="compact-visit-actions"><button class="primary-action" type="button" data-kitchen-attendees>Add attendees</button><button class="primary-action" type="button" data-kitchen-products>Add products</button><button class="primary-action" type="button" data-kitchen-operator>Add organization</button></div>
     <div class="compact-visit-lists market-detail-tabs kitchen-lists">
       <section class="visit-attendees-panel"><h3>Attendees (${visit.attendees.length})</h3><div class="compact-visit-list">${visit.attendees.map(person => `<div class="kitchen-person"><button class="kitchen-person-name" type="button" data-kitchen-edit-person="${escapeAttribute(person.id)}"><strong>${escapeHtml(person.name)}</strong></button><button class="edit-card" type="button" data-remove-event-attendee="${escapeAttribute(person.id)}">Remove</button></div>`).join('') || '<p class="empty-state">Add returning attendees or someone new.</p>'}</div></section>
-      <section class="visit-products-panel"><h3>Products (${products.length})</h3><div class="section-label-row"><span>Stocked and new products</span><button class="edit-card" type="button" data-view-visit-products="${escapeAttribute(visit.id)}">View product list</button><button class="edit-card" type="button" data-market-print-products>Print products</button></div><div class="compact-visit-list">${renderVisitVendorGroups(products, product => renderKitchenProductWithNote(visit, product)) || '<p class="empty-state">Choose products using Add products.</p>'}</div></section>
+      <section class="visit-products-panel"><h3>Products (${products.length})</h3><div class="section-label-row"><span>Stocked and new products</span><button class="edit-card" type="button" data-view-visit-products="${escapeAttribute(visit.id)}">View product list</button><button class="edit-card" type="button" data-market-print-products>Print products</button></div><div class="compact-visit-list">${renderVisitVendorGroups(products, product => renderKitchenProductWithNote(visit, product), true) || '<p class="empty-state">Choose products using Add products.</p>'}</div></section>
     </div>
     <div class="market-detail-tabs kitchen-organizations"><section class="visit-organizations-panel"><h3>Organizations &amp; feedback</h3><div class="kitchen-operator-list">${operators.map(operator => `<button class="compact-operator" type="button" data-kitchen-open-operator="${escapeAttribute(operator.id)}"><strong>${escapeHtml(getMarketOperatorDisplayName(operator))}</strong><span>Products, notes, leads &amp; vendor reports</span></button>`).join('') || '<p class="empty-state">Add an organization to record feedback or create a lead or vendor report.</p>'}</div></section></div>
     <details class="compact-visit-extra"><summary>Event notes${visit.notes ? ' · Notes added' : ''}</summary>${renderMarketNotesSection(visit)}</details>
@@ -88,11 +88,9 @@ function renderKitchenProductWithNote(visit, product) {
 function renderKitchenProductNote(visit, product) {
   if (visit.type !== 'testkitchen') return '';
   const note = visit.productNotes?.[product.id]?.note || '';
-  return '<label class="kitchen-product-note"><span>Product note</span><textarea rows="2" data-kitchen-product-note="' + escapeAttribute(product.id) + '" data-note-visit="' + escapeAttribute(visit.id) + '" aria-label="Note for ' + escapeAttribute(product.description) + '" placeholder="In stock, coming into stock, new product…">' + escapeHtml(note) + '</textarea></label>';
+  return '<div class="kitchen-product-note"><textarea ' + (note ? 'readonly ' : '') + 'rows="2" data-kitchen-product-note="' + escapeAttribute(product.id) + '" data-note-visit="' + escapeAttribute(visit.id) + '" aria-label="Note for ' + escapeAttribute(product.description) + '" placeholder="In stock, coming into stock, new product…">' + escapeHtml(note) + '</textarea><button type="button" class="edit-card" data-kitchen-note-action>' + (note ? 'Edit' : 'Save') + '</button></div>';
 }
-document.addEventListener('input', event => {
-  const input = event.target.closest('[data-kitchen-product-note]');
-  if (!input) return;
+function persistKitchenNote(input) {
   const visit = marketVisits.find(item => item.id === input.dataset.noteVisit);
   if (!visit) return;
   const productId = input.dataset.kitchenProductNote;
@@ -103,4 +101,35 @@ document.addEventListener('input', event => {
   document.querySelectorAll('[data-kitchen-product-note]').forEach(other => {
     if (other !== input && other.dataset.noteVisit === visit.id && other.dataset.kitchenProductNote === productId) other.value = input.value;
   });
+}
+
+document.addEventListener('input', event => {
+  const input = event.target.closest('[data-kitchen-product-note]');
+  if (input) persistKitchenNote(input);
+});
+function finishKitchenNote(input) {
+  persistKitchenNote(input);
+  input.readOnly = true;
+  const button = input.parentElement.querySelector('[data-kitchen-note-action]');
+  button.textContent = 'Edit';
+  button.setAttribute('aria-label', 'Edit saved ' + input.getAttribute('aria-label').toLowerCase());
+  button.focus();
+}
+document.addEventListener('keydown', event => {
+  const input = event.target.closest('[data-kitchen-product-note]');
+  if (input && !input.readOnly && event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    finishKitchenNote(input);
+  }
+});
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-kitchen-note-action]');
+  if (!button) return;
+  const input = button.parentElement.querySelector('[data-kitchen-product-note]');
+  if (input.readOnly) {
+    input.readOnly = false;
+    button.textContent = 'Save';
+    button.setAttribute('aria-label', 'Save ' + input.getAttribute('aria-label').toLowerCase());
+    input.focus();
+  } else finishKitchenNote(input);
 });
