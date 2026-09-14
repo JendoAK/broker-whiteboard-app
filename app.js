@@ -941,6 +941,7 @@ elements.marketPrintForm.addEventListener("submit", (event) => {
     schedule: elements.marketPrintSchedule.checked,
     products: elements.marketPrintProducts.checked,
     productNotes: document.querySelector("#marketPrintProductNotes").checked,
+    logo: document.querySelector("#marketPrintLogo").value,
     codeMode: document.querySelector("#marketPrintCodeMode").value
   });
 });
@@ -6452,17 +6453,18 @@ function createMarketFollowUp(visit) {
   alert("Follow-up task added to the To-Do List.");
 }
 
-function openMarketPrintOptions(id, productsOnly = false) {
+function openMarketPrintOptions(id, productsOnly = false, defaults = {}) {
   const visit = marketVisits.find((item) => item.id === id);
   if (!visit) return;
   document.querySelector("#marketPrintScheduleLabel").textContent = isMarketEvent(visit) ? "Attendees, notes & leads" : "Schedule";
   elements.marketPrintVisitId.value = id;
-  elements.marketPrintSchedule.checked = !productsOnly;
-  elements.marketPrintProducts.checked = true;
+  elements.marketPrintSchedule.checked = defaults.schedule ?? !productsOnly;
+  document.querySelector("#marketPrintLogo").value = "none";
+  elements.marketPrintProducts.checked = defaults.products ?? true;
   document.querySelector("#marketPrintProductNotesOption").hidden = visit.type !== "testkitchen";
   const notesOption = document.querySelector("#marketPrintProductNotes");
   notesOption.checked = true;
-  notesOption.disabled = false;
+  notesOption.disabled = !elements.marketPrintProducts.checked;
   elements.marketPrintProducts.onchange = () => { notesOption.disabled = !elements.marketPrintProducts.checked; };
   elements.marketPrintDialog.showModal();
 }
@@ -6472,6 +6474,7 @@ function closeMarketPrintOptions() {
 }
 
 function printMarketVisit(id, sections = { schedule: true, products: true }) {
+  if (!Object.prototype.hasOwnProperty.call(sections, "logo")) { openMarketPrintOptions(id, false, sections); return; }
   const visit = marketVisits.find((item) => item.id === id);
   if (!visit) return;
   if (!sections.schedule && !sections.products) {
@@ -6513,7 +6516,7 @@ function renderMarketVisitPrintDocument(visit, sections = { schedule: true, prod
         </style>
       </head>
       <body>
-        ${renderPrintBrandHeader({ title: "Market Visit", lines: printHeaderLines })}
+        ${renderPrintBrandHeader({ title: "Market Visit", lines: printHeaderLines, distributorLogo: sections.logo || "none" })}
         ${sections.schedule ? `<h2>Schedule</h2>
         <table>
           <thead><tr><th>Date</th><th>Time</th><th>Operator</th><th>Location</th><th>Sales reps</th><th>Notes</th></tr></thead>
@@ -9284,7 +9287,7 @@ function getPrintAssetUrl(src) {
 
 function renderPrintBrandHeader(content = {}) {
   const pierceLogo = getPrintAssetUrl(printBrandLogos.pierceCartwright);
-  const usFoodsLogo = getPrintAssetUrl(printBrandLogos.usFoods);
+  const chosenLogo = getEventPrintLogo(content.distributorLogo || "usFoods");
   const title = content.title ? `<div class="print-brand-title">${escapeHtml(content.title)}</div>` : "";
   const lines = Array.isArray(content.lines) ? content.lines.filter(Boolean) : [];
   const copy = title || lines.length
@@ -9294,7 +9297,7 @@ function renderPrintBrandHeader(content = {}) {
     <div class="print-brand-header">
       <img class="print-brand-logo print-brand-pc" src="${escapeAttribute(pierceLogo)}" alt="Pierce Cartwright" />
       ${copy}
-      ${content.hideDistributorLogo ? "" : `<img class="print-brand-logo print-brand-usf" src="${escapeAttribute(usFoodsLogo)}" alt="US Foods" />`}
+      ${content.hideDistributorLogo || !chosenLogo ? "" : `<img class="print-brand-logo print-brand-usf" src="${escapeAttribute(getPrintAssetUrl(chosenLogo.src))}" alt="${escapeAttribute(chosenLogo.name)}" />`}
     </div>
   `;
 }
@@ -10450,4 +10453,8 @@ async function saveUnifiedSampleOrder(order) {
       return "cloud";
     }
   } catch (error) { samples = previousSamples; dotOrders = previousDotOrders; throw error; }
+}
+
+function getEventPrintLogo(choice) {
+  return ({usFoods: {src: printBrandLogos.usFoods, name: 'US Foods'}, sysco: {src: 'sysco-logo.svg', name: 'Sysco'}, linford: {src: 'linford-logo.svg', name: 'Linford'}})[choice] || null;
 }

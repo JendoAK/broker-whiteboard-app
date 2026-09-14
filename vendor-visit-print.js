@@ -2,7 +2,8 @@
 
 function renderVendorVisitCalendarPrint(visit, sections) {
   const title = getMarketVisitDisplayName(visit);
-  const header = `<header><img src="${escapeAttribute(getPrintAssetUrl(printBrandLogos.pierceCartwright))}" alt="Pierce Cartwright" /><div><h1>${escapeHtml(title)}</h1><p>${escapeHtml(formatDateRange(visit.startDate, visit.endDate))}</p></div></header>`;
+  const logo = getEventPrintLogo(sections.logo);
+  const header = `<header><img src="${escapeAttribute(getPrintAssetUrl(printBrandLogos.pierceCartwright))}" alt="Pierce Cartwright" /><div><h1>${escapeHtml(title)}</h1><p>${escapeHtml(formatDateRange(visit.startDate, visit.endDate))}</p></div>${logo ? `<img class="event-distributor-logo" src="${escapeAttribute(getPrintAssetUrl(logo.src))}" alt="${escapeAttribute(logo.name)}" />` : ""}</header>`;
   const weeks = new Map();
   const dates = [...getMarketVisitDateKeys(visit), ...visit.calls.map(call => call.date)].filter(Boolean);
   dates.forEach(key => {
@@ -28,6 +29,7 @@ function renderVendorVisitCalendarPrint(visit, sections) {
     body { margin: 0; color: #241e18; font: 12px Arial, sans-serif; }
     header { display: flex; align-items: center; gap: 24px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #bfae99; }
     header img { width: 150px; max-height: 54px; object-fit: contain; }
+    header .event-distributor-logo { margin-left: auto; width: 100px; max-height: 54px; }
     header h1 { margin: 0 0 5px; font-size: 23px; } header p { margin: 0; font-size: 13px; }
     .print-page, .product-page { break-before: page; } .print-page:first-child, .product-page:first-child { break-before: auto; }
     .print-page { break-inside: avoid; }
