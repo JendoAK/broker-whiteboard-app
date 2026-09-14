@@ -7358,11 +7358,11 @@ function renderSampleAttachmentList() {
   });
 }
 
-function isDueToday(dateKey) {
+function isExpectedToday(dateKey) {
   return dateKey && parseLocalDate(dateKey).getTime() === startOfToday().getTime();
 }
 
-function isDueThisWeek(dateKey) {
+function isExpectedThisWeek(dateKey) {
   if (!dateKey) return false;
   const date = parseLocalDate(dateKey);
   const today = startOfToday();
@@ -7382,11 +7382,11 @@ function isSampleOverdue(sample) {
 }
 
 function isSampleDueToday(sample) {
-  return isDueToday(sample.expected);
+  return isExpectedToday(sample.expected);
 }
 
 function isSampleDueThisWeek(sample) {
-  return isDueThisWeek(sample.expected);
+  return isExpectedThisWeek(sample.expected);
 }
 
 function renderTodoBoard() {
@@ -8541,8 +8541,8 @@ function getVisibleDotOrders() {
 
 function matchesDotQuickFilter(order, filter) {
   if (filter === "overdue") return isDotOverdue(order);
-  if (filter === "today") return isDueToday(order.expected);
-  if (filter === "week") return isDueThisWeek(order.expected);
+  if (filter === "today") return isExpectedToday(order.expected);
+  if (filter === "week") return isExpectedThisWeek(order.expected);
   if (filter === "ordered") return ["Ordered", "In Transit"].includes(order.status);
   if (filter === "received") return order.status === "Received";
   if (filter === "none") return !order.expected;
@@ -8552,8 +8552,8 @@ function matchesDotQuickFilter(order, filter) {
 function updateDotSummary() {
   const activeOrders = dotOrders.filter((order) => !order.archivedAt && order.status !== "Cancelled");
   document.querySelector("#dotAll").textContent = activeOrders.length;
-  document.querySelector("#dotToday").textContent = activeOrders.filter((order) => isDueToday(order.expected)).length;
-  document.querySelector("#dotWeek").textContent = activeOrders.filter((order) => isDueThisWeek(order.expected)).length;
+  document.querySelector("#dotToday").textContent = activeOrders.filter((order) => isExpectedToday(order.expected)).length;
+  document.querySelector("#dotWeek").textContent = activeOrders.filter((order) => isExpectedThisWeek(order.expected)).length;
   document.querySelector("#dotOverdue").textContent = activeOrders.filter(isDotOverdue).length;
   document.querySelector("#dotOrdered").textContent = activeOrders.filter((order) => ["Ordered", "In Transit"].includes(order.status)).length;
   document.querySelector("#dotReceived").textContent = activeOrders.filter((order) => order.status === "Received").length;
@@ -8771,8 +8771,8 @@ function getVisibleNestleMachines() {
 
 function matchesNestleQuickFilter(machine, filter) {
   if (filter === "overdue") return isNestleOverdue(machine);
-  if (filter === "today") return isDueToday(machine.expected);
-  if (filter === "week") return isDueThisWeek(machine.expected);
+  if (filter === "today") return isExpectedToday(machine.expected);
+  if (filter === "week") return isExpectedThisWeek(machine.expected);
   if (filter === "installed") return machine.status === "Installed";
   if (filter === "service") return machine.status === "Needs Service";
   if (filter === "none") return !machine.expected;
@@ -8782,8 +8782,8 @@ function matchesNestleQuickFilter(machine, filter) {
 function updateNestleSummary() {
   const activeMachines = nestleMachines.filter((machine) => !machine.archivedAt && machine.status !== "Cancelled");
   document.querySelector("#nestleAll").textContent = activeMachines.length;
-  document.querySelector("#nestleToday").textContent = activeMachines.filter((machine) => isDueToday(machine.expected)).length;
-  document.querySelector("#nestleWeek").textContent = activeMachines.filter((machine) => isDueThisWeek(machine.expected)).length;
+  document.querySelector("#nestleToday").textContent = activeMachines.filter((machine) => isExpectedToday(machine.expected)).length;
+  document.querySelector("#nestleWeek").textContent = activeMachines.filter((machine) => isExpectedThisWeek(machine.expected)).length;
   document.querySelector("#nestleOverdue").textContent = activeMachines.filter(isNestleOverdue).length;
   document.querySelector("#nestleInstalled").textContent = activeMachines.filter((machine) => machine.status === "Installed").length;
   document.querySelector("#nestleService").textContent = activeMachines.filter((machine) => machine.status === "Needs Service").length;
