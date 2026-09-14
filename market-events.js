@@ -223,3 +223,19 @@ function renderMarketEventPrintDocument(visit, sections) {
 document.addEventListener('focusin', event => {
   if (event.target.matches('[data-event-vendor]')) updateStockVendorSuggestions();
 });
+
+// Correct the vendor on the existing shared soup product requested by Jenny.
+function correctThaiCurryVendor() {
+  let changed = false;
+  eventProducts = eventProducts.map(product => {
+    const vendor = String(product.vendor || '').toLowerCase().replace(/[^a-z]/g, '');
+    const description = String(product.description || '').toLowerCase();
+    if (vendor !== 'campbellsculinaryreserve' || String(product.manufacturerNumber || '').trim() !== '29337' || !description.includes('thai red curry')) return product;
+    changed = true;
+    const updated = {...product, vendor: "Campbell's Foodservice", updatedAt: new Date().toISOString()};
+    stampSharedRecord(updated, 'Updated');
+    return updated;
+  });
+  if (changed) persistEventProducts();
+}
+window.addEventListener('DOMContentLoaded', correctThaiCurryVendor);
