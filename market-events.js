@@ -51,8 +51,9 @@ function renderEventAttendees(visit) {
 }
 
 function renderEventProductFields(product = {}) {
+  updateStockVendorSuggestions();
   return `<label>Product description<input name="description" required value="${escapeAttribute(product.description || "")}" /></label>
-    <label>Vendor / brand<input name="vendor" required value="${escapeAttribute(product.vendor || "")}" /></label>
+    <label>Vendor / manufacturer<input name="vendor" data-event-vendor list="stockVendorSuggestions" autocomplete="off" required value="${escapeAttribute(product.vendor || "")}" /></label>
     <label>Manufacturer product number (MF#)<input name="manufacturerNumber" value="${escapeAttribute(product.manufacturerNumber || "")}" placeholder="Optional" /></label>
     <label>Packaging<input name="packaging" value="${escapeAttribute(product.packaging || "")}" placeholder="Case / pack size" /></label>
     <label>Storage<input name="storage" value="${escapeAttribute(product.storage || "")}" placeholder="Frozen, refrigerated, dry…" /></label>
@@ -218,3 +219,7 @@ function renderMarketEventPrintDocument(visit, sections) {
     ${sections.schedule ? `<h2>Attendees & organizations</h2><table><thead><tr><th>Name</th><th>Organization</th><th>Type / role</th><th>Contact</th></tr></thead><tbody>${visit.attendees.map((person) => `<tr>${[person.name, person.organization, [person.category, person.role].filter(Boolean).join(" · "), person.contact].map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`).join("") || '<tr><td colspan="4">No attendees listed.</td></tr>'}</tbody></table><h2>Notes & leads</h2><p>${escapeHtml(visit.notes)}</p>${getMarketVisitOperators(visit).map((operator) => `<h3>${escapeHtml(getMarketOperatorDisplayName(operator))}</h3><p>${escapeHtml(operator.notes)}</p>${products.filter((product) => operator.productIds.includes(product.id)).map((product) => `<p>${escapeHtml(product.description)}${operator.productNotes?.[product.id]?.note ? `: ${escapeHtml(operator.productNotes[product.id].note)}` : ""}</p>`).join("")}`).join("")}` : ""}
     </body></html>`;
 }
+
+document.addEventListener('focusin', event => {
+  if (event.target.matches('[data-event-vendor]')) updateStockVendorSuggestions();
+});
