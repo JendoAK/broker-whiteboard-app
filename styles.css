@@ -5719,17 +5719,24 @@ button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-
 #marketPrintDialog .print-option-list label[hidden] { display: none; }
 
 /* Compact attendee names leave the width available for product preparation. */
-.compact-visit-lists.kitchen-lists { grid-template-columns: minmax(0, 1fr); }
-.kitchen-lists .visit-attendees-panel .compact-visit-list { display: flex; flex-wrap: wrap; gap: 8px; max-height: 150px; align-content: start; }
+.compact-visit-lists.kitchen-lists { grid-template-columns: minmax(200px, .27fr) minmax(0, 1fr); align-items: start; gap: 12px; }
+.kitchen-lists .visit-attendees-panel .compact-visit-list { display: grid; gap: 5px; max-height: 480px; align-content: start; }
 .kitchen-lists .visit-attendees-panel .kitchen-person { padding: 3px 6px 3px 10px; gap: 6px; border-left-width: 3px; }
 .kitchen-lists .visit-attendees-panel .kitchen-person-name { padding: 5px 0; min-height: 30px; }
 .kitchen-lists .visit-products-panel .compact-visit-list { max-height: 480px; }
-.kitchen-product-with-note { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(220px, 1fr); gap: 0; margin-bottom: 8px; background: #f1f4f6; border-color: #c5cbd0; }
+.kitchen-product-with-note { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(220px, 1fr); gap: 0; margin-bottom: 0; background: #f1f4f6; border-color: #c5cbd0; }
 .kitchen-product-with-note > .market-product-chip,
-.kitchen-product-with-note > .market-nested-card { background: #efdfbd !important; border: 0; border-left: 5px solid #a8792a; border-radius: 0; box-shadow: none; margin: 0 !important; padding: 12px !important; min-width: 0; }
+.kitchen-product-with-note > .market-nested-card { background: #efdfbd !important; border: 0; border-left: 5px solid #a8792a; border-radius: 0; box-shadow: none; margin: 0 !important; padding: 8px 10px !important; min-width: 0; }
 .kitchen-product-with-note strong { display: block; font-size: 1.05rem; font-weight: 800; color: #332713; margin-bottom: 5px; }
 .kitchen-product-with-note > .market-nested-card > div > div { font-size: .85rem; line-height: 1.4; color: #62523b; }
-.kitchen-product-with-note .kitchen-product-note { margin: 0; padding: 8px 12px; background: #f1f4f6; min-width: 0; }
+.kitchen-product-with-note .kitchen-product-note { margin: 0; padding: 5px 8px; gap: 3px; background: #f1f4f6; min-width: 0; }
 .kitchen-product-with-note .kitchen-product-note > span { color: #596570; font-weight: 500; }
-.kitchen-product-with-note .kitchen-product-note textarea { border-color: #c5cbd0; font-size: .9rem; min-height: 54px; }
+.kitchen-product-with-note .kitchen-product-note textarea { border-color: #c5cbd0; font-size: .9rem; min-height: 38px; height: 38px; padding: 5px 7px; }
 @media (max-width: 600px) { .kitchen-product-with-note { grid-template-columns: minmax(0, 1fr); } }
+
+.kitchen-lists .kitchen-person-name { flex: 1; min-width: 0; }
+.kitchen-lists .visit-products-panel .compact-visit-list { gap: 5px; }
+.kitchen-lists .section-label-row { min-height: 34px; margin-bottom: 6px; gap: 8px; flex-wrap: wrap; }
+.kitchen-lists .section-label-row > span { margin-right: auto; }
+.kitchen-product-with-note strong { font-size: 1rem; margin-bottom: 3px; }
+@media (max-width: 800px) { .compact-visit-lists.kitchen-lists { grid-template-columns: minmax(0, 1fr); } .kitchen-lists .visit-attendees-panel .compact-visit-list { display: flex; flex-wrap: wrap; max-height: 140px; } }

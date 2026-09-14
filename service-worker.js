@@ -1,4 +1,4 @@
-const CACHE_NAME = "foodbrokerbase-compactnotes1";
+const CACHE_NAME = "foodbrokerbase-twocolumn1";
 const APP_SHELL = [
   "./vendor/lz-string.js?v=1.5.0",
   "./compact-storage.js?v=20260914-storagefast1",
@@ -15,7 +15,7 @@ const APP_SHELL = [
   "./people-contacts.js?v=20260909-contacticons1",
   "./",
   "./index.html",
-  "./styles.css?v=20260914-compactnotes1",
+  "./styles.css?v=20260914-twocolumn1",
   "./market-events.js?v=20260914-productnotes1",
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
