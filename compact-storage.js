@@ -26,8 +26,6 @@
     const text = String(value);
     return nativeSet.call(this,key,this === storage && managed(key) ? pack(text) : text);
   };
-  // Existing records are left untouched at startup. They will be compressed
-  // naturally the next time each record is saved, avoiding expensive full-store
-  // decompress/recompress work every time FoodBrokerBase launches.
-  window.foodBrokerCompactStorage = {optimized:true};
+  // Skip the old full localStorage recompression pass at startup.
+  window.foodBrokerCompactStorage = { optimized: true };
 })();
