@@ -39,6 +39,21 @@ function rememberPeopleContact(person) {
   peopleContacts = existing ? peopleContacts.map(item => item.id === existing.id ? next : item) : [...peopleContacts,next];
   persistPeopleContacts();
 }
+// Save older event attendees once; preserve existing contacts and deletion markers.
+function saveMissingAttendeeContacts() {
+  const known = new Set(peopleContacts.map(kitchenPersonKey));
+  const added = [];
+  marketVisits.forEach(visit => (visit.attendees || []).forEach(person => {
+    if (!person.name?.trim() || !person.organization?.trim()) return;
+    const key = kitchenPersonKey(person);
+    if (known.has(key)) return;
+    known.add(key);
+    added.push(normalizePeopleContact({...person, id: crypto.randomUUID(), updatedAt: new Date().toISOString()}));
+  }));
+  if (!added.length) return;
+  peopleContacts = [...peopleContacts, ...added];
+  persistPeopleContacts();
+}
 function persistPeopleContacts() {
   localStorage.setItem(peopleContactsStorageKey, JSON.stringify(peopleContacts));
   scheduleCloudSave(peopleContactsStorageKey);
@@ -90,7 +105,7 @@ function renderPeopleContacts() {
   const panel = document.querySelector('#peopleContactsPanel');
   if (!panel) return;
   const query = normalizeOperatorKey(document.querySelector('#peopleContactSearch')?.value || '');
-  const people = getPeopleDirectory().filter(person => person.category !== 'Operator / Restaurant').filter(person => contactMatchesFilter(person)).filter(person => normalizeOperatorKey([person.name, person.organization, person.role, person.contact].join(' ')).includes(query));
+  const people = getPeopleDirectory().filter(person => contactMatchesFilter(person)).filter(person => normalizeOperatorKey([person.name, person.organization, person.role, person.contact].join(' ')).includes(query));
   document.querySelectorAll('[data-contact-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.contactFilter === activeContactFilter)));
   const count = document.getElementById('contactMatchCount');
   if (count) count.textContent = people.length + (people.length === 1 ? ' contact' : ' contacts');
@@ -210,5 +225,5 @@ window.addEventListener('DOMContentLoaded', () => {
   attachPeopleSuggestions(elements.marketSalesReps);
   attachPeopleSuggestions(elements.marketVisitorName);
   ['addressUsfSalesRep','addressSyscoSalesRep','nestleSalesRep'].forEach(key => attachPeopleSuggestions(elements[key]));
-  applyContactNameCorrections(); renderPeopleContacts();
+  applyContactNameCorrections(); saveMissingAttendeeContacts(); renderPeopleContacts();
 });

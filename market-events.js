@@ -138,6 +138,7 @@ function bindMarketEventActions(panel, visit) {
     const values = Object.fromEntries(new FormData(attendeeForm));
     if (!values.name.trim() || !values.organization.trim()) return;
     const attendee = normalizeEventAttendee({ ...values, id: attendeeForm.dataset.editId });
+    rememberPeopleContact(attendee);
     updateMarketVisit(visit.id, { attendees: attendeeForm.dataset.editId ? visit.attendees.map((person) => person.id === attendee.id ? attendee : person) : [...visit.attendees, attendee] });
   });
   panel.querySelectorAll("[data-edit-event-attendee]").forEach((button) => button.addEventListener("click", () => {

@@ -1,4 +1,4 @@
-const CACHE_NAME = "foodbrokerbase-trackerdate1";
+const CACHE_NAME = "foodbrokerbase-attendeecontacts1";
 const APP_SHELL = [
   "./vendor/lz-string.js?v=1.5.0",
   "./compact-storage.js?v=20260914-storagefast1",
@@ -12,15 +12,15 @@ const APP_SHELL = [
   "./action-buttons.css?v=20260909-trashicons1",
   "./action-buttons.js?v=20260911-singletrash1",
   "./contacts-layout.css?v=20260909-contacticons1",
-  "./people-contacts.js?v=20260909-contacticons1",
+  "./people-contacts.js?v=20260915-attendeecontacts1",
   "./",
   "./index.html",
   "./styles.css?v=20260914-notesave1",
-  "./market-events.js?v=20260914-printlogo1",
+  "./market-events.js?v=20260915-attendeecontacts1",
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
   "./market-call-editor.js?v=20260909-visitcolors1",
-  "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260914-trackerdate1",
+  "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260915-attendeecontacts1",
   "./market-week-calendar.js?v=20260909-visitcolors1",
   "./market-operator-conversion.js?v=20260909-visitcolors1",
   "./testkitchen-layout.js?v=20260914-notesave1",
