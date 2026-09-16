@@ -1953,7 +1953,6 @@ function writeCloudSectionsToLocalStorage(sectionKeys = cloudSectionConfigs.map(
 }
 
 function renderAfterCloudSync() {
-  saveMissingAttendeeContacts();
   correctThaiCurryVendor();
   applyContactNameCorrections();
   updateSalesRepSuggestions();

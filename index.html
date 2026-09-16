@@ -649,7 +649,7 @@
           <button class="primary-action" type="button" id="addPeopleContact">+ Add Contact</button>
         </section>
 
-        <nav class="contacts-view-switch" aria-label="Contacts and operators views"><button type="button" id="showOperatorsView" aria-pressed="true" aria-controls="operatorsView">Operators</button><button type="button" id="showOtherContactsView" aria-pressed="false" aria-controls="otherContactsView">All contacts</button></nav>
+        <nav class="contacts-view-switch" aria-label="Contacts and operators views"><button type="button" id="showOperatorsView" aria-pressed="true" aria-controls="operatorsView">Operators</button><button type="button" id="showOtherContactsView" aria-pressed="false" aria-controls="otherContactsView">Show other contacts</button></nav>
         <div id="operatorsView">
         <section class="controls address-book-controls" aria-label="Operator filters">
           <label class="search-box"><span>Search</span><input id="addressBookSearch" type="search" placeholder="Operation, contact, phone, email, account #..." /></label>
@@ -664,7 +664,7 @@
           <div class="quick-table-wrap" id="addressBookTable"></div>
         </main>
         </div>
-        <section class="people-directory" id="otherContactsView" aria-label="All contacts" hidden><h2>All contacts</h2><p>Event attendees, operator contacts, distributor employees, sales reps, and regional managers.</p><div class="contact-search-toolbar"><input id="peopleContactSearch" type="search" placeholder="Search name, company, or role" aria-label="Search contacts" /><div class="contact-filter-buttons" role="group" aria-label="Filter contacts"><button type="button" data-contact-filter="all" aria-pressed="true">All</button><button type="button" data-contact-filter="usfoods" aria-pressed="false">US Foods</button><button type="button" data-contact-filter="sysco" aria-pressed="false">Sysco</button><button type="button" data-contact-filter="regional" aria-pressed="false">Regional Managers</button><button type="button" data-contact-filter="pc" aria-pressed="false">Pierce Cartwright</button></div></div><p class="contact-match-count" id="contactMatchCount" role="status"></p><div id="peopleContactsPanel"></div></section>
+        <section class="people-directory" id="otherContactsView" aria-label="Other contacts" hidden><h2>Other contacts</h2><p>Distributor employees, sales reps, regional managers, and other contacts.</p><div class="contact-search-toolbar"><input id="peopleContactSearch" type="search" placeholder="Search name, company, or role" aria-label="Search other contacts" /><div class="contact-filter-buttons" role="group" aria-label="Filter contacts"><button type="button" data-contact-filter="all" aria-pressed="true">All</button><button type="button" data-contact-filter="usfoods" aria-pressed="false">US Foods</button><button type="button" data-contact-filter="sysco" aria-pressed="false">Sysco</button><button type="button" data-contact-filter="regional" aria-pressed="false">Regional Managers</button><button type="button" data-contact-filter="pc" aria-pressed="false">Pierce Cartwright</button></div></div><p class="contact-match-count" id="contactMatchCount" role="status"></p><div id="peopleContactsPanel"></div></section>
       </div>
     </section>
 
@@ -1408,11 +1408,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
     <script src="supabase-auth.js?v=20260909-initials1"></script>
-  <script src="market-events.js?v=20260915-attendeecontacts1"></script>
+  <script src="market-events.js?v=20260915-contactrevert1"></script>
   <script src="personal-visit-calendar.js?v=20260909-visitcolors1"></script>
   <script src="calendar-holidays.js?v=20260909-5"></script>
   <script src="market-call-editor.js?v=20260909-visitcolors1"></script>
-  <script src="team-work-view.js?v=20260909-activity1"></script><script src="market-week-calendar.js?v=20260909-visitcolors1"></script><script src="market-operator-conversion.js?v=20260909-visitcolors1"></script><script src="testkitchen-layout.js?v=20260914-notesave1"></script><script src="vendor-visit-print.js?v=20260914-printlogo1"></script><script src="market-visit-layout.js?v=20260914-notesave1"></script><script src="people-contacts.js?v=20260915-attendeecontacts1"></script><script src="team-initials.js?v=20260909-initials1"></script><script src="k12-stock.js?v=20260909-crossstock1"></script><script src="app.js?v=20260915-attendeecontacts1"></script>
+  <script src="team-work-view.js?v=20260909-activity1"></script><script src="market-week-calendar.js?v=20260909-visitcolors1"></script><script src="market-operator-conversion.js?v=20260909-visitcolors1"></script><script src="testkitchen-layout.js?v=20260914-notesave1"></script><script src="vendor-visit-print.js?v=20260914-printlogo1"></script><script src="market-visit-layout.js?v=20260914-notesave1"></script><script src="people-contacts.js?v=20260915-contactrevert1"></script><script src="team-initials.js?v=20260909-initials1"></script><script src="k12-stock.js?v=20260909-crossstock1"></script><script src="app.js?v=20260915-contactrevert1"></script>
     <script>
       if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
         window.addEventListener("load", () => {
