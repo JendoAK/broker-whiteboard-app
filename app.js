@@ -7207,7 +7207,6 @@ function matchesSampleQuickFilter(sample, filter) {
 function updateSampleSummary() {
   const activeSamples = getUnifiedSampleOrders().filter((sample) => !sample.archivedAt && sample.status !== "Cancelled");
   document.querySelector("#sampleAll").textContent = activeSamples.length;
-  document.querySelector("#sampleToday").textContent = activeSamples.filter(isSampleDueToday).length;
   document.querySelector("#sampleWeek").textContent = activeSamples.filter(isSampleDueThisWeek).length;
   document.querySelector("#sampleOverdue").textContent = activeSamples.filter(isSampleOverdue).length;
   document.querySelector("#sampleOrdered").textContent = activeSamples.filter((sample) => ["Ordered", "Added to PO"].includes(sample.status)).length;
