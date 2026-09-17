@@ -46,10 +46,11 @@ function openMarketCallEditor(visitId, callId, newKind = "") {
     <div class="form-header"><div><p class="eyebrow">${escapeHtml(visit.name)}</p><h2>${newKind ? (newKind === "appointment" ? "Add appointment" : "Add call") : (call.kind === "appointment" ? "Edit appointment" : "Edit sales call")}</h2></div><button class="icon-button" type="button" data-cancel-call-edit aria-label="Close">&times;</button></div>
     <div class="field-grid">
       ${call.kind === "appointment" ? `${input("title", "Appointment title", "text", true)}<label><span>Appointment type</span><select name="appointmentType">${options("appointmentType", ["Airport / Travel", "Training", "Distributor Meeting", "Internal Meeting", "Other"])}</select></label>` : input("operatorName", "Operator / organization", "text", true)}
+      ${call.kind !== "appointment" ? input("salesReps", "Sales reps / attendees (comma separated)") : ""}
       ${visit.type === "manufacturer" && call.kind === "call" ? renderCallDistributorChoices(values.distributor) : ""}
-      ${input("date", "Date", "date", true)}${input("salesReps", "Sales reps / attendees (comma separated)")}
+      ${input("date", "Date", "date", true)}${call.kind === "appointment" ? input("salesReps", "Sales reps / attendees (comma separated)") : input("location", "Location")}
       ${input("startTime", "Start time", "time", true)}${input("endTime", "End time", "time", true)}
-      ${input("location", "Location")}${input("manufacturerContact", "Vendor contact")}
+      ${call.kind === "appointment" ? input("location", "Location") : ""}${input("manufacturerContact", "Vendor contact")}
       <label><span>Status</span><select name="status">${options("status", ["Planned", "Tentative", "Completed", "Canceled"])}</select></label>
       <label class="wide"><span>Notes</span><textarea name="notes">${escapeHtml(values.notes)}</textarea></label>
     </div>
