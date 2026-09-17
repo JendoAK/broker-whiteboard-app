@@ -1,4 +1,4 @@
-const CACHE_NAME = "foodbrokerbase-calllayout2";
+const CACHE_NAME = "foodbrokerbase-officialsysco1";
 const APP_SHELL = [
   "./time-picker.js?v=20260917-time1",
   "./time-picker.css?v=20260917-time1",
@@ -22,7 +22,7 @@ const APP_SHELL = [
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
   "./market-call-editor.js?v=20260917-calllayout2",
-  "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260917-calldistributor1",
+  "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260917-officialsysco1",
   "./market-week-calendar.js?v=20260909-visitcolors1",
   "./market-operator-conversion.js?v=20260909-visitcolors1",
   "./testkitchen-layout.js?v=20260914-notesave1",
@@ -35,8 +35,7 @@ const APP_SHELL = [
   "./pwa-icon-192.png",
   "./pwa-icon-512.png",
   "./linford-logo.svg",
-  "./sysco-logo.svg",
-  "./sysco-logo.svg?v=20260914-syscofix1",
+  "./sysco-logo.png?v=20260917-official1",
   "./vendor-logos/pierce-cartwright.png"
 ];
 
