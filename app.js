@@ -882,6 +882,13 @@ elements.clearTimelineSearch.addEventListener("click", () => {
   elements.timelineDialogSearch.focus();
 });
 document.querySelector("#closeTimelineDialog").addEventListener("click", () => elements.timelineDialog.close());
+// Clear native drag state even when release happens outside a task column.
+document.addEventListener("dragend", clearTodoDragState);
+document.addEventListener("drop", clearTodoDragState);
+document.addEventListener("mouseup", clearTodoDragState);
+document.addEventListener("keydown", event => { if (event.key === "Escape") clearTodoDragState(); });
+window.addEventListener("blur", clearTodoDragState);
+document.addEventListener("visibilitychange", () => { if (document.hidden) clearTodoDragState(); });
 document.addEventListener("mouseup", clearLeadDragState);
 document.addEventListener("pointerup", clearLeadDragState);
 document.addEventListener("dragend", clearLeadDragState);
@@ -7574,14 +7581,15 @@ function createTodoCard(todo) {
       </div>
     </div>
   `;
-  card.addEventListener("dragstart", () => {
+  card.addEventListener("dragstart", (event) => {
+    clearTodoDragState();
     draggedTodoId = todo.id;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/x-foodbroker-todo", todo.id);
+    document.body.classList.add("todo-drag-active");
     card.classList.add("dragging");
   });
-  card.addEventListener("dragend", () => {
-    draggedTodoId = null;
-    card.classList.remove("dragging");
-  });
+  card.addEventListener("dragend", clearTodoDragState);
   card.querySelector(".todo-title-button").addEventListener("click", () => openTodoForm(todo));
   card.querySelector(".todo-to-lead-card").addEventListener("click", (event) => {
     event.stopPropagation();
@@ -7908,18 +7916,33 @@ function getTodoProgress(todo) {
   return Math.round((todo.subtasks.filter((subtask) => subtask.done).length / todo.subtasks.length) * 100);
 }
 
+function clearTodoDragState() {
+  draggedTodoId = null;
+  document.body.classList.remove("todo-drag-active");
+  document.querySelectorAll(".todo-card.dragging, .todo-column.drag-over, #todoArchiveDrop.drag-over")
+    .forEach(node => node.classList.remove("dragging", "drag-over"));
+}
+
 function onTodoDragOver(event) {
+  if (!draggedTodoId) return;
   event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
   event.currentTarget.classList.add("drag-over");
 }
 
 function onTodoDrop(event) {
   event.preventDefault();
+  const id = draggedTodoId || event.dataTransfer?.getData("application/x-foodbroker-todo");
   const status = event.currentTarget.dataset.todoStatus;
-  event.currentTarget.classList.remove("drag-over");
-  if (!draggedTodoId || !status) return;
-  todos = todos.map((todo) => (todo.id === draggedTodoId ? { ...todo, status, completedAt: status === "Done" ? todo.completedAt || new Date().toISOString() : "" } : todo));
-  persistTodos();
+  clearTodoDragState();
+  if (!id || !todoColumns.includes(status)) return;
+  const existing = todos.find(todo => todo.id === id && !todo.archivedAt);
+  if (!existing || existing.status === status) return;
+  const previous = todos;
+  todos = todos.map(todo => todo.id === id
+    ? { ...todo, status, completedAt: status === "Done" ? todo.completedAt || new Date().toISOString() : "" }
+    : todo);
+  if (!persistTodos()) todos = previous;
   renderTodoBoard();
 }
 

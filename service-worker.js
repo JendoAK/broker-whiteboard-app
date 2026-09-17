@@ -1,4 +1,4 @@
-const CACHE_NAME = "foodbrokerbase-copyemail1";
+const CACHE_NAME = "foodbrokerbase-tododrag1";
 const APP_SHELL = [
   "./copy-email.js?v=20260917-copyemail1",
   "./time-picker.js?v=20260917-time1",
@@ -18,12 +18,12 @@ const APP_SHELL = [
   "./people-contacts.js?v=20260915-contactrevert1",
   "./",
   "./index.html",
-  "./styles.css?v=20260917-syscobutton1",
+  "./styles.css?v=20260917-tododrag1",
   "./market-events.js?v=20260915-contactrevert1",
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
   "./market-call-editor.js?v=20260917-calllayout2",
-  "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260917-copyemail1",
+  "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260917-tododrag1",
   "./market-week-calendar.js?v=20260909-visitcolors1",
   "./market-operator-conversion.js?v=20260909-visitcolors1",
   "./testkitchen-layout.js?v=20260914-notesave1",
