@@ -47,8 +47,9 @@ function openMarketCallEditor(visitId, callId, newKind = "") {
     <div class="field-grid">
       ${call.kind === "appointment" ? `${input("title", "Appointment title", "text", true)}<label><span>Appointment type</span><select name="appointmentType">${options("appointmentType", ["Airport / Travel", "Training", "Distributor Meeting", "Internal Meeting", "Other"])}</select></label>` : input("operatorName", "Operator / organization", "text", true)}
       ${visit.type === "manufacturer" && call.kind === "call" ? renderCallDistributorChoices(values.distributor) : ""}
-      ${input("date", "Date", "date", true)}${input("startTime", "Start time", "time", true)}${input("endTime", "End time", "time", true)}
-      ${input("location", "Location")}${input("salesReps", "Sales reps / attendees (comma separated)")}${input("manufacturerContact", "Vendor contact")}
+      ${input("date", "Date", "date", true)}${input("salesReps", "Sales reps / attendees (comma separated)")}
+      ${input("startTime", "Start time", "time", true)}${input("endTime", "End time", "time", true)}
+      ${input("location", "Location")}${input("manufacturerContact", "Vendor contact")}
       <label><span>Status</span><select name="status">${options("status", ["Planned", "Tentative", "Completed", "Canceled"])}</select></label>
       <label class="wide"><span>Notes</span><textarea name="notes">${escapeHtml(values.notes)}</textarea></label>
     </div>

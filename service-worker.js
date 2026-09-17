@@ -1,4 +1,4 @@
-const CACHE_NAME = "foodbrokerbase-calldistributor1";
+const CACHE_NAME = "foodbrokerbase-calllayout1";
 const APP_SHELL = [
   "./time-picker.js?v=20260917-time1",
   "./time-picker.css?v=20260917-time1",
@@ -21,7 +21,7 @@ const APP_SHELL = [
   "./market-events.js?v=20260915-contactrevert1",
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
-  "./market-call-editor.js?v=20260917-calldistributor1",
+  "./market-call-editor.js?v=20260917-calllayout1",
   "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260917-calldistributor1",
   "./market-week-calendar.js?v=20260909-visitcolors1",
   "./market-operator-conversion.js?v=20260909-visitcolors1",
