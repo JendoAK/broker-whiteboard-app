@@ -1,5 +1,7 @@
-const CACHE_NAME = "foodbrokerbase-samplesummary1";
+const CACHE_NAME = "foodbrokerbase-time1";
 const APP_SHELL = [
+  "./time-picker.js?v=20260917-time1",
+  "./time-picker.css?v=20260917-time1",
   "./vendor/lz-string.js?v=1.5.0",
   "./compact-storage.js?v=20260914-storagefast1",
   "./todo-archive.js?v=20260909-todoarchive1",
