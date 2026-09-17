@@ -5762,3 +5762,8 @@ button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-
 
 /* Keep task drop targets clear while a native drag is active. */
 body.todo-drag-active .todo-card .card-details { display: none !important; }
+
+.todo-card { cursor: grab; touch-action: none; user-select: none; }
+.todo-card .card-details { cursor: auto; touch-action: auto; user-select: text; }
+body.todo-drag-active, body.todo-drag-active * { cursor: grabbing !important; }
+.todo-drag-ghost { position: fixed; z-index: 2147483647; pointer-events: none; max-width: 300px; padding: 12px 16px; border: 1px solid #7e894c; border-radius: 7px; background: #edf1d6; color: #272820; font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1.35; box-shadow: 0 5px 18px #0003; }

@@ -7543,7 +7543,8 @@ function createTodoCard(todo) {
   const card = document.createElement("article");
   card.className = `note-card todo-card priority-${todo.priority.toLowerCase()}`;
   if (isTodoOverdue(todo)) card.classList.add("overdue");
-  card.draggable = true;
+  card.draggable = false;
+  card.dataset.todoId = todo.id;
   const progress = getTodoProgress(todo);
   const related = [todo.account, todo.vendor].filter(Boolean).join(" / ");
   const subtasks = todo.subtasks.filter((subtask) => subtask.text);
@@ -7581,15 +7582,6 @@ function createTodoCard(todo) {
       </div>
     </div>
   `;
-  card.addEventListener("dragstart", (event) => {
-    clearTodoDragState();
-    draggedTodoId = todo.id;
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("application/x-foodbroker-todo", todo.id);
-    document.body.classList.add("todo-drag-active");
-    card.classList.add("dragging");
-  });
-  card.addEventListener("dragend", clearTodoDragState);
   card.querySelector(".todo-title-button").addEventListener("click", () => openTodoForm(todo));
   card.querySelector(".todo-to-lead-card").addEventListener("click", (event) => {
     event.stopPropagation();
@@ -7935,6 +7927,10 @@ function onTodoDrop(event) {
   const id = draggedTodoId || event.dataTransfer?.getData("application/x-foodbroker-todo");
   const status = event.currentTarget.dataset.todoStatus;
   clearTodoDragState();
+  moveTodoToStatus(id, status);
+}
+
+function moveTodoToStatus(id, status) {
   if (!id || !todoColumns.includes(status)) return;
   const existing = todos.find(todo => todo.id === id && !todo.archivedAt);
   if (!existing || existing.status === status) return;
