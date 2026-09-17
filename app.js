@@ -5736,6 +5736,13 @@ function bindMarketDetailActions(panel, visit) {
   panel.querySelector("[data-detail-print]")?.addEventListener("click", () => openMarketPrintOptions(visit.id));
   panel.querySelector("[data-detail-followup]")?.addEventListener("click", () => createMarketFollowUp(visit));
   panel.querySelector("[data-market-print-products]")?.addEventListener("click", () => openMarketPrintOptions(visit.id, true));
+  const productPrintButton = panel.querySelector("[data-market-print-products]");
+  if (productPrintButton && !panel.querySelector("[data-email-products]")) {
+    const copyButton = document.createElement("button");
+    copyButton.type = "button"; copyButton.className = "primary-action"; copyButton.dataset.emailProducts = visit.id; copyButton.textContent = "Copy for email";
+    copyButton.onclick = () => openProductEmailCopy(visit.id);
+    productPrintButton.after(copyButton);
+  }
   panel.querySelector("[data-market-print-calendar]")?.addEventListener("click", () => printMarketVisit(visit.id, { schedule: true, products: false }));
   panel.querySelector("[data-market-download-calendar]")?.addEventListener("click", () => exportMarketVisitIcs(visit.id));
   panel.querySelector("[data-market-share-calendar]")?.addEventListener("click", () => shareMarketVisitCalendar(visit.id));

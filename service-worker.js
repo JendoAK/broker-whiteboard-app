@@ -1,5 +1,6 @@
-const CACHE_NAME = "foodbrokerbase-syscobutton1";
+const CACHE_NAME = "foodbrokerbase-copyemail1";
 const APP_SHELL = [
+  "./copy-email.js?v=20260917-copyemail1",
   "./time-picker.js?v=20260917-time1",
   "./time-picker.css?v=20260917-time1",
   "./vendor/lz-string.js?v=1.5.0",
@@ -22,7 +23,7 @@ const APP_SHELL = [
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
   "./market-call-editor.js?v=20260917-calllayout2",
-  "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260917-officialsysco1",
+  "./team-work-view.js?v=20260909-activity1", "./app.js?v=20260917-copyemail1",
   "./market-week-calendar.js?v=20260909-visitcolors1",
   "./market-operator-conversion.js?v=20260909-visitcolors1",
   "./testkitchen-layout.js?v=20260914-notesave1",
