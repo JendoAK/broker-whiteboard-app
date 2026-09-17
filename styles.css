@@ -5751,3 +5751,5 @@ button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-
 .kitchen-product-note textarea[readonly] { background: transparent; border-color: transparent; resize: none; color: #37444f; }
 .kitchen-product-note [data-kitchen-note-action] { min-height: 32px; padding: 5px 8px; font-size: .8rem; }
 @media (max-width: 600px) { .visit-vendor-heading.with-notes { grid-template-columns: 1fr auto; } .visit-vendor-heading.with-notes > small { padding-right: 10px; } }
+
+.call-distributor-choices{display:flex;flex-wrap:wrap;gap:10px;border:1px solid #c5b6a5;border-radius:7px;padding:10px 12px}.call-distributor-choices legend{font-size:13px;font-weight:700;padding:0 5px}.call-distributor-choices label{display:flex;align-items:center;gap:7px;padding:7px 12px;background:#fff9eb;border:1px solid #c5b6a5;border-radius:5px;cursor:pointer}.call-distributor-choices input{width:18px;height:18px;margin:0;accent-color:#a3681d}.call-distributor-choices label:has(input:checked){background:#f4dfab;border-color:#a3681d}.call-distributor-choices label span{font-size:14px;text-transform:none}

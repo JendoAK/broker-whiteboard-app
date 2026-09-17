@@ -1,3 +1,4 @@
+const marketCallDistributors = ["Sysco", "US Foods", "Linford", "Other"];
 const peopleContactsStorageKey = "broker-whiteboard-people-contacts";
 const columns = [
   "New Lead",
@@ -1322,6 +1323,7 @@ function normalizeMarketCall(call) {
     kind: call.kind === "appointment" ? "appointment" : "call",
     title: call.title || "",
     appointmentType: call.appointmentType || "",
+    distributor: marketCallDistributors.includes(call.distributor) ? call.distributor : "",
     date: call.date || "",
     startTime: call.startTime || "",
     endTime: call.endTime || "",
@@ -1340,7 +1342,8 @@ function getMarketCallTitle(call) {
   if (call.kind === "appointment") {
     return call.title || call.appointmentType || "Appointment";
   }
-  return call.operatorName || getOperatorName(call.operatorId) || call.title || "Appointment";
+  const title = call.operatorName || getOperatorName(call.operatorId) || call.title || "Appointment";
+  return [call.distributor, title].filter(Boolean).join(" · ");
 }
 
 function renderMarketNotesSection(visit) {

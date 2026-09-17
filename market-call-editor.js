@@ -19,7 +19,7 @@ function marketCallTimeLabel(value) {
 }
 
 function getMarketCallEditValues(call) {
-  return { title: call.title, operatorName: call.operatorName || getOperatorName(call.operatorId),
+  return { distributor: call.distributor || "", title: call.title, operatorName: call.operatorName || getOperatorName(call.operatorId),
     appointmentType: call.appointmentType, date: call.date, startTime: marketCallTimeInput(call.startTime),
     endTime: marketCallTimeInput(call.endTime), location: call.location, salesReps: call.salesReps.join(", "),
     manufacturerContact: call.manufacturerContact, notes: call.notes, status: call.status };
@@ -46,6 +46,7 @@ function openMarketCallEditor(visitId, callId, newKind = "") {
     <div class="form-header"><div><p class="eyebrow">${escapeHtml(visit.name)}</p><h2>${newKind ? (newKind === "appointment" ? "Add appointment" : "Add call") : (call.kind === "appointment" ? "Edit appointment" : "Edit sales call")}</h2></div><button class="icon-button" type="button" data-cancel-call-edit aria-label="Close">&times;</button></div>
     <div class="field-grid">
       ${call.kind === "appointment" ? `${input("title", "Appointment title", "text", true)}<label><span>Appointment type</span><select name="appointmentType">${options("appointmentType", ["Airport / Travel", "Training", "Distributor Meeting", "Internal Meeting", "Other"])}</select></label>` : input("operatorName", "Operator / organization", "text", true)}
+      ${visit.type === "manufacturer" && call.kind === "call" ? renderCallDistributorChoices(values.distributor) : ""}
       ${input("date", "Date", "date", true)}${input("startTime", "Start time", "time", true)}${input("endTime", "End time", "time", true)}
       ${input("location", "Location")}${input("salesReps", "Sales reps / attendees (comma separated)")}${input("manufacturerContact", "Vendor contact")}
       <label><span>Status</span><select name="status">${options("status", ["Planned", "Tentative", "Completed", "Canceled"])}</select></label>
@@ -123,4 +124,8 @@ function bindMarketCallListEditing(panel, visit) {
     });
   });
   panel.querySelectorAll("[data-edit-market-call]").forEach((button) => button.addEventListener("click", () => openMarketCallEditor(visit.id, button.dataset.editMarketCall)));
+}
+
+function renderCallDistributorChoices(selected) {
+ return `<fieldset class="call-distributor-choices wide"><legend>Distributor call</legend>${marketCallDistributors.map(name => `<label><input type="radio" name="distributor" value="${escapeAttribute(name)}" ${selected === name ? "checked" : ""} /><span>${escapeHtml(name)}</span></label>`).join("")}</fieldset>`;
 }
