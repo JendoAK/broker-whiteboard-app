@@ -2357,9 +2357,15 @@ body.auth-required:not(.auth-signed-in) .settings-menu {
   height: 52px;
 }
 
+.stock-list-sysco {
+  padding: 1px 12px;
+}
+
 .stock-logo-sysco-img {
   width: 148px;
-  max-height: 42px;
+  height: 64px;
+  max-height: 64px;
+  object-fit: contain;
 }
 
 .stock-logo-linford-img {
