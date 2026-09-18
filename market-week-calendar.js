@@ -48,14 +48,14 @@ function renderPreciseMarketWeek(visit, options = {}) {
     ${days.map((date, index) => `<div class="precise-day ${isDateInMarketVisit(visit, date) ? "" : "precise-day-outside"}">${dayCalls[index].map(item => {
       const call = item.call;
       // Use the original appointment title, without the repeated visit name.
-      const title = getMarketCallTitle(visit.calls.find(item => item.id === call.id) || call);
+      const title = getMarketCallTitle(visit.calls.find(item => item.id === call.id) || call) + marketCallInitials(visit, call);
       const time = [call.startTime, call.endTime].filter(Boolean).join(" – ");
       const details = [title, call.date ? formatDate(call.date) : "", time,
         call.appointmentType, call.status,
         (call.location || visit.location) && `Location: ${call.location || visit.location}`,
         (call.salesReps?.length ? call.salesReps : visit.salesReps).length && `Attendees: ${(call.salesReps?.length ? call.salesReps : visit.salesReps).join(", ")}`,
         (call.manufacturerContact || visit.visitorName) && `Vendor contact: ${call.manufacturerContact || visit.visitorName}`,
-        call.notes].filter(Boolean).join("\n");
+        call.notes, visit.type === "manufacturer" && call._audit && `${call._audit.action} by ${call._audit.name || call._audit.email || call._audit.initials}`].filter(Boolean).join("\n");
       const top = (item.start - start) * pixelsPerMinute;
       const blockHeight = Math.min(Math.max(options.print ? Math.min(34, 40 * pixelsPerMinute) : 34, (item.end - item.start) * pixelsPerMinute), height - top);
       return `<button class="precise-week-call" type="button" data-week-call="${escapeAttribute(call.id)}" title="${escapeAttribute(details)}" aria-label="${escapeAttribute(`${details}\nClick to edit`)}" style="top:${top}px;height:${blockHeight}px;left:calc(${item.lane * 100 / item.lanes}% + 3px);width:calc(${100 / item.lanes}% - 6px)"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(time)}</span></button>`;

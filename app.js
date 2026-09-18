@@ -1341,8 +1341,22 @@ function normalizeMarketCall(call) {
     manufacturerContact: call.manufacturerContact || "",
     productIds: Array.isArray(call.productIds) ? call.productIds : [],
     notes: call.notes || "",
-    status: call.status || "Planned"
+    status: call.status || "Planned",
+    _audit: normalizeAuditRecord(call._audit),
+    _createdAudit: normalizeAuditRecord(call._createdAudit)
   };
+}
+
+function marketCallInitials(visit, call) {
+  if (visit.type !== "manufacturer") return "";
+  const audit = normalizeAuditRecord(call._audit);
+  return audit ? ` · ${audit.initials}` : "";
+}
+
+function renderMarketCallAudit(visit, call) {
+  if (visit.type !== "manufacturer") return "";
+  const created = call._createdAudit;
+  return `<p class="market-call-audit">${created ? renderAuditStamp({ _audit: created }) : "Creator not recorded"}${call._audit && call._audit.action !== "Created" ? ` · ${renderAuditStamp(call)}` : ""}</p>`;
 }
 
 function getMarketCallTitle(call) {
@@ -5624,7 +5638,7 @@ function renderMarketCallRow(visit, call) {
   return `<tr class="editable-market-call" data-edit-market-call-row="${escapeAttribute(call.id)}">
     <td>${call.date ? formatDate(call.date) : ""}</td>
     <td>${escapeHtml([call.startTime, call.endTime].filter(Boolean).join(" - "))}</td>
-    <td><button class="market-call-edit-title" type="button" data-edit-market-call="${escapeAttribute(call.id)}" aria-label="Edit ${escapeAttribute(getMarketCallTitle(call))}">${escapeHtml(getMarketCallTitle(call))}</button>${call.kind === "appointment" && call.appointmentType ? `<small class="market-call-kind">${escapeHtml(call.appointmentType)}</small>` : ""}</td>
+    <td><button class="market-call-edit-title" type="button" data-edit-market-call="${escapeAttribute(call.id)}" aria-label="Edit ${escapeAttribute(getMarketCallTitle(call))}">${escapeHtml(getMarketCallTitle(call) + marketCallInitials(visit, call))}</button>${call.kind === "appointment" && call.appointmentType ? `<small class="market-call-kind">${escapeHtml(call.appointmentType)}</small>` : ""}</td>
     <td>${escapeHtml(call.location || "")}</td>
     <td>${escapeHtml(call.salesReps.join(", ") || visit.salesReps.join(", "))}</td>
     <td><input data-call-note="${escapeAttribute(call.id)}" value="${escapeAttribute(call.notes)}" /></td>
@@ -5664,7 +5678,7 @@ function formatHourLabel(hour) {
 function renderWeekCallBlock(call, selectedCallId = "") {
   return `
     <button class="week-call-block ${call.id === selectedCallId ? "active-week-call" : ""}" type="button" data-week-call="${escapeAttribute(call.id)}">
-      <strong>${escapeHtml(getMarketCallTitle(call))}</strong>
+      <strong>${escapeHtml(getMarketCallTitle(call) + marketCallInitials({ type: call.visitType }, call))}</strong>
       <span>${escapeHtml([call.startTime, call.endTime].filter(Boolean).join(" - "))}</span>
       ${call.status ? `<small>${escapeHtml(call.status)}</small>` : ""}
     </button>
@@ -5684,6 +5698,7 @@ function renderMarketCallPreview(visit, call) {
   return `
     <p class="eyebrow">Appointment details</p>
     <h3>${escapeHtml(getMarketCallTitle(call))}</h3>
+    ${renderMarketCallAudit(visit, call)}
     ${call.kind === "appointment" && call.appointmentType ? `<p class="market-call-kind">${escapeHtml(call.appointmentType)}</p>` : ""}
     <dl class="market-call-preview-grid">
       <div><dt>Date</dt><dd>${escapeHtml(call.date ? formatDate(call.date) : "No date")}</dd></div>
@@ -5727,7 +5742,7 @@ function renderMarketCalendar(visits) {
 
 function renderMarketAgendaCall(call, selectedCallId = "") {
   return `<button class="market-agenda-call ${call.id === selectedCallId ? "active-agenda-call" : ""}" type="button" data-market-agenda-call="${escapeAttribute(call.id)}">
-    <strong>${escapeHtml(call.title)}</strong>
+    <strong>${escapeHtml(call.title + marketCallInitials({ type: call.visitType }, call))}</strong>
     <span>${escapeHtml([call.startTime, call.endTime].filter(Boolean).join(" - "))}</span>
     <span>${escapeHtml([call.operatorName, call.location, call.salesReps.join(", ")].filter(Boolean).join(" | "))}</span>
   </button>`;
@@ -6022,6 +6037,16 @@ function updateMarketVisit(id, patch) {
   marketVisits = marketVisits.map((visit) => {
     if (visit.id !== id) return visit;
     const next = normalizeMarketVisit({ ...visit, ...patch, updatedAt: new Date().toISOString() });
+    if (next.type === "manufacturer" && Object.prototype.hasOwnProperty.call(patch, "calls")) {
+      next.calls.forEach(call => {
+        const previous = visit.calls.find(item => item.id === call.id);
+        const content = item => JSON.stringify(normalizeMarketCall(item), (key, value) => key.startsWith("_audit") || key === "_createdAudit" ? undefined : value);
+        if (previous && content(previous) === content(call)) return;
+        call._createdAudit = previous?._createdAudit || null;
+        stampSharedRecord(call, previous ? "Updated" : "Created");
+        if (!previous) call._createdAudit = call._audit;
+      });
+    }
     if (next.type !== "personal") {
       stampSharedRecord(next, Object.prototype.hasOwnProperty.call(patch, "archivedAt") ? (patch.archivedAt ? "Archived" : "Restored") : Object.prototype.hasOwnProperty.call(patch, "status") ? "Status changed" : "Updated");
     }
@@ -6416,7 +6441,7 @@ function formatDateRange(start, end) {
 }
 
 function getMarketVisitCalendarCalls(visit) {
-  const directCalls = visit.calls.map((call) => ({ ...call, visitId: visit.id, title: `${getMarketVisitDisplayName(visit)} - ${getMarketCallTitle(call)}`, salesReps: call.salesReps.length ? call.salesReps : visit.salesReps }));
+  const directCalls = visit.calls.map((call) => ({ ...call, visitId: visit.id, visitType: visit.type, title: `${getMarketVisitDisplayName(visit)} - ${getMarketCallTitle(call)}`, salesReps: call.salesReps.length ? call.salesReps : visit.salesReps }));
   if (isMarketEvent(visit) && !directCalls.length) return [{ ...normalizeMarketCall({ id: visit.id, kind: "appointment", title: visit.name, date: visit.startDate, startTime: visit.startTime, endTime: visit.endTime, location: visit.location, salesReps: visit.salesReps, notes: visit.notes }), visitId: visit.id }];
   return directCalls;
 }

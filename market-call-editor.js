@@ -44,6 +44,7 @@ function openMarketCallEditor(visitId, callId, newKind = "") {
   const options = (name, choices) => [...new Set([values[name], ...choices].filter(Boolean))].map((value) => `<option value="${escapeAttribute(value)}" ${value === values[name] ? "selected" : ""}>${escapeHtml(value)}</option>`).join("");
   dialog.innerHTML = `<form class="note-form" id="marketCallEditForm">
     <div class="form-header"><div><p class="eyebrow">${escapeHtml(visit.name)}</p><h2>${newKind ? (newKind === "appointment" ? "Add appointment" : "Add call") : (call.kind === "appointment" ? "Edit appointment" : "Edit sales call")}</h2></div><button class="icon-button" type="button" data-cancel-call-edit aria-label="Close">&times;</button></div>
+    ${newKind ? "" : renderMarketCallAudit(visit, call)}
     <div class="field-grid">
       ${call.kind === "appointment" ? `${input("title", "Appointment title", "text", true)}<label><span>Appointment type</span><select name="appointmentType">${options("appointmentType", ["Airport / Travel", "Training", "Distributor Meeting", "Internal Meeting", "Other"])}</select></label>` : input("operatorName", "Operator / organization", "text", true)}
       ${call.kind !== "appointment" ? input("salesReps", "Sales reps / attendees (comma separated)") : ""}
