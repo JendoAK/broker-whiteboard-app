@@ -5467,7 +5467,7 @@ function renderMarketOperator(visit, operator) {
       <summary class="market-operator-summary">
         <span>
           <strong>${escapeHtml(operatorName)}</strong>
-          <small>${selectedProductCount} of ${products.length} ${products.length === 1 ? "product" : "products"} planned</small>
+          <small data-operator-product-count>${selectedProductCount} of ${products.length} ${products.length === 1 ? "product" : "products"} planned</small>
         </span>
         <span class="market-operator-actions">
           <button class="edit-card market-save-operator" type="button" data-save-market-operator="${escapeAttribute(operator.id)}">Save Operator</button>
@@ -5478,6 +5478,7 @@ function renderMarketOperator(visit, operator) {
       </summary>
       <div class="market-operator-detail">
         <label>Lead distributor<select data-event-lead-distributor="${escapeAttribute(operator.id)}"><option>US Foods</option><option>Sysco</option><option>Other</option></select></label>
+        ${products.length && visit.type === "manufacturer" ? `<div class="section-label-row"><button class="ghost-action" type="button" data-uncheck-operator-products>Uncheck all products</button></div>` : ""}
         ${products.length ? `<div class="operator-product-notes">${products.map((product) => renderOperatorProductNote(operator, product)).join("")}</div>` : `<div class="empty-state">Add products to this visit, then they will show here for this operator.</div>`}
         <label class="operator-general-note"><span>Operator note</span><textarea class="market-operator-note" data-market-operator-notes="${escapeAttribute(operator.id)}" placeholder="Operator notes, feedback, next step...">${escapeHtml(operator.notes)}</textarea></label>
       </div>
@@ -5906,6 +5907,20 @@ function bindMarketDetailActions(panel, visit) {
       saveMarketOperatorDetails(visit.id, button.dataset.saveMarketOperator, panel);
     })
   );
+  panel.querySelectorAll("[data-uncheck-operator-products]").forEach(button => {
+    const card = button.closest(".market-operator-card");
+    const inputs = [...card.querySelectorAll("[data-operator-lead-product]")];
+    const updateCount = () => {
+      card.querySelector("[data-operator-product-count]").textContent = `${inputs.filter(input => input.checked).length} of ${inputs.length} ${inputs.length === 1 ? "product" : "products"} planned`;
+      button.disabled = !inputs.some(input => input.checked);
+    };
+    button.addEventListener("click", () => {
+      inputs.forEach(input => { input.checked = false; });
+      updateCount();
+    });
+    inputs.forEach(input => input.addEventListener("change", updateCount));
+    updateCount();
+  });
   panel.querySelectorAll("[data-market-operator-notes]").forEach((textarea) => {
     textarea.addEventListener("input", () => saveMarketOperatorDataWithoutRender(visit.id, textarea.dataset.marketOperatorNotes, { notes: textarea.value }));
   });
