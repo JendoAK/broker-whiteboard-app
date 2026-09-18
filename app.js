@@ -616,6 +616,7 @@ const elements = {
   deleteAddressEntry: document.querySelector("#deleteAddressEntry"),
   stockListsDialog: document.querySelector("#stockListsDialog"),
   stockSearch: document.querySelector("#stockSearch"),
+  stockHideSpecialOrder: document.querySelector("#stockHideSpecialOrder"),
   stockDistributorFilter: document.querySelector("#stockDistributorFilter"),
   stockVendorFilter: document.querySelector("#stockVendorFilter"),
   stockCategoryFilter: document.querySelector("#stockCategoryFilter"),
@@ -1062,6 +1063,7 @@ elements.stockForm.addEventListener("submit", (event) => {
 });
 [
   elements.stockSearch,
+  elements.stockHideSpecialOrder,
   elements.stockDistributorFilter,
   elements.stockVendorFilter,
   elements.stockCategoryFilter,
@@ -4583,6 +4585,7 @@ function readAddressContacts() {
 }
 
 function clearStockFilters() {
+  elements.stockHideSpecialOrder.checked = false;
   elements.stockSearch.value = "";
   elements.stockDistributorFilter.value = "";
   elements.stockVendorFilter.value = "";
@@ -4691,6 +4694,7 @@ function getVisibleStockProducts() {
   const group = getActiveStockGroup();
   return (activeStockList === "k12" ? getK12Products() : stockProducts)
     .filter((product) => {
+      if (elements.stockHideSpecialOrder.checked && isSpecialOrderOnly(product)) return false;
       if (group && activeStockList !== "k12" && !group.distributors.includes(product.distributor)) return false;
       if (elements.stockDistributorFilter.value && product.distributor !== elements.stockDistributorFilter.value) return false;
       if (elements.stockStorageFilter.value && product.storage !== elements.stockStorageFilter.value) return false;
@@ -4724,14 +4728,25 @@ function getStockSearchText(product) {
     .toLowerCase();
 }
 
+function isSpecialOrderOnly(product) {
+  return typeof product.k12SpecialOrderOnly === "boolean" ? product.k12SpecialOrderOnly : product.so === "Yes";
+}
+
+function renderStockSpecialOrder(product) {
+  if (!isSpecialOrderOnly(product) && !product.k12SpecialOrder) return "";
+  const label = isSpecialOrderOnly(product) ? "Special order · Longer lead time" : "Special order at some distributors · Longer lead time";
+  const detail = product.k12SpecialOrderDistributors?.length ? `Special order from: ${product.k12SpecialOrderDistributors.join(", ")}. Allow extra time for arrival.` : "Not stocked in the warehouse. Available to order; allow extra time for arrival.";
+  return `<span class="stock-special-order-badge" title="${escapeAttribute(detail)}">${escapeHtml(label)}</span>`;
+}
+
 function renderStockRow(product, crossStockIndex) {
   const attachmentCount = (product.attachments || []).filter((file) => file?.name && (file?.data || file?.storageId)).length;
   const attachmentIcon = attachmentCount
     ? `<span class="stock-attachment-clip" title="${attachmentCount} attached file${attachmentCount === 1 ? "" : "s"}" aria-label="${attachmentCount} attached file${attachmentCount === 1 ? "" : "s"}">&#128206;</span>`
     : "";
   return `
-    <tr>
-      <td><button class="table-link stock-product-link" type="button" data-stock-edit="${escapeAttribute(product.id)}">${escapeHtml(product.description)}${attachmentIcon}</button>${renderK12Stocking(product)}${renderCrossStockCheck(product, crossStockIndex)}</td>
+    <tr class="${isSpecialOrderOnly(product) ? "stock-special-order-row" : ""}">
+      <td><button class="table-link stock-product-link" type="button" data-stock-edit="${escapeAttribute(product.id)}">${escapeHtml(product.description)}${attachmentIcon}</button>${renderStockSpecialOrder(product)}${renderK12Stocking(product)}${renderCrossStockCheck(product, crossStockIndex)}</td>
       <td>${escapeHtml(product.brandName)}</td>
       <td>${escapeHtml(product.brandType)}</td>
       <td>${escapeHtml(product.apn)}</td>

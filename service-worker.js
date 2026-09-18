@@ -1,4 +1,4 @@
-const CACHE_NAME = "foodbrokerbase-uncheck1";
+const CACHE_NAME = "foodbrokerbase-specialorder1";
 const APP_SHELL = [
   "./manager-overview.js?v=20260918-managersettings1",
   "./manager-overview.css?v=20260918-manager1",
@@ -11,7 +11,7 @@ const APP_SHELL = [
   "./todo-archive.js?v=20260909-todoarchive1",
   "./todo-archive.css?v=20260909-todoarchive1",
   "./lead-products.css?v=20260909-leadcompact1",
-  "./k12-stock.js?v=20260909-crossstock1",
+  "./k12-stock.js?v=20260918-specialorder1",
   "./k12-stock.css?v=20260909-crossstock1",
   "./team-initials.js?v=20260909-initials1",
   "./team-work-view.css?v=20260909-activity1",
@@ -21,12 +21,12 @@ const APP_SHELL = [
   "./people-contacts.js?v=20260915-contactrevert1",
   "./",
   "./index.html",
-  "./styles.css?v=20260917-todopointer1",
+  "./styles.css?v=20260918-specialorder1",
   "./market-events.js?v=20260915-contactrevert1",
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
   "./market-call-editor.js?v=20260918-callaudit1",
-  "./team-work-view.js?v=20260918-manager1", "./app.js?v=20260918-uncheck1",
+  "./team-work-view.js?v=20260918-manager1", "./app.js?v=20260918-specialorder1",
   "./market-week-calendar.js?v=20260918-callaudit1",
   "./market-operator-conversion.js?v=20260909-visitcolors1",
   "./testkitchen-layout.js?v=20260914-notesave1",

@@ -5416,6 +5416,12 @@ html {
   background: #e5ebef;
   color: #172f43;
 }
+.stock-controls .stock-hide-special { grid-column:1/-1; display:flex; align-items:center; gap:9px; flex-wrap:nowrap; padding:10px 12px; border:1px solid #c6b58d; border-radius:8px; background:#fff8e8; width:fit-content; cursor:pointer; }
+.stock-controls .stock-hide-special input { width:18px; height:18px; margin:0; accent-color:#875500; }
+.stock-controls .stock-hide-special span { text-transform:none; font-size:14px; color:#60400c; }
+.stock-special-order-badge { display:block; width:fit-content; margin-top:7px; padding:5px 8px; border:1px solid #bc8222; border-radius:5px; background:#fff0c2; color:#674009; font-size:12px; font-weight:800; line-height:1.4; }
+.stock-table .stock-special-order-row > td { background:#fffaf0; }
+.stock-table .stock-special-order-row > td:first-child { border-left:4px solid #bc8222; }
 .settings-panel button[hidden],
 [data-admin-only-setting][hidden] {
   display: none !important;

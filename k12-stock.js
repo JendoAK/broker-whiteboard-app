@@ -28,7 +28,9 @@ function getK12Products() {
     const base=items.find(item=>item.k12);
     const usf=items.filter(item=>/^US Foods/i.test(item.distributor));const sysco=items.filter(item=>item.distributor==='Sysco');
     const codes=(items,key)=>[...new Set(items.map(item=>item[key]).filter(Boolean))].join(', ');
-    return {...base,apn:codes(usf,'apn'),supc:codes(sysco,'supc'),k12Usf:usf.some(item=>item.so!=='Yes'),k12Sysco:sysco.some(item=>item.so!=='Yes'),k12SpecialOrder:items.some(item=>item.so==='Yes')};
+    const special=items.filter(item=>item.so==='Yes');
+    const specialOnly=special.length>0&&!items.some(item=>item.distributor!=='Not stocked'&&item.so!=='Yes');
+    return {...base,apn:codes(usf,'apn'),supc:codes(sysco,'supc'),so:specialOnly?'Yes':'',k12Usf:usf.some(item=>item.so!=='Yes'),k12Sysco:sysco.some(item=>item.so!=='Yes'),k12SpecialOrder:special.length>0,k12SpecialOrderOnly:specialOnly,k12SpecialOrderDistributors:[...new Set(special.map(item=>item.distributor))]};
   });
 }
 function renderK12Stocking(product) {
