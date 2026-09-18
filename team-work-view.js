@@ -85,7 +85,7 @@ function renderTeamWorkValue(value) {
   if (value.name && typeof value.data === 'string' && value.data.startsWith('data:image/')) {
     const image=document.createElement('img'); image.src=value.data; image.alt=value.name; image.loading='lazy'; image.style.maxWidth='100%'; container.append(image);
   }
-  const hidden = new Set(['id','key','recordId','ownerId','data','_audit','productIds','operatorId','callId','leadId']);
+  const hidden = new Set(['id','key','recordId','ownerId','data','_audit','_activity','_createdAudit','productIds','operatorId','callId','leadId']);
   for (const [key,entry] of Object.entries(value)) {
     if (hidden.has(key) || entry === '' || entry == null || (Array.isArray(entry) && !entry.length)) continue;
     const row=document.createElement('div'); row.className='team-work-field';

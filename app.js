@@ -1309,6 +1309,7 @@ function normalizeMarketVisit(visit) {
     archivedAt: visit.archivedAt || "",
     createdAt: visit.createdAt || new Date().toISOString(),
     updatedAt: visit.updatedAt || "",
+    _activity: normalizeActivityHistory(visit._activity),
     _audit: normalizeAuditRecord(visit._audit)
   };
 }
@@ -1342,6 +1343,7 @@ function normalizeMarketCall(call) {
     productIds: Array.isArray(call.productIds) ? call.productIds : [],
     notes: call.notes || "",
     status: call.status || "Planned",
+    _activity: normalizeActivityHistory(call._activity),
     _audit: normalizeAuditRecord(call._audit),
     _createdAudit: normalizeAuditRecord(call._createdAudit)
   };
@@ -1413,12 +1415,14 @@ function normalizeSample(sample) {
     createdAt: sample.createdAt || new Date().toISOString(),
     updatedAt: sample.updatedAt || "",
     archivedAt: sample.archivedAt || (sample.status === "Delivered / Shown" ? sample.updatedAt || new Date().toISOString() : ""),
+    _activity: normalizeActivityHistory(sample._activity),
     _audit: normalizeAuditRecord(sample._audit)
   };
 }
 
 function normalizeTodo(todo) {
   return {
+    _activity: normalizeActivityHistory(todo._activity),
     id: todo.id || crypto.randomUUID(),
     title: todo.title || "",
     priority: todo.priority || "Medium",
@@ -1479,6 +1483,7 @@ function normalizeAddressBookEntry(entry) {
     createdAt: entry.createdAt || new Date().toISOString(),
     updatedAt: entry.updatedAt || "",
     archivedAt: entry.archivedAt || "",
+    _activity: normalizeActivityHistory(entry._activity),
     _audit: normalizeAuditRecord(entry._audit)
   };
 }
@@ -1507,6 +1512,7 @@ function normalizeStockProduct(product) {
     attachments: Array.isArray(product.attachments) ? product.attachments.map(normalizeStockAttachment).filter((file) => file.name && (file.data || file.storageId)) : [],
     createdAt: product.createdAt || new Date().toISOString(),
     updatedAt: product.updatedAt || "",
+    _activity: normalizeActivityHistory(product._activity),
     _audit: normalizeAuditRecord(product._audit)
   };
 }
@@ -1520,6 +1526,7 @@ function normalizeStockAttachment(file) {
 
 function normalizeManualVendorReport(report) {
   return {
+    _activity: normalizeActivityHistory(report._activity),
     sourceMarketVisitId: report.sourceMarketVisitId || "",
     sourceMarketOperatorId: report.sourceMarketOperatorId || "",
     sourceMarketOperatorName: report.sourceMarketOperatorName || "",
@@ -1541,6 +1548,7 @@ function normalizeManualVendorReport(report) {
 function normalizeCard(card) {
   return {
     ...card,
+    _activity: normalizeActivityHistory(card._activity),
     accountNumber: card.accountNumber || "",
     syscoAccountNumber: card.syscoAccountNumber || "",
     distributor: card.distributor || "US Foods",
@@ -1652,6 +1660,7 @@ function normalizeDotOrder(order) {
     createdAt: order.createdAt || new Date().toISOString(),
     updatedAt: order.updatedAt || "",
     archivedAt: order.archivedAt || (["Delivered", "Cancelled"].includes(order.status) ? order.updatedAt || new Date().toISOString() : ""),
+    _activity: normalizeActivityHistory(order._activity),
     _audit: normalizeAuditRecord(order._audit)
   };
 }
@@ -1671,6 +1680,7 @@ function normalizeNestleMachine(machine) {
     createdAt: machine.createdAt || new Date().toISOString(),
     updatedAt: machine.updatedAt || "",
     archivedAt: machine.archivedAt || (["Installed", "Returned", "Cancelled"].includes(machine.status) ? machine.updatedAt || new Date().toISOString() : ""),
+    _activity: normalizeActivityHistory(machine._activity),
     _audit: normalizeAuditRecord(machine._audit)
   };
 }
@@ -1684,8 +1694,16 @@ function recordWorkUpdateTimes(records, key) {
   let prior; try { prior = JSON.parse(localStorage.getItem(key) || '[]'); } catch { return; }
   if (!Array.isArray(prior)) return;
   const old = new Map(prior.map(item => [item.id,item]));
-  const comparable = item => JSON.stringify(item, (name,value) => name === 'updatedAt' ? undefined : value);
-  records.forEach(item => { const previous = old.get(item.id); if (previous && comparable(previous) !== comparable(item)) item.updatedAt = new Date().toISOString(); else if (previous?.updatedAt && !item.updatedAt) item.updatedAt = previous.updatedAt; });
+  const comparable = item => JSON.stringify(item, (name,value) => ['updatedAt','_activity'].includes(name) ? undefined : value);
+  records.forEach(item => {
+    const previous = old.get(item.id);
+    if (!previous || comparable(previous) !== comparable(item)) {
+      const fields = previous ? Object.keys(item).filter(key => !['_activity','updatedAt'].includes(key) && JSON.stringify(item[key]) !== JSON.stringify(previous[key])) : [];
+      item._activity = previous?._activity || item._activity || [];
+      appendWorkActivity(item, !previous ? 'Created' : item.status === 'Done' && previous.status !== 'Done' ? 'Completed' : 'Updated', fields);
+      if (previous) item.updatedAt = new Date().toISOString();
+    } else if (previous?.updatedAt && !item.updatedAt) item.updatedAt = previous.updatedAt;
+  });
 }
 function showBoardSaveFailure() {
   let notice = document.getElementById('boardSaveFailure');
@@ -1765,6 +1783,7 @@ function persistNestleMachines() {
 }
 
 function persistMarketVisits() {
+  recordWorkUpdateTimes(marketVisits.filter(visit => visit.type === "personal"), marketVisitStorageKey);
   localStorage.setItem(marketVisitStorageKey, JSON.stringify(marketVisits));
   scheduleCloudSave(marketVisitStorageKey);
 }
@@ -1775,6 +1794,20 @@ function getCloudClient() {
 
 function getCloudUser() {
   return window.foodBrokerBaseAuth?.getCurrentUser?.() || null;
+}
+
+function normalizeActivityHistory(history) {
+  return Array.isArray(history) ? history.filter(event => event && typeof event === 'object' && event.at).map(event => ({
+    id: String(event.id || ''), at: String(event.at), action: String(event.action || 'Updated'),
+    name: String(event.name || ''), email: String(event.email || ''), initials: String(event.initials || ''),
+    fields: Array.isArray(event.fields) ? event.fields.map(String) : []
+  })) : [];
+}
+
+function appendWorkActivity(record, action, fields = []) {
+  const editor = getCurrentEditorIdentity();
+  if (!editor) return;
+  record._activity = normalizeActivityHistory([...normalizeActivityHistory(record._activity), { ...editor, id: crypto.randomUUID(), action, fields, at: new Date().toISOString() }]);
 }
 
 function normalizeAuditRecord(audit) {
@@ -1810,10 +1843,11 @@ function getCurrentEditorIdentity() {
 function stampSharedRecord(record, action = "Updated") {
   const editor = getCurrentEditorIdentity();
   if (!record || !editor) return record;
+  appendWorkActivity(record, action);
   record._audit = {
     ...editor,
     action,
-    at: new Date().toISOString()
+    at: record._activity.at(-1).at
   };
   return record;
 }
@@ -6040,8 +6074,9 @@ function updateMarketVisit(id, patch) {
     if (next.type === "manufacturer" && Object.prototype.hasOwnProperty.call(patch, "calls")) {
       next.calls.forEach(call => {
         const previous = visit.calls.find(item => item.id === call.id);
-        const content = item => JSON.stringify(normalizeMarketCall(item), (key, value) => key.startsWith("_audit") || key === "_createdAudit" ? undefined : value);
+        const content = item => JSON.stringify(normalizeMarketCall(item), (key, value) => key.startsWith("_audit") || (key === "_createdAudit" || key === "_activity") ? undefined : value);
         if (previous && content(previous) === content(call)) return;
+        call._activity = previous?._activity || [];
         call._createdAudit = previous?._createdAudit || null;
         stampSharedRecord(call, previous ? "Updated" : "Created");
         if (!previous) call._createdAudit = call._audit;
