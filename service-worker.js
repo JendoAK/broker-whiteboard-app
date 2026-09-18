@@ -1,6 +1,6 @@
-const CACHE_NAME = "foodbrokerbase-manager1";
+const CACHE_NAME = "foodbrokerbase-managersettings1";
 const APP_SHELL = [
-  "./manager-overview.js?v=20260918-manager1",
+  "./manager-overview.js?v=20260918-managersettings1",
   "./manager-overview.css?v=20260918-manager1",
   "./todo-drag.js?v=20260917-todopointer1",
   "./copy-email.js?v=20260917-copyemail1",

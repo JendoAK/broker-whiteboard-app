@@ -73,9 +73,10 @@ const ManagerOverview = (() => {
     if(!allowed()) close();
   }
   function install() {
-    document.querySelectorAll('.market-nav-action').forEach(anchor=>{
-      if(anchor.parentElement.querySelector('.manager-overview-action')) return;
-      const button=node('button','Manager Overview','ghost-action nav-button manager-overview-action');button.type='button';button.hidden=true;button.onclick=open;anchor.after(button);
+    document.querySelectorAll('.settings-panel').forEach(panel=>{
+      if(panel.querySelector('.manager-overview-action')) return;
+      const button=node('button','Manager Overview','ghost-action manager-overview-action');button.type='button';button.hidden=true;
+      button.onclick=()=>{panel.closest('details')?.removeAttribute('open');open();};panel.append(button);
     });syncAccess();
   }
 
