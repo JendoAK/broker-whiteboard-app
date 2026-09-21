@@ -6,7 +6,7 @@ function formatVisitProductCodes(product) {
 
 function renderVisitProductPrintTable(products, mode = 'mf', includeNotes = false) {
   const choices = { mf: ['manufacturerNumber'], apn: ['apn'], supc: ['supc'], 'mf-apn': ['manufacturerNumber', 'apn'], 'mf-supc': ['manufacturerNumber', 'supc'], all: ['manufacturerNumber', 'apn', 'supc'] };
-  const keys = choices[mode] || choices.mf;
+  const keys = Array.isArray(mode) ? choices.all.filter(key => mode.includes(key)) : choices[mode] || choices.mf;
   const labels = { manufacturerNumber: 'MF#', apn: 'US Foods APN', supc: 'Sysco SUPC' };
   const columns = ['description', ...keys, 'packaging', 'storage', ...(includeNotes ? ['notes'] : [])];
   const headers = ['Product', ...keys.map(key => labels[key]), 'Packaging', 'Storage', ...(includeNotes ? ['Notes'] : [])];
