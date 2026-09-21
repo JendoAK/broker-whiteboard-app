@@ -174,6 +174,10 @@ function openVisitOperatorDialog(visitId, operatorId = "") {
   const body = dialog.querySelector("[data-visit-entry-body]");
   if (operator) {
     body.innerHTML = renderMarketOperator(visit, operator);
+    if (visit.type === "manufacturer") {
+      dialog.classList.add("vendor-operator-dialog");
+      body.querySelector(".market-operator-summary > span > strong")?.remove();
+    }
     const details = body.querySelector("details");
     details.open = true;
     details.querySelector("summary").addEventListener("click", event => event.preventDefault());

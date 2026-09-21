@@ -1,4 +1,4 @@
-const CACHE_NAME = "foodbrokerbase-operatorprint1";
+const CACHE_NAME = "foodbrokerbase-operatorlayout1";
 const APP_SHELL = [
   "./manager-overview.js?v=20260918-managersettings1",
   "./manager-overview.css?v=20260918-manager1",
@@ -21,7 +21,7 @@ const APP_SHELL = [
   "./people-contacts.js?v=20260915-contactrevert1",
   "./",
   "./index.html",
-  "./styles.css?v=20260918-specialorder1",
+  "./styles.css?v=20260921-operatorlayout1",
   "./market-events.js?v=20260915-contactrevert1",
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
@@ -31,7 +31,7 @@ const APP_SHELL = [
   "./market-operator-conversion.js?v=20260909-visitcolors1",
   "./testkitchen-layout.js?v=20260914-notesave1",
   "./vendor-visit-print.js?v=20260921-operatorprint1",
-  "./market-visit-layout.js?v=20260914-notesave1",
+  "./market-visit-layout.js?v=20260921-operatorlayout1",
   "./supabase-config.js",
   "./supabase-auth.js?v=20260909-initials1",
   "./manifest.webmanifest",

@@ -5627,6 +5627,22 @@ button:is([id^="add"], .market-add-action, [data-add-market-product], [data-add-
 .visit-product-choice small { font-weight: 500; text-transform: none; }
 .visit-entry-dialog .market-operator-summary { flex-wrap: wrap; }
 .visit-entry-dialog .market-operator-actions { flex-wrap: wrap; }
+.vendor-operator-dialog .form-header { align-items: center; margin-bottom: 8px; }
+.vendor-operator-dialog .form-header h2 { font-size: 1.8rem; font-weight: 900; line-height: 1.15; color: #2d1411; margin: 0; }
+.vendor-operator-dialog .market-operator-summary { padding: 8px 12px; gap: 6px; cursor: default; }
+.vendor-operator-dialog .market-operator-summary > span:first-child { flex-basis: 100%; }
+.vendor-operator-dialog .market-operator-summary .market-operator-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 6px; }
+.vendor-operator-dialog .market-operator-actions .edit-card { min-height: 34px; padding: 6px 10px; font-size: .85rem; width: auto; }
+.vendor-operator-dialog .market-operator-detail { padding: 10px; gap: 8px; }
+.vendor-operator-dialog .operator-product-note-row { grid-template-columns: auto minmax(0, 1.4fr) minmax(0, 1fr); padding: 8px; }
+.vendor-operator-dialog .operator-product-note-row strong { font-size: 1.08rem; font-weight: 900; line-height: 1.25; color: #241407; }
+.vendor-operator-dialog .operator-product-note-row span { font-size: .78rem; font-weight: 500; line-height: 1.35; color: #665c54; }
+.vendor-operator-dialog .operator-product-note-row textarea { min-height: 50px; }
+@media (max-width: 540px) {
+  .vendor-operator-dialog .form-header h2 { font-size: 1.5rem; }
+  .vendor-operator-dialog .operator-product-note-row { grid-template-columns: auto minmax(0, 1fr); }
+  .vendor-operator-dialog .operator-product-note-row textarea { grid-column: 2; }
+}
 @media (max-width: 760px) {
   .compact-visit-lists { grid-template-columns: 1fr; }
   .compact-visit-header { flex-direction: column; align-items: stretch; }
