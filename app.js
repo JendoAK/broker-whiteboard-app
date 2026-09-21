@@ -5486,6 +5486,7 @@ function renderMarketOperator(visit, operator) {
         </span>
         <span class="market-operator-actions">
           <button class="edit-card market-save-operator" type="button" data-save-market-operator="${escapeAttribute(operator.id)}">Save Operator</button>
+          ${visit.type === "manufacturer" ? `<button class="edit-card" type="button" data-print-operator-products="${escapeAttribute(operator.id)}">Print Product List</button>` : ""}
           <button class="edit-card market-convert-lead" type="button" data-convert-market-operator="${escapeAttribute(operator.id)}">Convert to Lead</button>
           <button class="edit-card" type="button" data-report-market-operator="${escapeAttribute(operator.id)}">Convert to Vendor Report</button>
           <button class="remove-product" type="button" data-remove-market-operator="${escapeAttribute(operator.id)}" data-remove-market-operator-id="${escapeAttribute(operator.operatorId || "")}" data-remove-market-operator-name="${escapeAttribute(operatorName)}">Remove</button>
@@ -5915,6 +5916,13 @@ function bindMarketDetailActions(panel, visit) {
       convertMarketOperatorToLead(visit, button.dataset.convertMarketOperator, panel);
     })
   );
+  panel.querySelectorAll("[data-print-operator-products]").forEach(button => {
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      printMarketOperatorProducts(visit.id, button.dataset.printOperatorProducts, panel);
+    });
+  });
   panel.querySelectorAll("[data-save-market-operator]").forEach((button) =>
     button.addEventListener("click", (event) => {
       event.preventDefault();

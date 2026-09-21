@@ -1,5 +1,32 @@
 "use strict";
 
+function printMarketOperatorProducts(visitId, operatorId, panel) {
+  const selection = readMarketOperatorConversion(visitId, operatorId, panel);
+  if (!selection || selection.visit.type !== "manufacturer") return;
+  if (!selection.products.length) {
+    alert("Check at least one product for this operator before printing.");
+    return;
+  }
+  openPrintWindow(renderOperatorProductPrint(selection));
+}
+
+function renderOperatorProductPrint({ visit, operator, products }) {
+  const operatorName = getMarketOperatorDisplayName(operator);
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(operatorName)} – Product list</title><style>
+    @page { size: letter landscape; margin: .4in; }
+    * { box-sizing: border-box; }
+    body { color: #241e18; font: 12px Arial, sans-serif; margin: 0; }
+    header { display: flex; align-items: center; gap: 24px; padding-bottom: 14px; margin-bottom: 18px; border-bottom: 2px solid #bfae99; }
+    header img { width: 155px; max-height: 65px; object-fit: contain; }
+    h1 { font-size: 24px; margin: 0 0 6px; } p { margin: 5px 0; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 1px solid #cfc1af; padding: 8px; text-align: left; overflow-wrap: anywhere; }
+    th { background: #f5e4c7; } th:first-child, td:first-child { width: 34%; }
+    thead { display: table-header-group; } tr { break-inside: avoid; }
+    @media screen { body { max-width: 1100px; margin: 24px auto; padding: 16px; } }
+  </style></head><body><header><img src="${escapeAttribute(getPrintAssetUrl(printBrandLogos.pierceCartwright))}" alt="Pierce Cartwright"><div><h1>${escapeHtml(operatorName)}</h1><p>Product list · ${products.length} selected</p><p>${escapeHtml(getMarketVisitDisplayName(visit))} · ${escapeHtml(formatDateRange(visit.startDate, visit.endDate))}</p></div></header>${renderVisitProductPrintTable(products, 'all')}</body></html>`;
+}
+
 function renderVendorVisitCalendarPrint(visit, sections) {
   const title = getMarketVisitDisplayName(visit);
   const logo = getEventPrintLogo(sections.logo);
