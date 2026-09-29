@@ -1,5 +1,5 @@
-const CACHE_NAME = "foodbrokerbase-foodshow2";
-const APP_SHELL = ["./foodshow-layout.js?v=20260929-foodshow2", "./foodshow-layout.css?v=20260929-foodshow2",
+const CACHE_NAME = "foodbrokerbase-foodshow3";
+const APP_SHELL = ["./foodshow-layout.js?v=20260929-foodshow3", "./foodshow-layout.css?v=20260929-foodshow3",
   "./manager-overview.js?v=20260918-managersettings1",
   "./manager-overview.css?v=20260918-manager1",
   "./todo-drag.js?v=20260917-todopointer1",
@@ -22,11 +22,11 @@ const APP_SHELL = ["./foodshow-layout.js?v=20260929-foodshow2", "./foodshow-layo
   "./",
   "./index.html",
   "./styles.css?v=20260921-operatoroptions1",
-  "./market-events.js?v=20260929-foodshow2",
+  "./market-events.js?v=20260929-foodshow3",
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
   "./market-call-editor.js?v=20260918-callaudit1",
-  "./team-work-view.js?v=20260918-manager1", "./app.js?v=20260929-foodshow2",
+  "./team-work-view.js?v=20260918-manager1", "./app.js?v=20260929-foodshow3",
   "./market-week-calendar.js?v=20260918-callaudit1",
   "./market-operator-conversion.js?v=20260909-visitcolors1",
   "./testkitchen-layout.js?v=20260914-notesave1",

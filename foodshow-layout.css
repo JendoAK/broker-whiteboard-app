@@ -63,3 +63,8 @@
 .foodshow-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .foodshow-toolbar { margin: 12px 0; }
 .foodshow-section-heading { margin: 12px 0 8px; }
+.foodshow-hero { padding: 18px 22px; }
+.foodshow-hero h2 { font-size: 32px; margin: 0 0 8px; }
+.foodshow-hero p { margin: 5px 0 0; }
+.foodshow-save-status:empty { display: none; }
+@media(max-width:600px) { .foodshow-hero h2 { font-size: 27px; } }
