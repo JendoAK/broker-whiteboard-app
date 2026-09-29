@@ -81,3 +81,11 @@
 .foodshow-save-status,.foodshow-interests span { font-size: 14px; }
 .foodshow-workspace :is(button,summary),.foodshow-form :is(label,input,select,textarea,button) { font-size: 15px; }
 .foodshow-conversation h4 { font-size: 20px; }
+.foodshow-table .show-col-product { width: 24%; }
+.foodshow-table .show-col-prep { width: 14%; }
+.foodshow-table .show-col-recipe { width: 16%; }
+.foodshow-table .show-col-equipment { width: 14%; }
+.foodshow-table .show-col-notes { width: 19%; }
+.foodshow-table .show-col-status { width: 9%; }
+.foodshow-status-cell label { display: flex; align-items: center; gap: 6px; white-space: nowrap; margin: 3px 0 7px; font-size: 13px; }
+.foodshow-table .foodshow-status-cell input { width: 17px; height: 17px; min-height: 0; padding: 0; margin: 0; accent-color: #246d69; flex-shrink: 0; }

@@ -2016,6 +2016,8 @@ function writeCloudSectionsToLocalStorage(sectionKeys = cloudSectionConfigs.map(
 }
 
 function renderAfterCloudSync() {
+  if (isAppEditing()) { appRefreshPending = true; return; }
+  const appScroll = captureAppScroll();
   correctThaiCurryVendor();
   applyContactNameCorrections();
   updateSalesRepSuggestions();
@@ -2030,6 +2032,7 @@ function renderAfterCloudSync() {
   renderMarketVisits();
   renderCalendar();
   updateTimelineSearchSuggestions();
+  restoreAppScroll(appScroll);
 }
 
 function scheduleCloudSave(sectionKey) {
@@ -2153,7 +2156,7 @@ function getCloudRowFingerprint(rows = []) {
 }
 
 async function refreshCloudSectionsIfChanged(options = {}) {
-  if (isFoodshowFieldEditing()) return false;
+  if (isAppEditing()) return false;
   if (!getCloudClient() || !getCloudUser() || cloudSyncLoading || cloudRefreshChecking) return false;
   if (!cloudSyncReady && !options.force) return false;
   cloudRefreshChecking = true;
@@ -2227,7 +2230,7 @@ async function downloadChangedCloudRows(client, user, summary, cache) {
 }
 
 async function loadCloudSections(options = {}) {
-  if (isFoodshowFieldEditing()) return false;
+  if (isAppEditing()) return false;
   const client = getCloudClient();
   const user = getCloudUser();
   if (!client || !user || cloudSyncLoading) return false;
@@ -2246,7 +2249,7 @@ async function loadCloudSections(options = {}) {
     const summary = options.summary || await fetchCloudRowSummary();
     const rows = await downloadChangedCloudRows(client, user, summary, cloudRowCache);
     // A user may start typing while the network request is in flight.
-    if (isFoodshowFieldEditing()) { cloudSyncReady = true; return false; }
+    if (isAppEditing()) { cloudSyncReady = true; return false; }
     const personalRows = rows.filter(row => row.scope === "personal");
     const teamRows = rows.filter(row => row.scope === "team");
     if (rows.length) {
@@ -2357,6 +2360,7 @@ function setCloudSyncButtonsBusy(isBusy) {
 }
 
 async function mergeCloudDataIntoThisBrowser() {
+  if (isAppEditing()) return false;
   const client = getCloudClient();
   const user = getCloudUser();
   if (!client || !user) return false;
@@ -2374,6 +2378,7 @@ async function mergeCloudDataIntoThisBrowser() {
     .eq("record_type", teamCloudRecordType);
   if (teamError) throw teamError;
 
+  if (isAppEditing()) return false;
   const personalRows = new Map((personalData || []).map((row) => [row.record_key, row]));
   const teamRows = new Map((teamData || []).map((row) => [row.record_key, row]));
   const mergedKeys = [];
