@@ -36,3 +36,30 @@
 .foodshow-interest-picker h4 { margin: 12px 0 3px; color: #246d69; }
 @media(max-width:600px) { .foodshow-hero { padding: 16px; } .foodshow-hero h2 { font-size: 23px; } .foodshow-product-grid { padding: 9px; } .foodshow-section-heading { align-items: flex-start; } }
 @media(max-width:600px) { .foodshow-hero { flex-direction: column; } .foodshow-hero > div { width: 100%; } .foodshow-hero .market-section-actions { justify-content: flex-start; } }
+/* Compact, directly editable lineup for large shows. */
+.foodshow-table-scroll { overflow: auto; max-height: 65vh; border: 1px solid #c9d9d1; border-radius: 8px; }
+.foodshow-table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 990px; table-layout: fixed; font-size: 12px; }
+.foodshow-table .show-col-product { width: 27%; }
+.foodshow-table .show-col-prep { width: 15%; }
+.foodshow-table .show-col-recipe { width: 18%; }
+.foodshow-table .show-col-equipment { width: 16%; }
+.foodshow-table .show-col-notes { width: 20%; }
+.foodshow-table .show-col-remove { width: 4%; }
+.foodshow-table thead th { position: sticky; top: 0; z-index: 2; background: #e4eee8; color: #244d49; padding: 9px 8px; text-align: left; border-bottom: 1px solid #b8ccc1; }
+.foodshow-table td,.foodshow-table th[scope=row] { padding: 7px 8px; vertical-align: top; border-bottom: 1px solid #dce3dc; text-align: left; background: #fffdfa; }
+.foodshow-table tr:nth-child(odd) td,.foodshow-table tr:nth-child(odd) th[scope=row] { background: #f6f8f3; }
+.foodshow-table .foodshow-vendor-row th { background: #246d69; color: white; padding: 7px 10px; font-size: 13px; text-align: left; }
+.foodshow-vendor-row span { font-size: 11px; font-weight: normal; margin-left: 12px; }
+.foodshow-table th[scope=row] strong { display: block; font-size: 13px; line-height: 1.4; }
+.foodshow-table th[scope=row] small { display: block; color: #626b65; font-size: 10px; font-weight: normal; margin-top: 3px; }
+.foodshow-table .foodshow-new { color: #856123 !important; }
+.foodshow-table input,.foodshow-table select,.foodshow-table textarea { width: 100%; box-sizing: border-box; padding: 7px; font: inherit; border: 1px solid #d4dcd2; border-radius: 4px; background: #fff; min-height: 32px; margin: 0; }
+.foodshow-table textarea { resize: vertical; min-height: 48px; }
+.foodshow-table :is(input,select,textarea):focus { outline: 2px solid #35857b; outline-offset: 1px; }
+.foodshow-table a { display: inline-block; margin-top: 4px; color: #246d69; }
+.foodshow-table a[hidden] { display: none; }
+.foodshow-table .remove-product { min-width: 28px; }
+.foodshow-save-status { font-size: 11px; color: #52665d; margin: 5px 0 8px; }
+.foodshow-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.foodshow-toolbar { margin: 12px 0; }
+.foodshow-section-heading { margin: 12px 0 8px; }
