@@ -11,7 +11,7 @@ function foodshowPrepText(visit, product) {
 function renderFoodshow(panel, visit) {
   const products = getMarketVisitProducts(visit);
   const groups = groupVisitProducts(products);
-  panel.innerHTML = `<div class="foodshow-workspace">
+  panel.innerHTML = `<div class="foodshow-workspace" data-foodshow-visit="${escapeAttribute(visit.id)}">
     <header class="foodshow-hero market-detail-header"><div><h2>${escapeHtml(visit.name)}</h2><p>${escapeHtml([formatDateRange(visit.startDate, visit.endDate), [visit.startTime, visit.endTime].filter(Boolean).join(" – "), visit.location].filter(Boolean).join(' · '))}</p>${visit.foodshowAudience ? `<p>${escapeHtml(visit.foodshowAudience)}</p>` : ''}</div><div class="market-section-actions">${renderPersonalVisitCalendarButton(visit)}<button class="edit-card" data-event-edit type="button">Edit event</button><button class="edit-card" type="button" data-foodshow-details>Edit audience</button><button class="edit-card" data-detail-print type="button">Print event</button><button class="edit-card" data-detail-close type="button">Back to events</button></div></header>
     <section class="foodshow-products"><div class="foodshow-section-heading"><div><h3>Products</h3></div><div class="market-section-actions"><button class="primary-action" type="button" data-foodshow-products>+ Add products</button><button class="edit-card" type="button" data-market-print-products>Print product list</button></div></div>
     <p class="foodshow-save-status" role="status" data-foodshow-save-status></p>
@@ -27,17 +27,29 @@ function renderFoodshow(panel, visit) {
   panel.querySelector('[data-foodshow-details]').onclick = () => openFoodshowDetails(visit.id);
   panel.querySelector('[data-foodshow-new-conversation]').onclick = () => openFoodshowConversation(visit.id);
   panel.querySelectorAll('[data-foodshow-field]').forEach(input => {
-    input.addEventListener('input', () => { panel.querySelector('[data-foodshow-save-status]').textContent = 'Editing… leave this cell to save.'; });
-    input.addEventListener('change', () => {
+    let timer;
+    const save = () => {
+      clearTimeout(timer);
       const current = marketVisits.find(item => item.id === visit.id);
       if (!current) return;
       const productId = input.closest('[data-foodshow-product]').dataset.foodshowProduct;
-      current.productNotes = {...current.productNotes, [productId]: {...current.productNotes?.[productId], [input.dataset.foodshowField]: input.value}};
+      const field = input.dataset.foodshowField;
+      if ((current.productNotes?.[productId]?.[field] || '') === input.value) return;
+      current.productNotes = {...current.productNotes, [productId]: {...current.productNotes?.[productId], [field]: input.value}};
       current.updatedAt = new Date().toISOString();
       stampSharedRecord(current, 'Updated');
       persistMarketVisits();
       panel.querySelector('[data-foodshow-save-status]').textContent = 'Saved';
-      if (input.dataset.foodshowField === 'recipe') updateFoodshowRecipeLink(input);
+      if (field === 'recipe') updateFoodshowRecipeLink(input);
+    };
+    input.addEventListener('input', () => {
+      panel.querySelector('[data-foodshow-save-status]').textContent = 'Saving…';
+      clearTimeout(timer); timer = setTimeout(save, 400);
+    });
+    input.addEventListener('change', save);
+    input.addEventListener('blur', () => {
+      save();
+      setTimeout(() => { if (!isFoodshowFieldEditing()) refreshCloudSectionsIfChanged(); }, 1000);
     });
   });
   panel.querySelectorAll('[data-foodshow-lead]').forEach(button => button.onclick = () => openFoodshowLead(visit.id, button.dataset.foodshowLead));
@@ -187,4 +199,27 @@ function openFoodshowLead(visitId, conversationId) {
     const previous = cards;cards=[lead,...cards];if(!persist()){cards=previous;return false;}
     showLeadsWorkflow();openForm(lead);
   });
+}
+
+function isFoodshowFieldEditing() {
+  const field = document.activeElement;
+  const workspace = field?.closest?.('[data-foodshow-visit]');
+  return Boolean(field?.matches?.('[data-foodshow-field]') && workspace?.dataset.foodshowVisit === activeMarketDetailId && activeMarketType === 'foodshow' && activeMarketView === 'list');
+}
+function captureFoodshowScroll() {
+  const workspace = document.querySelector('[data-foodshow-visit]');
+  if (!workspace || workspace.dataset.foodshowVisit !== activeMarketDetailId) return null;
+  const table = workspace.querySelector('.foodshow-table-scroll');
+  const ancestors = [];
+  for (let element = workspace.parentElement; element; element = element.parentElement) {
+    if (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth) ancestors.push({element,top:element.scrollTop,left:element.scrollLeft});
+  }
+  return {visitId:activeMarketDetailId,top:table.scrollTop,left:table.scrollLeft,ancestors};
+}
+function restoreFoodshowScroll(saved) {
+  const workspace = document.querySelector('[data-foodshow-visit]');
+  if (!saved || workspace?.dataset.foodshowVisit !== saved.visitId) return;
+  const table = workspace.querySelector('.foodshow-table-scroll');
+  table.scrollTop=saved.top; table.scrollLeft=saved.left;
+  saved.ancestors.forEach(({element,top,left}) => { if (element.isConnected) { element.scrollTop=top; element.scrollLeft=left; } });
 }

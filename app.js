@@ -2153,6 +2153,7 @@ function getCloudRowFingerprint(rows = []) {
 }
 
 async function refreshCloudSectionsIfChanged(options = {}) {
+  if (isFoodshowFieldEditing()) return false;
   if (!getCloudClient() || !getCloudUser() || cloudSyncLoading || cloudRefreshChecking) return false;
   if (!cloudSyncReady && !options.force) return false;
   cloudRefreshChecking = true;
@@ -2226,6 +2227,7 @@ async function downloadChangedCloudRows(client, user, summary, cache) {
 }
 
 async function loadCloudSections(options = {}) {
+  if (isFoodshowFieldEditing()) return false;
   const client = getCloudClient();
   const user = getCloudUser();
   if (!client || !user || cloudSyncLoading) return false;
@@ -2243,6 +2245,8 @@ async function loadCloudSections(options = {}) {
     await correctPeteTeamRecords().catch(() => { peteCorrectionUser = ""; });
     const summary = options.summary || await fetchCloudRowSummary();
     const rows = await downloadChangedCloudRows(client, user, summary, cloudRowCache);
+    // A user may start typing while the network request is in flight.
+    if (isFoodshowFieldEditing()) { cloudSyncReady = true; return false; }
     const personalRows = rows.filter(row => row.scope === "personal");
     const teamRows = rows.filter(row => row.scope === "team");
     if (rows.length) {
@@ -5313,6 +5317,8 @@ function updateMarketVisitControls() {
 }
 
 function renderMarketVisits() {
+  if (isFoodshowFieldEditing()) return;
+  const foodshowScroll = captureFoodshowScroll();
   updateMarketVisitControls();
   document.querySelectorAll("[data-market-type]").forEach((button) => button.classList.toggle("active-market-subtab", button.dataset.marketType === activeMarketType));
   document.querySelectorAll("[data-market-view]").forEach((button) => button.classList.toggle("active-market-view", button.dataset.marketView === activeMarketView));
@@ -5387,6 +5393,7 @@ function renderMarketVisits() {
     if (visit) renderMarketVisitDetail(visit);
   }
   bindPersonalVisitCalendarButtons(elements.marketContent);
+  restoreFoodshowScroll(foodshowScroll);
 }
 
 function openMarketVisitDetail(id, shouldScroll = true) {
