@@ -1,0 +1,38 @@
+.foodshow-workspace { --show-teal: #246d69; --show-ink: #293b3a; color: var(--show-ink); }
+.foodshow-hero { padding: 24px; border-radius: 16px; background: linear-gradient(115deg,#f9dfb1 0%,#faede0 55%,#d8ebe3 100%); border: 1px solid #dacba9; align-items: flex-start; gap: 20px; }
+.foodshow-hero h2 { font-size: 28px; margin: 6px 0; }
+.foodshow-hero .eyebrow { color: #68532a; }
+.foodshow-toolbar,.foodshow-section-heading,.foodshow-product-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.foodshow-toolbar { margin: 16px 0 28px; }
+.foodshow-stats { display: flex; gap: 10px; flex-wrap: wrap; }
+.foodshow-stats span { border-radius: 24px; background: #e5efea; padding: 8px 16px; }
+.foodshow-section-heading { margin: 18px 0; }
+.foodshow-section-heading h3 { margin: 3px 0; font-size: 23px; }
+.foodshow-section-heading p { margin: 5px 0; }
+.foodshow-vendor { border: 1px solid #c9d9d1; border-radius: 14px; overflow: hidden; margin: 18px 0; background: #f6f9f5; }
+.foodshow-vendor > h4 { background: var(--show-teal); color: white; margin: 0; padding: 13px 18px; font-size: 17px; display: flex; justify-content: space-between; gap: 10px; }
+.foodshow-vendor > h4 span { font-size: 12px; font-weight: normal; align-self: center; }
+.foodshow-product-grid,.foodshow-conversation-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,320px),1fr)); gap: 14px; }
+.foodshow-product-grid { padding: 15px; }
+.foodshow-product,.foodshow-conversation { background: #fffdfa; border: 1px solid #ded9ce; border-radius: 12px; padding: 17px; min-width: 0; overflow-wrap: anywhere; }
+.foodshow-product h5 { font-size: 17px; margin: 13px 0 8px; }
+.foodshow-product-meta { color: #626b65; font-size: 12px; }
+.foodshow-badge { font-size: 11px; font-weight: 700; background: #fae5b6; padding: 5px 9px; border-radius: 20px; }
+.foodshow-prep { background: #eef3ed; padding: 12px; border-radius: 8px; margin: 14px 0; font-size: 13px; }
+.foodshow-prep p,.foodshow-prose { white-space: pre-wrap; }
+.foodshow-prep p:last-child { margin-bottom: 0; }
+.foodshow-conversations { border-top: 2px solid #e5d5b8; margin-top: 30px; padding-top: 10px; }
+.foodshow-conversation { border-top: 5px solid #dc9a79; }
+.foodshow-conversation h4 { font-size: 18px; margin: 0; }
+.foodshow-interests { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0; }
+.foodshow-interests span { background: #e5efea; border-radius: 8px; padding: 6px 9px; font-size: 12px; }
+.foodshow-empty { padding: 24px; border: 1px dashed #bdcdc0; border-radius: 12px; background: #f5f7f0; }
+.foodshow-form { display: grid; gap: 16px; }
+.foodshow-form label { display: grid; gap: 6px; }
+.foodshow-form input:not([type=checkbox]),.foodshow-form select,.foodshow-form textarea { width: 100%; box-sizing: border-box; }
+.foodshow-interest-picker { border: 1px solid #c9d9d1; border-radius: 10px; max-height: 300px; overflow: auto; }
+.foodshow-interest-picker label { display: flex; align-items: center; padding: 7px 0; }
+.foodshow-interest-picker input { width: auto; }
+.foodshow-interest-picker h4 { margin: 12px 0 3px; color: #246d69; }
+@media(max-width:600px) { .foodshow-hero { padding: 16px; } .foodshow-hero h2 { font-size: 23px; } .foodshow-product-grid { padding: 9px; } .foodshow-section-heading { align-items: flex-start; } }
+@media(max-width:600px) { .foodshow-hero { flex-direction: column; } .foodshow-hero > div { width: 100%; } .foodshow-hero .market-section-actions { justify-content: flex-start; } }

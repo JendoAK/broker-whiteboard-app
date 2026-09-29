@@ -97,6 +97,7 @@ function renderEventProductEditor(id) {
 }
 
 function renderMarketEventDetail(panel, visit) {
+  if (visit.type === "foodshow") { renderFoodshow(panel, visit); return; }
   if (visit.type === "testkitchen") { renderCompactTestkitchen(panel, visit); return; }
   const operators = getMarketVisitOperators(visit);
   panel.innerHTML = `<div class="market-detail-header"><div><p class="eyebrow">${escapeHtml(marketVisitTypes[visit.type])} · Shared with team</p><h2>${escapeHtml(visit.name)}</h2><p>${escapeHtml([formatDateRange(visit.startDate, visit.endDate), [visit.startTime, visit.endTime].filter(Boolean).join(" – "), visit.location].filter(Boolean).join(" | "))}</p>${renderAuditStamp(visit)}</div>
@@ -212,12 +213,12 @@ function bindMarketEventActions(panel, visit) {
 
 function renderMarketEventPrintDocument(visit, sections) {
   const products = getMarketVisitProducts(visit);
-  const productTable = list => renderVisitProductPrintTable(visit.type === "testkitchen" ? list.map(product => ({...product, notes: visit.productNotes?.[product.id]?.note || ""})) : list, sections.codeMode, visit.type === "testkitchen" ? Boolean(sections.productNotes) : true);
+  const productTable = list => renderVisitProductPrintTable(visit.type === "foodshow" ? list.map(product => ({...product, notes: [product.notes, foodshowPrepText(visit, product)].filter(Boolean).join("\n")})) : visit.type === "testkitchen" ? list.map(product => ({...product, notes: visit.productNotes?.[product.id]?.note || ""})) : list, sections.codeMode, visit.type === "testkitchen" ? Boolean(sections.productNotes) : true);
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(visit.name)} — Product list</title><style>${renderPrintBrandStyles()}@page { size: landscape; margin: .4in; } body { font: 12px Arial,sans-serif; color: #211d18; } table { width: 100%; border-collapse: collapse; margin-bottom: 18px; } th,td { border: 1px solid #ccc; padding: 7px; text-align: left; overflow-wrap: anywhere; } th { background: #f5e3df; } tr { break-inside: avoid; } thead { display: table-header-group; } p,td { white-space: pre-wrap; } h2 { font-size: 17px; }</style></head><body>
-    ${renderPrintBrandHeader({ title: visit.name, distributorLogo: sections.logo || "none", lines: [marketVisitTypes[visit.type], formatDateRange(visit.startDate, visit.endDate), [visit.startTime, visit.endTime].filter(Boolean).join(" – "), visit.location].filter(Boolean) })}
+    ${renderPrintBrandHeader({ title: visit.name, distributorLogo: sections.logo || "none", lines: [visit.type === "foodshow" ? [visit.foodshowFormat, visit.foodshowAudience].filter(Boolean).join(" · ") : marketVisitTypes[visit.type], formatDateRange(visit.startDate, visit.endDate), [visit.startTime, visit.endTime].filter(Boolean).join(" – "), visit.location].filter(Boolean) })}
     ${sections.products ? `<h2>Products by vendor</h2>${productTable(products)}` : ""}
     ${sections.schedule ? `<h2>Attendees & organizations</h2><table><thead><tr><th>Name</th><th>Organization</th><th>Type / role</th><th>Contact</th></tr></thead><tbody>${visit.attendees.map((person) => `<tr>${[person.name, person.organization, [person.category, person.role].filter(Boolean).join(" · "), person.contact].map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`).join("") || '<tr><td colspan="4">No attendees listed.</td></tr>'}</tbody></table><h2>Notes & leads</h2><p>${escapeHtml(visit.notes)}</p>${getMarketVisitOperators(visit).map((operator) => `<h3>${escapeHtml(getMarketOperatorDisplayName(operator))}</h3><p>${escapeHtml(operator.notes)}</p>${products.filter((product) => operator.productIds.includes(product.id)).map((product) => `<p>${escapeHtml(product.description)}${operator.productNotes?.[product.id]?.note ? `: ${escapeHtml(operator.productNotes[product.id].note)}` : ""}</p>`).join("")}`).join("")}` : ""}
-    </body></html>`;
+    ${visit.type === "foodshow" && sections.schedule ? renderFoodshowConversationPrint(visit) : ""}</body></html>`;
 }
 
 document.addEventListener('focusin', event => {

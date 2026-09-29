@@ -1306,6 +1306,9 @@ function normalizeMarketVisit(visit) {
     newProductIds: Array.isArray(visit.newProductIds) ? visit.newProductIds : [],
     attendees: Array.isArray(visit.attendees) ? visit.attendees.map(normalizeEventAttendee) : [],
     productNotes: visit.productNotes || {},
+    foodshowFormat: String(visit.foodshowFormat || "Foodshow"),
+    foodshowAudience: String(visit.foodshowAudience || ""),
+    conversations: Array.isArray(visit.conversations) ? visit.conversations.map(normalizeFoodshowConversation) : [],
     operatorLinks: Array.isArray(visit.operatorLinks) ? visit.operatorLinks.map(normalizeMarketOperatorLink) : [],
     calls: Array.isArray(visit.calls) ? visit.calls.map(normalizeMarketCall) : [],
     archivedAt: visit.archivedAt || "",
@@ -6571,7 +6574,7 @@ function createMarketFollowUp(visit) {
 function openMarketPrintOptions(id, productsOnly = false, defaults = {}) {
   const visit = marketVisits.find((item) => item.id === id);
   if (!visit) return;
-  document.querySelector("#marketPrintScheduleLabel").textContent = isMarketEvent(visit) ? "Attendees, notes & leads" : "Schedule";
+  document.querySelector("#marketPrintScheduleLabel").textContent = visit.type === "foodshow" ? "Conversations, notes & leads" : isMarketEvent(visit) ? "Attendees, notes & leads" : "Schedule";
   elements.marketPrintVisitId.value = id;
   elements.marketPrintSchedule.checked = defaults.schedule ?? !productsOnly;
   document.querySelector("#marketPrintLogo").value = "none";
