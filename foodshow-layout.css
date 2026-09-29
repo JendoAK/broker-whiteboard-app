@@ -68,3 +68,16 @@
 .foodshow-hero p { margin: 5px 0 0; }
 .foodshow-save-status:empty { display: none; }
 @media(max-width:600px) { .foodshow-hero h2 { font-size: 27px; } }
+/* Readable type without returning to tall product cards. */
+.foodshow-workspace { font-size: 16px; }
+.foodshow-hero p { font-size: 17px; }
+.foodshow-table { font-size: 15px; min-width: 1150px; }
+.foodshow-table th[scope=row] strong { font-size: 16px; }
+.foodshow-table th[scope=row] small { font-size: 13px; line-height: 1.4; }
+.foodshow-table .foodshow-vendor-row th { font-size: 16px; }
+.foodshow-vendor-row span { font-size: 14px; }
+.foodshow-table input,.foodshow-table select,.foodshow-table textarea { font-size: 15px; }
+.foodshow-table textarea { min-height: 56px; }
+.foodshow-save-status,.foodshow-interests span { font-size: 14px; }
+.foodshow-workspace :is(button,summary),.foodshow-form :is(label,input,select,textarea,button) { font-size: 15px; }
+.foodshow-conversation h4 { font-size: 20px; }
