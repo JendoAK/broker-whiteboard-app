@@ -152,16 +152,20 @@
 #show-planner-demo .sp-direction {text-align:center;font-size:15px;font-weight:600;margin:7px 0;}
 #show-planner-demo .sp-print-pages {display:none;}
 @media print {
- @page {size:letter portrait;margin:0.5in;}
+ @page {size:letter landscape;margin:0.35in;}
  #show-planner-demo {color-scheme:light;padding:0;border:0;border-radius:0;background:white;color:black;print-color-adjust:exact;-webkit-print-color-adjust:exact;}
  #show-planner-demo > :not(.sp-print-pages) {display:none !important;}
  #show-planner-demo > .sp-print-pages {display:block !important;}
  #show-planner-demo .sp-print-page {break-after:page;}
  #show-planner-demo .sp-print-page:last-child {break-after:auto;}
- #show-planner-demo .sp-print-page h2 {margin-bottom:8px;}
- #show-planner-demo .sp-print-page .sp-table {width:100%;break-inside:avoid;}
+ #show-planner-demo .sp-print-page > p {margin:0 0 4px;font-size:12px;}
+ #show-planner-demo .sp-print-page h2 {margin:0 0 5px;font-size:22px;}
+ #show-planner-demo .sp-print-page .sp-table {width:min(100%,var(--print-table-width));margin:0 auto;break-inside:avoid;}
  #show-planner-demo .sp-print-page .sp-number {display:inline !important;font-size:12px;}
- #show-planner-demo .sp-print-page .sp-name,#show-planner-demo .sp-print-page .sp-product {display:none !important;}
+ #show-planner-demo .sp-print-page .sp-name,#show-planner-demo .sp-print-page .sp-product {display:block !important;font-size:12px;line-height:1.2;max-width:100%;background:#fffffff2;color:#172c27;padding:2px 3px;border-radius:3px;}
+ #show-planner-demo .sp-print-page .sp-name {font-weight:700;}
+ #show-planner-demo .sp-print-page .sp-product:empty {display:none !important;}
+ #show-planner-demo .sp-print-page .sp-number {position:absolute;top:2px;left:3px;font-size:9px;}
  #show-planner-demo .sp-print-key {padding-left:24px;columns:2;column-gap:24px;font-size:12px;}
  #show-planner-demo .sp-print-key li {break-inside:avoid;margin:5px 0;}
  #show-planner-demo .sp-packing {border:0;margin:0;padding:0;}
@@ -185,7 +189,7 @@
  #show-planner-demo .sp-equipment .sp-product {font-size:13px;}
 }
 @media(max-width:600px){#show-planner-demo #sp-products{grid-template-columns:1fr;}#show-planner-demo .sp-equipment-options{grid-template-columns:repeat(2,minmax(0,1fr));}}
-@media print {#show-planner-demo .sp-print-key{font-size:14px;}#show-planner-demo .sp-packing table{font-size:15px;}}
+@media print {#show-planner-demo .sp-print-key{font-size:11px;}#show-planner-demo .sp-packing table{font-size:15px;}}
 @media screen {
  #show-planner-demo {color-scheme:light;--line:#a8beb5;--soft:#e8f1ec;--paper:#fffefb;background:#f5f8f5;}
  #show-planner-demo .sp-top {background:#dcece5;border:1px solid #a6bfb3;border-left:5px solid #347566;border-radius:9px;padding:14px;}
@@ -536,7 +540,7 @@
  };
  function preparePrint(){
   packingList();
-  root.querySelector('.sp-print-pages').innerHTML=state.tables.map(t=>'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>'+esc(t.name)+'</h2><div>'+esc(tableVendors(t).filter(Boolean).join(' · '))+' · '+t.w+' × '+t.h+' in</div><div class="sp-direction">Customers</div><div class="sp-table" style="aspect-ratio:'+t.w+'/'+t.h+'">'+tableVendors(t).map((v,n)=>'<div class="sp-zone" style="left:'+n*100/vendorCount(t)+'%;width:'+100/vendorCount(t)+'%;background:var(--zone'+(n%2+1)+')"></div>').join('')+t.items.map((i,n)=>'<div class="sp-equipment '+def(i).shape+'" style="left:'+i.x/t.w*100+'%;top:'+i.y/t.h*100+'%;width:'+i.w/t.w*100+'%;height:'+i.h/t.h*100+'%">'+equipmentArt(i)+'<span class="sp-number">'+(n+1)+'</span></div>').join('')+'</div><div class="sp-zone-labels">'+tableVendors(t).map(v=>'<span style="width:'+100/vendorCount(t)+'%">'+esc(v||'Vendor')+'</span>').join('')+'</div><div class="sp-direction">Sales team</div><ol class="sp-print-key">'+t.items.map(i=>'<li>'+esc(i.label||shortLabel(def(i)))+(i.product?' — '+esc(i.product):'')+' · '+esc(i.owner===4?'Shared supplies':t.vendors[i.owner]||'Vendor')+'</li>').join('')+'</ol></section>').join('')+'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>Packing list · all tables</h2><div class="sp-packing"><table><thead><tr><th>Equipment</th><th>Quantity</th></tr></thead><tbody>'+$('sp-packing-rows').innerHTML+'</tbody></table></div></section>';
+  root.querySelector('.sp-print-pages').innerHTML=state.tables.map(t=>'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>'+esc(t.name)+'</h2><div>'+esc(tableVendors(t).filter(Boolean).join(' · '))+' · '+t.w+' × '+t.h+' in</div><div class="sp-direction">Customers</div><div class="sp-table" style="--print-table-width:'+(4.4*t.w/t.h)+'in;aspect-ratio:'+t.w+'/'+t.h+'">'+tableVendors(t).map((v,n)=>'<div class="sp-zone" style="left:'+n*100/vendorCount(t)+'%;width:'+100/vendorCount(t)+'%;background:var(--zone'+(n%2+1)+')"></div>').join('')+t.items.map((i,n)=>'<div class="sp-equipment '+def(i).shape+'" style="left:'+i.x/t.w*100+'%;top:'+i.y/t.h*100+'%;width:'+i.w/t.w*100+'%;height:'+i.h/t.h*100+'%">'+equipmentArt(i)+'<span class="sp-number">'+(n+1)+'</span><span class="sp-name">'+esc(i.label||shortLabel(def(i)))+'</span><span class="sp-product">'+assignedProducts(i).map(p=>'<span class="sp-product-name">'+esc(p.label)+'</span>').join('')+'</span></div>').join('')+'</div><div class="sp-zone-labels">'+tableVendors(t).map(v=>'<span style="width:'+100/vendorCount(t)+'%">'+esc(v||'Vendor')+'</span>').join('')+'</div><div class="sp-direction">Sales team</div><ol class="sp-print-key">'+t.items.map(i=>'<li>'+esc(i.label||shortLabel(def(i)))+(i.product?' — '+esc(i.product):'')+' · '+esc(i.owner===4?'Shared supplies':t.vendors[i.owner]||'Vendor')+'</li>').join('')+'</ol></section>').join('')+'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>Packing list · all tables</h2><div class="sp-packing"><table><thead><tr><th>Equipment</th><th>Quantity</th></tr></thead><tbody>'+$('sp-packing-rows').innerHTML+'</tbody></table></div></section>';
  }
  $('sp-print').onclick=()=>{preparePrint();window.print();};
  window.addEventListener('beforeprint',preparePrint);
