@@ -4,6 +4,7 @@ const appDraftForms = new Set();
 let appRefreshPending = false;
 let appRefreshResumeTimer;
 function isAppEditing() {
+  if (document.querySelector(".event-table-planner-dialog[open]")) return true;
   const active = document.activeElement;
   if (active && !active.disabled && !active.readOnly && (active.isContentEditable || active.matches('textarea,select,input:not([type=button]):not([type=submit]):not([type=reset]):not([type=hidden])'))) return true;
   for (const form of appDraftForms) {
@@ -53,3 +54,4 @@ function restoreAppScroll(saved) {
     if (element) { element.scrollTop=item.top; element.scrollLeft=item.left; }
   });
 }
+

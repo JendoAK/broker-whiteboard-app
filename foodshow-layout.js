@@ -12,7 +12,7 @@ function renderFoodshow(panel, visit) {
   const products = getMarketVisitProducts(visit);
   const groups = groupVisitProducts(products);
   panel.innerHTML = `<div class="foodshow-workspace" data-foodshow-visit="${escapeAttribute(visit.id)}">
-    <header class="foodshow-hero market-detail-header"><div><h2>${escapeHtml(visit.name)}</h2><p>${escapeHtml([formatDateRange(visit.startDate, visit.endDate), [visit.startTime, visit.endTime].filter(Boolean).join(" – "), visit.location].filter(Boolean).join(' · '))}</p>${visit.foodshowAudience ? `<p>${escapeHtml(visit.foodshowAudience)}</p>` : ''}</div><div class="market-section-actions">${renderPersonalVisitCalendarButton(visit)}<button class="edit-card" data-event-edit type="button">Edit event</button><button class="edit-card" type="button" data-foodshow-details>Edit audience</button><button class="edit-card" data-detail-print type="button">Print event</button><button class="edit-card" data-detail-close type="button">Back to events</button></div></header>
+    <header class="foodshow-hero market-detail-header"><div><h2>${escapeHtml(visit.name)}</h2><p>${escapeHtml([formatDateRange(visit.startDate, visit.endDate), [visit.startTime, visit.endTime].filter(Boolean).join(" – "), visit.location].filter(Boolean).join(' · '))}</p>${visit.foodshowAudience ? `<p>${escapeHtml(visit.foodshowAudience)}</p>` : ''}</div><div class="market-section-actions">${renderPersonalVisitCalendarButton(visit)}<button class="primary-action" type="button" data-table-planner>Table layouts</button><button class="edit-card" data-event-edit type="button">Edit event</button><button class="edit-card" type="button" data-foodshow-details>Edit audience</button><button class="edit-card" data-detail-print type="button">Print event</button><button class="edit-card" data-detail-close type="button">Back to events</button></div></header>
     <section class="foodshow-products"><div class="foodshow-section-heading"><div><h3>Products</h3></div><div class="market-section-actions"><button class="primary-action" type="button" data-foodshow-products>+ Add products</button><button class="edit-card" type="button" data-market-print-products>Print product list</button></div></div>
     <p class="foodshow-save-status" role="status" data-foodshow-save-status></p>
     <div class="foodshow-table-scroll" tabindex="0" role="region" aria-label="Products and presentation plans"><table class="foodshow-table"><colgroup><col class="show-col-product"/><col class="show-col-prep"/><col class="show-col-recipe"/><col class="show-col-equipment"/><col class="show-col-notes"/><col class="show-col-status"/><col class="show-col-remove"/></colgroup><thead><tr><th scope="col">Product</th><th scope="col">Preparation</th><th scope="col">Recipe link / name</th><th scope="col">Equipment needed</th><th scope="col">Notes</th><th scope="col">Status</th><th scope="col"><span class="foodshow-sr-only">Remove</span></th></tr></thead>
@@ -21,6 +21,7 @@ function renderFoodshow(panel, visit) {
     <details class="compact-visit-extra"><summary>General event notes${visit.notes ? ' · Notes added' : ''}</summary>${renderMarketNotesSection(visit)}</details>
     <details class="compact-visit-extra"><summary>Organizations &amp; leads (${visit.operatorLinks.length})</summary><form class="event-library-picker" data-event-organization-form><label>Organization<input name="organization" required /></label><button class="small-action" type="submit">Add organization / lead</button></form>${getMarketVisitOperators(visit).map(operator => renderMarketOperator(visit, operator)).join('')}</details>
     ${visit.newProductIds.length ? `<details class="compact-visit-extra"><summary>Manage shared new products &amp; stock links</summary>${visit.newProductIds.map(renderEventProductEditor).join('')}</details>` : ''}</div>`;
+  panel.querySelector("[data-table-planner]").onclick = () => openEventTablePlanner(visit.id);
   bindMarketDetailActions(panel, visit);
   bindMarketEventActions(panel, visit);
   panel.querySelector('[data-foodshow-products]').onclick = () => openVisitProductsDialog(visit.id);
@@ -225,3 +226,4 @@ function restoreFoodshowScroll(saved) {
   table.scrollTop=saved.top; table.scrollLeft=saved.left;
   saved.ancestors.forEach(({element,top,left}) => { if (element.isConnected) { element.scrollTop=top; element.scrollLeft=left; } });
 }
+

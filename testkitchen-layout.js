@@ -3,7 +3,7 @@
 function renderCompactTestkitchen(panel, visit) {
   const products = getMarketVisitProducts(visit);
   const operators = getMarketVisitOperators(visit);
-  panel.innerHTML = `<div class="compact-visit-header market-detail-header"><div><p class="eyebrow">Testkitchen · Shared with team</p><h2>${escapeHtml(visit.name)}</h2><p>${escapeHtml([formatDateRange(visit.startDate, visit.endDate), [visit.startTime, visit.endTime].filter(Boolean).join(' – '), visit.location].filter(Boolean).join(' · '))}</p></div><div class="table-actions">${renderPersonalVisitCalendarButton(visit)}<button class="edit-card" type="button" data-event-edit>Edit event</button><button class="edit-card" type="button" data-detail-print>Print event</button><button class="edit-card" type="button" data-detail-close>Back to events</button></div></div>
+  panel.innerHTML = `<div class="compact-visit-header market-detail-header"><div><p class="eyebrow">Testkitchen · Shared with team</p><h2>${escapeHtml(visit.name)}</h2><p>${escapeHtml([formatDateRange(visit.startDate, visit.endDate), [visit.startTime, visit.endTime].filter(Boolean).join(' – '), visit.location].filter(Boolean).join(' · '))}</p></div><div class="table-actions">${renderPersonalVisitCalendarButton(visit)}<button class="primary-action" type="button" data-table-planner>Table layouts</button><button class="edit-card" type="button" data-event-edit>Edit event</button><button class="edit-card" type="button" data-detail-print>Print event</button><button class="edit-card" type="button" data-detail-close>Back to events</button></div></div>
     <div class="compact-visit-actions"><button class="primary-action" type="button" data-kitchen-attendees>Add attendees</button><button class="primary-action" type="button" data-kitchen-products>Add products</button><button class="primary-action" type="button" data-kitchen-operator>Add organization</button></div>
     <div class="compact-visit-lists market-detail-tabs kitchen-lists">
       <section class="visit-attendees-panel"><h3>Attendees (${visit.attendees.length})</h3><div class="compact-visit-list">${visit.attendees.map(person => `<div class="kitchen-person"><button class="kitchen-person-name" type="button" data-kitchen-edit-person="${escapeAttribute(person.id)}"><strong>${escapeHtml(person.name)}</strong></button><button class="edit-card" type="button" data-remove-event-attendee="${escapeAttribute(person.id)}">Remove</button></div>`).join('') || '<p class="empty-state">Add returning attendees or someone new.</p>'}</div></section>
@@ -12,6 +12,7 @@ function renderCompactTestkitchen(panel, visit) {
     <div class="market-detail-tabs kitchen-organizations"><section class="visit-organizations-panel"><h3>Organizations &amp; feedback</h3><div class="kitchen-operator-list">${operators.map(operator => `<button class="compact-operator" type="button" data-kitchen-open-operator="${escapeAttribute(operator.id)}"><strong>${escapeHtml(getMarketOperatorDisplayName(operator))}</strong><span>Products, notes, leads &amp; vendor reports</span></button>`).join('') || '<p class="empty-state">Add an organization to record feedback or create a lead or vendor report.</p>'}</div></section></div>
     <details class="compact-visit-extra"><summary>Event notes${visit.notes ? ' · Notes added' : ''}</summary>${renderMarketNotesSection(visit)}</details>
     ${visit.newProductIds.length ? `<details class="compact-visit-extra"><summary>Manage new products &amp; stock links</summary>${visit.newProductIds.map(renderEventProductEditor).join('')}</details>` : ''}`;
+  panel.querySelector("[data-table-planner]").onclick = () => openEventTablePlanner(visit.id);
   bindMarketDetailActions(panel, visit);
   bindMarketEventActions(panel, visit);
   panel.querySelector('[data-kitchen-attendees]').onclick = () => openKitchenAttendeePicker(visit.id);
@@ -133,3 +134,4 @@ document.addEventListener('click', event => {
     input.focus();
   } else finishKitchenNote(input);
 });
+

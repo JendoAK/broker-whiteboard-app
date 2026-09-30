@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Event table planner</title><style>body{margin:0;background:#fffdf8}#show-planner-demo{border:0;border-radius:0}select,input{font-size:16px}</style></head><body>
+<div class="viz-dotted-background">
+<div id="show-planner-demo" aria-label="Event table planner">
+<style>
+#show-planner-demo { --paper:light-dark(#fffdf8,#222b29); --ink:light-dark(#263c39,#e4eee9); --line:light-dark(#cdd8ce,#52645a); --soft:light-dark(#edf3ed,#303d36); --teal:light-dark(#246d69,#9ad8ca); --gold:light-dark(#f6d76d,#82641d); --steel:light-dark(#e1e5e3,#53625e); --wood:light-dark(#e7ca93,#75603c); --zone1:light-dark(#e2eee7,#2c493f); --zone2:light-dark(#fbefce,#4e462f); color:var(--ink); background:var(--paper); font:15px/1.4 Arial,sans-serif; padding:18px; border:1px solid var(--line); border-radius:12px; }
+#show-planner-demo * { box-sizing:border-box; }
+#show-planner-demo [hidden] { display:none !important; }
+#show-planner-demo h2 { font-size:23px; margin:0; font-weight:600; }
+#show-planner-demo h3 { font-size:16px; margin:0; }
+#show-planner-demo .sp-top,#show-planner-demo .sp-row { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+#show-planner-demo .sp-sub { font-size:13px; margin-top:3px; }
+#show-planner-demo .sp-badge { background:var(--soft); border-radius:14px; padding:4px 10px; font-size:12px; }
+#show-planner-demo button { color:var(--ink); background:var(--paper); border:1px solid var(--line); border-radius:6px; padding:8px 10px; font:inherit; }
+#show-planner-demo button[aria-pressed=true] { border-color:var(--teal); box-shadow:inset 0 -3px var(--teal); background:var(--soft); }
+#show-planner-demo .sp-primary { background:var(--gold); color:light-dark(#352d14,#fff3d7); }
+#show-planner-demo input,#show-planner-demo select { width:100%; min-width:0; font:inherit; color:var(--ink); background:var(--paper); border:1px solid var(--line); padding:7px; border-radius:5px; }
+#show-planner-demo label { display:grid; gap:4px; font-size:13px; min-width:0; }
+#show-planner-demo .sp-fields { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:12px; }
+#show-planner-demo .sp-navigation { margin:16px 0 4px; justify-content:flex-start; }
+#show-planner-demo .sp-vendors { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+#show-planner-demo .sp-palette { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin-top:8px; }
+#show-planner-demo .sp-palette button { display:flex; align-items:center; gap:8px; font-size:13px; text-align:left; min-height:48px; }
+#show-planner-demo .sp-sample { display:block; width:29px; height:23px; border:2px solid var(--line); border-radius:5px; background:var(--steel); flex-shrink:0; }
+#show-planner-demo .sp-sample.round { border-radius:50%; width:25px; height:25px; }
+#show-planner-demo .sp-sample.wood { background:var(--wood); }
+#show-planner-demo .sp-sample.lamp { background:var(--wood); border-top:5px solid var(--ink); }
+#show-planner-demo .sp-sample.split { background:linear-gradient(90deg,var(--steel) 47%,var(--line) 47%,var(--line) 53%,var(--steel) 53%); }
+#show-planner-demo .sp-library { margin-top:16px; }
+#show-planner-demo .sp-dimension { display:flex; justify-content:space-between; gap:8px; margin:16px 0 6px; font-size:12px; }
+#show-planner-demo .sp-table { width:100%; position:relative; border:3px solid var(--line); border-radius:7px; background:var(--paper); touch-action:none; }
+#show-planner-demo .sp-zone { position:absolute; top:0; bottom:0; pointer-events:none; opacity:.85; }
+#show-planner-demo .sp-zone.first { left:0; background:var(--zone1); }
+#show-planner-demo .sp-zone.second { right:0; background:var(--zone2); border-left:1px dashed var(--line); }
+#show-planner-demo .sp-grid { position:absolute; inset:0; pointer-events:none; background-image:linear-gradient(to right,var(--line) 1px,transparent 1px),linear-gradient(to bottom,var(--line) 1px,transparent 1px); opacity:.32; }
+#show-planner-demo .sp-equipment { position:absolute; padding:3px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border:2px solid light-dark(#85928a,#a5b7ac); background:var(--steel); border-radius:9px; box-shadow:inset 0 0 0 3px var(--paper); cursor:grab; touch-action:none; overflow-wrap:anywhere; }
+#show-planner-demo .sp-equipment.round { border-radius:50%; }
+#show-planner-demo .sp-equipment.wood { background:var(--wood); }
+#show-planner-demo .sp-equipment.lamp { background:var(--wood); border-top:7px solid var(--ink); }
+#show-planner-demo .sp-equipment.split { background:linear-gradient(90deg,var(--steel) 48%,var(--line) 48%,var(--line) 52%,var(--steel) 52%); }
+#show-planner-demo .sp-equipment.selected { outline:3px solid var(--teal); outline-offset:2px; }
+#show-planner-demo .sp-equipment .sp-name { font-size:12px; line-height:1.15; }
+#show-planner-demo .sp-equipment .sp-product { font-size:12px; line-height:1.15; font-weight:600; }
+#show-planner-demo .sp-number { display:none; font-size:12px; }
+#show-planner-demo .sp-zone-labels { display:flex; text-align:center; font-size:13px; margin-top:7px; }
+#show-planner-demo .sp-zone-labels span { overflow-wrap:anywhere; }
+#show-planner-demo .sp-inspector { border-top:1px solid var(--line); margin-top:16px; padding-top:12px; }
+#show-planner-demo .sp-actions { justify-content:flex-start; margin-top:10px; }
+#show-planner-demo .sp-status { font-size:12px; min-height:18px; margin-top:10px; }
+#show-planner-demo .sp-item-list { display:none; }
+#show-planner-demo details { margin-top:10px; }
+#show-planner-demo summary { font-size:13px; }
+#show-planner-demo .sp-empty { padding:12px 0; }
+@media(max-width:550px) {
+ #show-planner-demo { padding:12px; }
+ #show-planner-demo .sp-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ #show-planner-demo .sp-palette { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ #show-planner-demo input,#show-planner-demo select { font-size:16px; }
+ #show-planner-demo .sp-equipment .sp-name,#show-planner-demo .sp-equipment .sp-product { display:none; }
+ #show-planner-demo .sp-number { display:block; }
+ #show-planner-demo .sp-item-list { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+ #show-planner-demo .sp-item-list button { font-size:13px; min-height:44px; }
+ #show-planner-demo .sp-vendors { grid-template-columns:1fr; }
+}
+
+#show-planner-demo .lampboard {
+ --board-gold:light-dark(#ba9200,#9b7913); --lamp-silver:light-dark(#c5c7c6,#a1aaa5); --lamp-rim:light-dark(#686e69,#505d55); --lamp-frame:light-dark(#202723,#141a16);
+ background:radial-gradient(ellipse 23% 16% at 50% 31%,var(--lamp-silver) 89%,var(--lamp-rim) 91%,var(--lamp-rim) 98%,transparent 100%),radial-gradient(ellipse 23% 16% at 50% 67%,var(--lamp-silver) 89%,var(--lamp-rim) 91%,var(--lamp-rim) 98%,transparent 100%),linear-gradient(90deg,transparent 47%,var(--lamp-frame) 47%,var(--lamp-frame) 53%,transparent 53%),var(--board-gold);
+ border:2px solid light-dark(#e4c96a,#c4a951); border-radius:17%; box-shadow:none;
+}
+#show-planner-demo .sp-equipment.lampboard { justify-content:flex-end; padding-bottom:4px; }
+#show-planner-demo .sp-equipment.lampboard .sp-name,#show-planner-demo .sp-equipment.lampboard .sp-product { background:var(--paper); border-radius:3px; padding:1px 3px; max-width:95%; }
+#show-planner-demo .sp-equipment.lampboard .sp-product:empty { display:none; }
+#show-planner-demo .sp-sample.lampboard { height:32px; width:23px; }
+#show-planner-demo .sp-equipment.lampboard.landscape {
+ background:radial-gradient(ellipse 16% 23% at 31% 50%,var(--lamp-silver) 89%,var(--lamp-rim) 91%,var(--lamp-rim) 98%,transparent 100%),radial-gradient(ellipse 16% 23% at 67% 50%,var(--lamp-silver) 89%,var(--lamp-rim) 91%,var(--lamp-rim) 98%,transparent 100%),linear-gradient(0deg,transparent 47%,var(--lamp-frame) 47%,var(--lamp-frame) 53%,transparent 53%),var(--board-gold);
+}
+
+#show-planner-demo .sp-equipment.goldboard,#show-planner-demo .sp-sample.goldboard { background:light-dark(#ba9200,#9b7913); border:2px solid light-dark(#806900,#d1b750); border-radius:18%; box-shadow:inset 0 0 0 4px var(--paper),inset 0 0 0 6px light-dark(#d1b029,#7d6619); color:light-dark(#201b08,#fff5ce); }
+#show-planner-demo .sp-sample.goldboard { width:23px; height:32px; box-shadow:inset 0 0 0 2px var(--paper); }
+
+#show-planner-demo .sp-equipment.pizzaboard,#show-planner-demo .sp-sample.pizzaboard { --pizza-wood:light-dark(#ae5b23,#ad703e); --pizza-rim:light-dark(#eeac72,#d39b6c); background:transparent; border:0; box-shadow:none; border-radius:0; position:relative; }
+#show-planner-demo .sp-equipment.pizzaboard { position:absolute; padding-bottom:20%; }
+#show-planner-demo .pizzaboard::before { content:''; position:absolute; left:0; top:0; width:100%; height:80%; border-radius:50%; background:var(--pizza-wood); border:2px solid var(--pizza-rim); box-shadow:inset 0 0 0 2px var(--paper),inset 0 0 0 4px var(--pizza-rim); z-index:1; box-sizing:border-box; }
+#show-planner-demo .pizzaboard::after { content:''; position:absolute; left:43%; bottom:0; width:14%; height:27%; border-radius:0 0 5px 5px; background:var(--pizza-wood); border:2px solid var(--pizza-rim); box-sizing:border-box; }
+#show-planner-demo .sp-equipment.pizzaboard > span { position:relative; z-index:2; color:light-dark(#fffaf2,#fffaf2); }
+#show-planner-demo .sp-equipment.pizzaboard { padding:3px; justify-content:flex-start; }
+#show-planner-demo .sp-equipment.pizzaboard .sp-name { margin-top:25%; }
+#show-planner-demo .sp-equipment.pizzaboard.landscape { padding:3px; align-items:flex-start; }
+#show-planner-demo .sp-equipment.pizzaboard.landscape > span { width:80%; }
+#show-planner-demo .pizzaboard.landscape::before { width:80%; height:100%; }
+#show-planner-demo .pizzaboard.landscape::after { left:auto; right:0; top:43%; bottom:auto; height:14%; width:27%; border-radius:0 5px 5px 0; }
+#show-planner-demo .sp-sample.pizzaboard { width:25px; height:31px; }
+
+#show-planner-demo .sp-palette { display:block; }
+#show-planner-demo .sp-palette details { border-bottom:1px solid var(--line); padding:7px 0; margin:0; }
+#show-planner-demo .sp-palette summary { font-size:15px; }
+#show-planner-demo .sp-equipment-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin-top:8px; }
+#show-planner-demo .sp-equipment-options small { display:block; font-size:11px; margin-top:2px; }
+#show-planner-demo .sp-sample { position:relative; }
+#show-planner-demo .artshape { background:transparent; border:0; box-shadow:none; border-radius:0; }
+#show-planner-demo .sp-art { position:absolute; left:50%; top:50%; pointer-events:none; }
+#show-planner-demo .sp-piece { position:absolute; box-sizing:border-box; border:1px solid light-dark(#727b76,#9ba99f); border-radius:10%; }
+#show-planner-demo .sp-piece.silver { background:linear-gradient(135deg,light-dark(#f5f5f3,#83938b),light-dark(#cbcdcb,#5b6962)); box-shadow:inset 0 0 0 2px light-dark(#ededeb,#b4bdb8); }
+#show-planner-demo .sp-piece.round { border-radius:50%; }
+#show-planner-demo .sp-piece.dark { background:light-dark(#292c2a,#333d37); }
+#show-planner-demo .sp-piece.blacktray { background:light-dark(#191d1b,#313a35); border:3px solid light-dark(#aeb1ad,#bac4bd); border-radius:0; }
+#show-planner-demo .sp-piece.rim { box-shadow:inset 0 0 0 3px light-dark(#e4e6e1,#bac4bd); }
+#show-planner-demo .sp-piece.gray { background:light-dark(#aaaead,#727c76); border-radius:0; }
+#show-planner-demo .sp-piece.blue { background:linear-gradient(135deg,light-dark(#eff8fd,#829dac),light-dark(#bcd3e5,#456579)); border-color:light-dark(#89b6d8,#a5c5d9); box-shadow:inset 0 0 0 2px light-dark(#f8fbfd,#d5e5ef); }
+#show-planner-demo .sp-piece.bevel { border-radius:0; border-width:4px; }
+#show-planner-demo .sp-piece.whiteplate { background:light-dark(#fff,#c9d4ce); box-shadow:inset 0 0 0 4px light-dark(#fff,#c9d4ce),inset 0 0 0 5px light-dark(#90968f,#5e6a62); }
+#show-planner-demo .sp-piece.gold { background:light-dark(#967000,#8c7122); border:3px solid light-dark(#e8bd00,#d8b351); border-radius:16%; }
+#show-planner-demo .sp-piece.grain { border-radius:0; background:repeating-linear-gradient(2deg,light-dark(#b48351,#8a653e) 0px,light-dark(#c89562,#9e794e) 3px,light-dark(#a97845,#735535) 5px); border:3px solid light-dark(#6d4c2d,#c29c6b); }
+#show-planner-demo .sp-piece.crate { border:5px double light-dark(#ffe9bc,#e6bd7e); box-shadow:inset 0 0 0 3px light-dark(#b2814a,#997043); }
+#show-planner-demo .artshape .sp-name,#show-planner-demo .artshape .sp-product,#show-planner-demo .artshape .sp-number { position:relative; z-index:2; background:var(--paper); color:var(--ink); border-radius:3px; }
+#show-planner-demo .artshape .sp-name:empty,#show-planner-demo .artshape .sp-product:empty { display:none; }
+@media(max-width:550px){#show-planner-demo .sp-equipment-options { grid-template-columns:repeat(2,minmax(0,1fr)); }}
+
+#show-planner-demo .sp-piece.cooktop { background:linear-gradient(135deg,light-dark(#414945,#53605a),light-dark(#141c18,#1c2721));border:2px solid light-dark(#828d86,#a3b1a8);border-radius:9%;box-shadow:inset 0 0 0 2px light-dark(#202923,#303d34); }
+#show-planner-demo .sp-piece.controlstrip { background:light-dark(#141a16,#202e25);border-radius:3px;border-color:light-dark(#59665e,#77897d); }
+#show-planner-demo .sp-piece.powerdot { background:light-dark(#99d2b6,#b9e5cf);border:0; }
+#show-planner-demo .sp-piece.pansteel { background:linear-gradient(130deg,light-dark(#f2f3f0,#d5ddd7),light-dark(#909a92,#748679));border:1px solid light-dark(#555f57,#b7c6bb); }
+#show-planner-demo .sp-piece.paninside { background:radial-gradient(ellipse at 40% 25%,light-dark(#535b55,#626f65),light-dark(#242b26,#303f34));border:2px solid light-dark(#858f88,#a5b7aa); }
+#show-planner-demo .sp-piece.panhandle { background:linear-gradient(90deg,light-dark(#18201b,#26342b),light-dark(#4a554c,#66796b),light-dark(#18201b,#26342b));border:1px solid light-dark(#79877b,#a6b6aa);border-radius:25%; }
+#show-planner-demo .sp-piece.cutwood { background:repeating-linear-gradient(2deg,light-dark(#c6945b,#967045) 0px,light-dark(#d8ac76,#ad895b) 5px,light-dark(#be8a50,#8d693e) 8px);border:3px solid light-dark(#956a37,#cfaa79);box-shadow:inset 0 0 0 3px light-dark(#ead0a5,#b49367);border-radius:9%; }
+#show-planner-demo .sp-piece.cutwood.round { border-radius:50%; }
+#show-planner-demo .sp-piece.wicker {
+ --reed-light:light-dark(#d9b782,#b99a6c);--reed-dark:light-dark(#ad7e45,#876039);
+ background:repeating-linear-gradient(0deg,transparent 0 5px,light-dark(#71502b55,#49321e66) 5px 6px),repeating-linear-gradient(90deg,transparent 0 5px,light-dark(#71502b55,#49321e66) 5px 6px),conic-gradient(var(--reed-light) 25%,var(--reed-dark) 0 50%,var(--reed-light) 0 75%,var(--reed-dark) 0);
+ background-size:auto,auto,12px 12px;border:4px solid light-dark(#b5874c,#c7a16c);border-radius:20%;box-shadow:inset 0 0 0 2px light-dark(#79562f,#65472a),inset 0 0 9px 3px light-dark(#68421d66,#37281988),0 0 0 1px light-dark(#80603d,#806846);
+}
+#show-planner-demo .sp-piece.brushed {background:conic-gradient(from 30deg,light-dark(#e9eeed,#afb9b5),light-dark(#929e99,#55665e),light-dark(#f9fbfa,#c7d0cb),light-dark(#a0aaa5,#708078),light-dark(#e9eeed,#afb9b5));border:2px solid light-dark(#87968f,#b0bdb6);box-shadow:inset 0 0 0 2px light-dark(#f4f7f5,#cad4cf),inset 0 0 9px light-dark(#61766b66,#25352d66);}
+#show-planner-demo .sp-piece.icebase {background:repeating-conic-gradient(from 25deg,light-dark(#d4e7ed,#486473) 0% 12%,light-dark(#f0f9fb,#8ba6b0) 12% 25%);background-size:14px 13px;border:2px solid light-dark(#adc4cc,#9fb8c2);box-shadow:inset 0 0 0 2px light-dark(#faffff,#b7d0d8);}
+#show-planner-demo .sp-piece.acrylic {background:light-dark(#ecf4f655,#bed4df22);border:1px solid light-dark(#8397a5,#afc4d1);box-shadow:inset 0 0 0 2px light-dark(#ffffffaa,#d9e8f044),0 1px 2px light-dark(#56657155,#101c2555);}
+#show-planner-demo .sp-piece.silicone {background:light-dark(#535f5e,#647372);border:2px solid light-dark(#788381,#8c9997);border-radius:8%;box-shadow:inset 0 0 0 3px light-dark(#3a4543,#43514e);}
+#show-planner-demo .sp-piece.loop {background:transparent;border:3px solid light-dark(#829087,#a2b3aa);border-radius:40%;}
+#show-planner-demo .sp-equipment-options .sp-sample {width:46px;height:38px;flex:0 0 46px;}
+#show-planner-demo .sp-piece.griddlebody {background:light-dark(#292e2d,#343c39);border:2px solid light-dark(#555c58,#89938e);border-radius:13%;box-shadow:inset 0 0 0 2px light-dark(#151c18,#17251e),inset 0 0 0 4px light-dark(#626864,#6d7972);}
+#show-planner-demo .sp-piece.griddlesurface {background:linear-gradient(135deg,light-dark(#575a58,#5f6762),light-dark(#444745,#484f4b));border:1px solid light-dark(#171e19,#1a251e);border-radius:10%;box-shadow:inset 0 1px 2px light-dark(#939791,#919f94);}
+#show-planner-demo .sp-piece.griddlecord {background:transparent;border:2px solid light-dark(#414943,#87958b);border-left:0;border-bottom:0;border-radius:0 70% 0 0;}
+#show-planner-demo .sp-packing {margin-top:20px;padding-top:16px;border-top:1px solid var(--line);}
+#show-planner-demo .sp-packing table {width:100%;border-collapse:collapse;font-size:14px;}
+#show-planner-demo .sp-packing th,#show-planner-demo .sp-packing td {padding:9px 5px;text-align:left;border-bottom:1px solid var(--line);overflow-wrap:anywhere;}
+#show-planner-demo .sp-packing th:last-child,#show-planner-demo .sp-packing td:last-child {text-align:right;width:90px;white-space:nowrap;}
+#show-planner-demo .sp-piece.ceramic {background:linear-gradient(145deg,light-dark(#ffffff,#e0e4df),light-dark(#eceee9,#b8c2b9));border:1px solid light-dark(#9ea89e,#829386);border-radius:7%;box-shadow:inset 0 0 0 3px light-dark(#ffffff,#e9ede7),inset 0 0 0 4px light-dark(#d3d9d0,#9aab9b);}
+#show-planner-demo .sp-piece.ceramic.round {border-radius:50%;}
+#show-planner-demo .sp-piece.whitebin {background:linear-gradient(120deg,light-dark(#f6f6ee,#dce2d9),light-dark(#d9ddd2,#abb9a9));border:1px solid light-dark(#a3ada0,#7f917e);border-radius:5%;box-shadow:inset 3px 3px 4px light-dark(#858d7e44,#53674e55);}
+#show-planner-demo .sp-direction {text-align:center;font-size:15px;font-weight:600;margin:7px 0;}
+#show-planner-demo .sp-print-pages {display:none;}
+@media print {
+ @page {size:letter portrait;margin:0.5in;}
+ #show-planner-demo {color-scheme:light;padding:0;border:0;border-radius:0;background:white;color:black;print-color-adjust:exact;-webkit-print-color-adjust:exact;}
+ #show-planner-demo > :not(.sp-print-pages) {display:none !important;}
+ #show-planner-demo > .sp-print-pages {display:block !important;}
+ #show-planner-demo .sp-print-page {break-after:page;}
+ #show-planner-demo .sp-print-page:last-child {break-after:auto;}
+ #show-planner-demo .sp-print-page h2 {margin-bottom:8px;}
+ #show-planner-demo .sp-print-page .sp-table {width:100%;break-inside:avoid;}
+ #show-planner-demo .sp-print-page .sp-number {display:inline !important;font-size:12px;}
+ #show-planner-demo .sp-print-page .sp-name,#show-planner-demo .sp-print-page .sp-product {display:none !important;}
+ #show-planner-demo .sp-print-key {padding-left:24px;columns:2;column-gap:24px;font-size:12px;}
+ #show-planner-demo .sp-print-key li {break-inside:avoid;margin:5px 0;}
+ #show-planner-demo .sp-packing {border:0;margin:0;padding:0;}
+ #show-planner-demo tr {break-inside:avoid;}
+ #show-planner-demo thead {display:table-header-group;}
+}
+</style>
+<header class="sp-top"><div><h2>US Foods Vendor Showcase</h2><div class="sp-sub">Table layout</div></div><span class="sp-badge">Event table planner</span></header>
+<div class="sp-row sp-navigation" id="sp-tables"></div>
+<div class="sp-fields">
+ <label>Table size<select id="sp-size"><option value="48">4 ft × 30 in</option><option value="72">6 ft × 30 in</option><option value="96">8 ft × 30 in</option><option value="custom">Custom</option></select></label>
+ <label>Length (in)<input id="sp-length" type="number" min="36" max="120" step="1"></label>
+ <label>Depth (in)<input id="sp-depth" type="number" min="24" max="48" step="1"></label>
+ <label>Vendor arrangement<select id="sp-sharing"><option value="one">One vendor</option><option value="two">Two vendors</option><option value="three">Three vendors</option><option value="four">Four vendors</option></select></label>
+</div>
+<div class="sp-vendors"><label id="sp-vendor1-wrap">Vendor<input id="sp-vendor1" list="sp-vendor-options"></label><label id="sp-vendor2-wrap">Second vendor<input id="sp-vendor2" list="sp-vendor-options"></label><label id="sp-vendor3-wrap">Third vendor<input id="sp-vendor3" list="sp-vendor-options"></label><label id="sp-vendor4-wrap">Fourth vendor<input id="sp-vendor4" list="sp-vendor-options"></label></div>
+<datalist id="sp-vendor-options"></datalist>
+<section class="sp-library"><h3>Equipment</h3><div class="sp-palette" id="sp-palette"></div></section>
+<div class="sp-dimension"><span id="sp-measure"></span><span>Top view</span></div>
+<div class="sp-direction">Customers</div>
+<div class="sp-table" id="sp-table" aria-label="Table layout; select or drag equipment">
+ <div id="sp-zones"></div><div class="sp-grid"></div><div id="sp-items"></div>
+</div>
+<div class="sp-zone-labels" id="sp-zone-labels"></div>
+<div class="sp-direction">Sales team</div>
+<div class="sp-item-list" id="sp-item-list"></div>
+<section class="sp-inspector" id="sp-inspector" aria-label="Selected equipment">
+ <div class="sp-row"><h3 id="sp-selected-title">Selected equipment</h3><span class="sp-sub" id="sp-footprint"></span></div>
+ <div class="sp-fields">
+  <label>Label<input id="sp-label"></label>
+  <label>Product<select id="sp-product"><option value="">No product</option></select></label>
+  <label>Vendor<select id="sp-owner"></select></label>
+  <label>Move to table<select id="sp-destination"></select></label>
+ </div>
+ <div class="sp-row sp-actions"><button type="button" id="sp-rotate45">Rotate 45°</button><button type="button" id="sp-rotate">Rotate 90°</button><button type="button" id="sp-duplicate">Duplicate</button><button type="button" id="sp-remove">Remove</button></div>
+ <details><summary>Equipment size &amp; position</summary><div class="sp-fields"><label>Width (in)<input type="number" id="sp-width" min="4" max="36"></label><label>Depth (in)<input type="number" id="sp-height" min="4" max="30"></label><label>From left (in)<input type="number" id="sp-x" min="0" step="0.5"></label><label>From back (in)<input type="number" id="sp-y" min="0" step="0.5"></label></div></details>
+</section>
+<div class="sp-status" id="sp-status" aria-live="polite"></div>
+<section class="sp-packing" aria-label="Packing list for all tables"><div class="sp-row"><h3>Packing list · all tables</h3><span id="sp-packing-total" class="sp-sub"></span></div><table><thead><tr><th scope="col">Equipment</th><th scope="col">Quantity</th></tr></thead><tbody id="sp-packing-rows"></tbody></table></section>
+<div class="sp-row" style="margin-top:16px"><button type="button" id="sp-print">Print layouts &amp; packing list</button></div>
+<div class="sp-print-pages"></div>
+<script>
+(() => {
+ const token=new URLSearchParams(location.hash.slice(1)).get('session');
+ let context;try{context=window.parent.tablePlannerBridge.getContext(token);}catch(error){document.body.textContent='Open Table layouts from a food show or test kitchen event.';return;}
+ const catalog=context.products.map(p=>({...p,label:p.description+(p.code?' · '+p.code:'')}));
+ const root=document.getElementById('show-planner-demo');
+ const $=id=>root.querySelector('#'+id);
+ const equipment=[
+  {key:'chafer',name:'Chafing dish',w:20,h:12,shape:''},
+  {key:'split',name:'Divided chafer',w:20,h:12,shape:'split'},
+  {key:'lamp-board',name:'Heat lamp + cutting board',w:15,h:21,shape:'lampboard'},
+  {key:'bowl',name:'Salad bowl',w:10,h:10,shape:'round'},
+  {key:'board',name:'Cutting board',w:16,h:10,shape:'wood'},
+  {key:'pizza-board',name:'Pizza board + handle',w:20,h:25,shape:'pizzaboard'},
+  {key:'gold-board',name:'Gold cutting board · 21 × 15 in',w:15,h:21,shape:'goldboard'},
+  {key:'riser',name:'Wood riser',w:18,h:7,shape:'wood'},
+  {key:'plate',name:'Serving plate',w:12,h:8,shape:''}
+ ];
+ equipment.push(...[{"key":"black-tier","name":"Simplot three-tier riser","w":24,"h":20,"group":"Displays","art":"blacktier","estimated":true,"shape":"artshape"},{"key":"round-tier","name":"Three-tier round display","w":22,"h":24,"group":"Displays","art":"roundtier","estimated":true,"shape":"artshape"},{"key":"ice-square","name":"Square ice platter","w":16,"h":16,"group":"Serving","art":"ice","estimated":true,"shape":"artshape"},{"key":"triple-warmer","name":"Three-pot warmer","w":24,"h":10,"group":"Heating","art":"warmer","estimated":true,"shape":"artshape"},{"key":"round-chafer","name":"Round chafer","w":16,"h":16,"group":"Chafers","art":"roundsilver","estimated":true,"shape":"artshape"},{"key":"triple-chafer","name":"Three-pan chafer","w":14,"h":22,"group":"Chafers","art":"threepan","estimated":true,"shape":"artshape"},{"key":"double-chafer","name":"Two-pan chafer","w":14,"h":22,"group":"Chafers","art":"twopan","estimated":true,"shape":"artshape"},{"key":"full-chafer","name":"Full-pan chafer","w":14,"h":22,"group":"Chafers","art":"fullpan","estimated":true,"shape":"artshape"},{"key":"blue-bowl","name":"Blue salad bowl","w":12,"h":12,"group":"Serving","art":"bluebowl","estimated":true,"shape":"artshape"},{"key":"wood-riser","name":"Wood riser","w":20,"h":8,"group":"Displays","art":"woodriser","estimated":true,"shape":"artshape"},{"key":"rect-plate","name":"Rectangular plate","w":16,"h":6,"group":"Serving","art":"rectplate","estimated":true,"shape":"artshape"},{"key":"round-plate","name":"Round plate","w":10,"h":10,"group":"Serving","art":"roundplate","estimated":true,"shape":"artshape"},{"key":"two-tier","name":"Two-tier display","w":18,"h":12,"group":"Displays","art":"twotier","estimated":true,"shape":"artshape"},{"key":"three-tier","name":"Three-tier display","w":18,"h":18,"group":"Displays","art":"threetier","estimated":true,"shape":"artshape"},{"key":"grey-riser","name":"Gray riser","w":16,"h":6,"group":"Displays","art":"greyriser","estimated":true,"shape":"artshape"},{"key":"oval-crock","name":"Oval crockpot","w":18,"h":14,"group":"Heating","art":"ovalblack","estimated":true,"shape":"artshape"},{"key":"round-crock","name":"Round crockpot","w":14,"h":14,"group":"Heating","art":"roundblack","estimated":true,"shape":"artshape"},{"key":"round-heater","name":"Round heater","w":12,"h":12,"group":"Heating","art":"heater","estimated":true,"shape":"artshape"},{"key":"basket","name":"Basket","w":14,"h":8,"group":"Serving","art":"basket","estimated":true,"shape":"artshape"},{"key":"heat-mat","name":"Heat mat","w":24,"h":16,"group":"Heating","art":"mat","estimated":false,"shape":"artshape"},{"key":"pan","name":"Pan on burner","w":18,"h":18,"group":"Heating","art":"pan","estimated":true,"shape":"artshape"},{"key":"dip-bowl","name":"Dipping bowl","w":4,"h":4,"group":"Serving","art":"roundsilver","estimated":true,"shape":"artshape"},{"key":"black-lamp","name":"Small black heat lamp","w":14,"h":18,"group":"Heating","art":"blacklamp","estimated":true,"shape":"artshape"},{"key":"condiments","name":"Condiment holder · 5 trays","w":24,"h":7,"group":"Serving","art":"condiments","estimated":true,"shape":"artshape"},{"key":"griddle","name":"Griddle","w":22,"h":14,"group":"Heating","art":"griddle","estimated":true,"shape":"artshape"},{"key":"wood-crate","name":"Wood crate","w":17,"h":14,"group":"Displays","art":"crate","estimated":false,"shape":"artshape"}]);
+ equipment.push(...[{"key":"board-small","name":"Small rectangular cutting board","w":12,"h":8,"group":"Displays","art":"cutboard","shape":"artshape","estimated":true},{"key":"board-square-small","name":"Small square cutting board","w":12,"h":12,"group":"Displays","art":"cutboard","shape":"artshape","estimated":true},{"key":"board-square-large","name":"Large square cutting board","w":16,"h":16,"group":"Displays","art":"cutboard","shape":"artshape","estimated":true},{"key":"board-round-small","name":"Small round cutting board","w":12,"h":12,"group":"Displays","art":"roundboard","shape":"artshape","estimated":true},{"key":"board-round-large","name":"Large round cutting board","w":18,"h":18,"group":"Displays","art":"roundboard","shape":"artshape","estimated":true},{"key":"small-crock","name":"Small round crockpot","w":8,"h":8,"group":"Heating","art":"smallcrock","shape":"artshape","estimated":true}]);
+ equipment.forEach(e=>{
+  if(['lamp','lamp-board'].includes(e.key))e.group='Heating';
+  if(['board','gold-board'].includes(e.key))e.group='Displays';
+  if(e.key==='pizza-board')e.group='Serving';
+  if(e.key==='pan')e.name='Induction plate + sauté pan';
+  if(e.key==='board') {e.name='Medium rectangular cutting board';e.estimated=true;}
+  if(e.key==='basket'){e.w=11;e.h=8;e.estimated=false;}
+  if(e.key==='griddle'){e.w=22.6;e.h=11.8;e.estimated=false;}
+  if(e.key==='triple-warmer'){e.name='Three-pot food warmer';e.w=26.2;e.h=12;e.estimated=false;}
+  if(e.key==='oval-crock')e.name='Large crockpot · approx. 10 qt';
+  if(e.key==='round-crock')e.name='Medium crockpot · approx. 8 qt';
+  if(e.key==='small-crock')e.name='Small crockpot · approx. 4 qt';
+  if(e.key==='condiments')e.name='Compartment box · 5 bins';
+  if(e.key==='round-plate')e.name='Plate';
+  if(e.key==='black-lamp')e.name='Small heat lamp · 6 in base';
+  if(e.key==='pizza-board')e.name='Red pizza board';
+  if(['chafer','split','triple-chafer','double-chafer','full-chafer'].includes(e.key)){e.w=20;e.h=12.5;e.estimated=false;}
+ });
+ equipment.push(
+  {key:'chilled-dip',name:'Chilled dip bowl',w:6.3,h:6.3,group:'Serving',shape:'artshape',art:'chilledbowl'},
+  {key:'chilled-round',name:'Round chilled platter',w:11.81,h:11.81,group:'Serving',shape:'artshape',art:'chilledround'},
+  {key:'macaron-tower',name:'Macaron tower · 6 tiers · 10 in tall',w:9,h:9,group:'Displays',shape:'artshape',art:'tower'}
+ );
+ const refreshedArt={'lamp-board':'lampboard','gold-board':'goldboard','pizza-board':'pizzaboard',lamp:'blacklamp',chafer:'fullpan',split:'twopan',round:'roundblack',bowl:'chilledbowl',board:'cutboard',riser:'woodriser',plate:'rectplate','blue-bowl':'chilledbowl','ice-square':'ice'};
+ equipment.forEach(e=>{if(refreshedArt[e.key]){e.art=refreshedArt[e.key];e.shape='artshape';}if(['chafer','split'].includes(e.key))e.group='Chafers';if(['round'].includes(e.key))e.group='Heating';if(['bowl','plate'].includes(e.key))e.group='Serving';if(e.key==='riser')e.group='Displays';if(e.key==='blue-bowl')e.name='Chilled salad bowl';if(e.key==='ice-square')e.name='Chilled serving tray';});
+ equipment.push(
+  {key:'ceramic-long',name:'Long ceramic platter',w:18,h:6,group:'Serving',shape:'artshape',art:'ceramic',estimated:true},
+  {key:'ceramic-square',name:'Square ceramic plate',w:10,h:10,group:'Serving',shape:'artshape',art:'ceramic',estimated:true}
+ );
+ equipment.push({key:'donut-display',name:'Donut display · 9 pegs · 12 in tall',w:10,h:6,group:'Displays',shape:'artshape',art:'donutstand',estimated:true});
+ equipment.push({key:'bacon-display',name:'Bacon display · 10.6 in tall',w:13,h:10.4,group:'Displays',shape:'artshape',art:'baconstand',estimated:false});
+ equipment.push({key:'soup-kettle',name:'Soup kettle · 12.5 in tall',w:9.3,h:9.3,group:'Heating',shape:'artshape',art:'soupkettle',estimated:true});
+ const shortLabels={'small-crock':'Small crock pot','round-crock':'Medium crock pot','oval-crock':'Large crock pot','black-lamp':'Small heat lamp','lamp-board':'Heat lamp + board','gold-board':'Cutting board','board':'Cutting board','board-small':'Small cutting board','board-square-small':'Small square board','board-square-large':'Large square board','board-round-small':'Small round board','board-round-large':'Large round board','pan':'Pan + induction','black-tier':'3-tier riser','round-tier':'3-tier display','ceramic-long':'Long platter','ceramic-square':'Square plate','condiments':'Compartment box','triple-warmer':'3-pot warmer'};
+ const shortLabel=e=>shortLabels[e.key]||e.name.split(' · ')[0];
+ equipment.push(
+  {key:'basket-small',name:'Small basket',w:8,h:6,group:'Serving',shape:'artshape',art:'basket',estimated:true},
+  {key:'basket-mini',name:'Mini basket',w:6,h:4,group:'Serving',shape:'artshape',art:'basket',estimated:true}
+ );
+ let sequence=10;
+ let state={version:1,active:'t1',selected:'',vendorRevision:1,shortLabelRevision:1,tables:[{id:'t1',name:'Table 1',w:72,h:30,sharing:'one',vendors:[catalog[0]?.vendor||'','','',''],items:[]}]};
+ const valid=s=>s?.version===1&&Array.isArray(s.tables)&&s.tables.length>0&&s.tables.every(t=>Number.isFinite(t.w)&&Number.isFinite(t.h)&&t.w>=36&&t.h>=24&&Array.isArray(t.items)&&Array.isArray(t.vendors));
+ const incoming=context.layout;
+ if(valid(incoming)) state=JSON.parse(JSON.stringify(incoming));
+ function updateChaferSizes(){
+  if(state.shortLabelRevision!==1){
+   state.tables.forEach(t=>t.items.forEach(i=>{const e=equipment.find(e=>e.key===i.type);if(e&&(!i.label||i.label===e.name))i.label=shortLabel(e);}));
+   state.shortLabelRevision=1;
+  }
+  state.tables.forEach(t=>t.items.forEach(i=>{if(i.type==='pizza-board'&&i.label==='Pizza board + handle')i.label='Red pizza board';}));
+  if(state.vendorRevision!==1){state.tables.forEach(t=>t.items.forEach(i=>{if(i.owner===2)i.owner=4;}));state.vendorRevision=1;}
+  if(state.warmerSizeRevision!==1){
+   state.tables.forEach(t=>t.items.forEach(i=>{if(i.type!=='triple-warmer')return;const rotated=(i.angle||0)%180!==0;i.w=rotated?12:26.2;i.h=rotated?26.2:12;constrain(i,t);}));
+   state.warmerSizeRevision=1;
+  }
+  if(state.griddleSizeRevision!==1){
+   state.tables.forEach(t=>t.items.forEach(i=>{if(i.type!=='griddle')return;const rotated=(i.angle||0)%180!==0;i.w=rotated?11.8:22.6;i.h=rotated?22.6:11.8;constrain(i,t);}));
+   state.griddleSizeRevision=1;
+  }
+  state.tables.forEach(t=>{t.items=t.items.filter(i=>!['lamp','round'].includes(i.type));});
+  if(!state.tables.some(t=>t.items.some(i=>i.id===state.selected)))state.selected='';
+  if(state.basketSizeRevision!==1){
+   state.tables.forEach(t=>t.items.forEach(i=>{
+    if(i.type!=='basket')return;
+    const rotated=(i.angle||0)%180!==0;i.w=rotated?8:11;i.h=rotated?11:8;constrain(i,t);
+   }));
+   state.basketSizeRevision=1;
+  }
+  if(state.chaferSizeRevision===1)return;
+  state.tables.forEach(t=>t.items.forEach(i=>{
+   if(!['chafer','split','triple-chafer','double-chafer','full-chafer'].includes(i.type))return;
+   const rotated=(i.angle||0)%180!==0;
+   i.w=rotated?12.5:20;i.h=rotated?20:12.5;constrain(i,t);
+  }));
+  state.chaferSizeRevision=1;
+ }
+ updateChaferSizes();
+ const vendorCount=t=>({one:1,two:2,three:3,four:4}[t.sharing]||1);
+ const tableVendors=t=>Array.from({length:vendorCount(t)},(_,n)=>t.vendors[n]||'');
+ function productChoices(t,i){const vendors=(i.owner===4?tableVendors(t):[t.vendors[i.owner]||'']).map(v=>v.trim().toLowerCase());return catalog.filter(p=>vendors.includes(p.vendor.trim().toLowerCase()));}
+ function syncProducts(t){t.items.forEach(i=>{if(i.owner!==4&&i.owner>=vendorCount(t))i.owner=4;if(i.product&&!productChoices(t,i).some(p=>p.id===i.productId)){i.product='';i.productId='';}});}
+ const table=()=>state.tables.find(t=>t.id===state.active)||state.tables[0];
+ const selected=()=>table().items.find(i=>i.id===state.selected);
+ const def=i=>equipment.find(e=>e.key===i.type)||equipment[0];
+ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const uid=()=> 'demo-'+Date.now().toString(36)+'-'+sequence++;
+ function constrain(item,t=table()) { item.w=Math.min(t.w,Math.max(4,item.w));item.h=Math.min(t.h,Math.max(4,item.h));item.x=Math.max(0,Math.min(t.w-item.w,item.x));item.y=Math.max(0,Math.min(t.h-item.h,item.y)); }
+ function remember(message) {
+  if(message)$('sp-status').textContent=message;
+  try{window.parent.tablePlannerBridge.save(token,state);return true;}
+  catch(error){$('sp-status').textContent='Unable to save. Keep this window open and retry.';return false;}
+ }
+ window.flushTablePlanner=()=>{const field=document.activeElement;if(field&&/^(INPUT|SELECT|TEXTAREA)$/.test(field.tagName))field.dispatchEvent(new Event('change',{bubbles:true}));return remember();};
+ window.addEventListener('beforeunload',()=>window.flushTablePlanner());
+ function render() {
+  const t=table();
+  $('sp-tables').innerHTML=state.tables.map(x=>`<button type="button" data-table="${esc(x.id)}" aria-pressed="${x===t}">${esc(x.name)}</button>`).join('')+'<button type="button" class="sp-primary" id="sp-add-table">+ Add table</button>';
+  $('sp-tables').querySelectorAll('[data-table]').forEach(b=>b.onclick=()=>{state.active=b.dataset.table;state.selected=table().items[0]?.id||'';render();remember();});
+  $('sp-add-table').onclick=()=>{if(state.tables.length>=30){$('sp-status').textContent='Maximum: 30 tables.';return;}const next={id:uid(),name:'Table '+(state.tables.length+1),w:72,h:30,sharing:'one',vendors:['Vendor',''],items:[]};state.tables.push(next);state.active=next.id;state.selected='';render();remember('Table added.');};
+  $('sp-size').value=[48,72,96].includes(t.w)&&t.h===30?String(t.w):'custom';
+  $('sp-length').value=t.w;$('sp-depth').value=t.h;$('sp-sharing').value=t.sharing;
+  [1,2,3,4].forEach((n)=>{$('sp-vendor'+n).value=t.vendors[n-1]||'';$('sp-vendor'+n+'-wrap').hidden=n>vendorCount(t);});
+  const board=$('sp-table');board.style.aspectRatio=t.w+'/'+t.h;
+  $('sp-zones').innerHTML=tableVendors(t).map((v,n)=>'<div class="sp-zone" style="left:'+n*100/vendorCount(t)+'%;width:'+100/vendorCount(t)+'%;background:var(--zone'+(n%2+1)+');border-left:1px dashed var(--line)"></div>').join('');
+  board.querySelector('.sp-grid').style.backgroundSize=(600/t.w)+'% '+(600/t.h)+'%';
+  $('sp-measure').textContent=t.w+' × '+t.h+' in · 6-inch grid';
+  $('sp-zone-labels').innerHTML=tableVendors(t).map(v=>`<span style="width:${100/vendorCount(t)}%">${esc(v||'Vendor')}</span>`).join('');
+  drawItems();inspector();
+ }
+
+ function equipmentArt(item) {
+  const e=def(item);if(!e.art)return '';
+  const piece=(kind,x,y,w,h,extra='')=>'<span class="sp-piece '+kind+'" style="left:'+x+'%;top:'+y+'%;width:'+w+'%;height:'+h+'%;'+extra+'"></span>';
+  const tray=(count)=>piece('loop',0,35,100,30)+piece('brushed',5,0,90,100)+Array.from({length:count},(_,n)=>piece('brushed',8+n*84/count,5,84/count-2,90)).join('');
+  const tiers=(n,kind)=>Array.from({length:n},(_,i)=>piece(kind,0,i*100/n,100,100/n-5)).join('');
+  let art='';
+  switch(e.art){
+   case 'goldboard':art=piece('gold',0,0,100,100);break;
+   case 'pizzaboard':art=piece('cutwood',44,70,12,30)+piece('gold round',0,0,100,80,'background:light-dark(#ad552b,#b8683c);');break;
+   case 'lampboard':art=piece('dark',40,0,20,100)+piece('gold',0,6,100,88)+piece('dark',47,0,6,82)+piece('brushed round',26,22,48,34)+piece('brushed round',26,58,48,34);break;
+   case 'blacktier':art=tiers(3,'blacktray');break;
+   case 'roundtier':art=piece('dark',40,20,5,62,'transform:rotate(25deg)')+piece('dark round',27,0,45,43)+piece('dark round',0,54,45,43)+piece('dark round',55,43,45,43);break;
+   case 'ice':art=piece('icebase',0,0,100,100)+piece('brushed',9,12,82,76);break;
+   case 'chilledbowl':art=piece('icebase round',0,0,100,100)+piece('brushed round',13,13,74,74)+piece('brushed round',22,22,56,56);break;
+   case 'chilledround':art=piece('icebase round',0,0,100,100)+piece('brushed round',10,10,80,80);break;
+   case 'tower':art=item.id?[9,8,7,6,5,4].map(d=>{const s=d/9*100;return piece('acrylic round',(100-s)/2,(100-s)/2,s,s);}).join('')+piece('acrylic round',45,45,10,10):piece('acrylic',43,8,14,85)+[4,5,6,7,8,9].map((d,n)=>{const s=d/9*100;return piece('acrylic round',(100-s)/2,5+n*15,s,16);}).join('');break;
+   case 'warmer':art=piece('griddlebody',0,10,100,89)+piece('brushed',2,75,96,19)+[3,35,67].map(x=>piece('loop',x+10,0,9,24)+piece('dark round',x,12,30,65)+piece('brushed round',x+1,14,28,59)+piece('loop',x+11,34,8,14)+piece('dark round',x+12,78,7,16)+piece('silver',x+15,80,1,7)).join('');break;
+   case 'roundsilver':art=piece('brushed round',0,0,100,100)+piece('brushed round',10,10,80,80);break;
+   case 'threepan':art=tray(3);break;
+   case 'twopan':art=tray(2);break;
+   case 'fullpan':art=tray(1);break;
+   case 'bluebowl':art=piece('blue round',0,0,100,100);break;
+   case 'woodriser':art=piece('grain',0,0,100,100);break;
+   case 'rectplate':art=piece('blue bevel',0,0,100,100);break;
+   case 'roundplate':art=piece('ceramic round',0,0,100,100);break;
+   case 'ceramic':art=piece('ceramic',0,0,100,100);break;
+   case 'soupkettle':art=item.id?piece('loop',0,38,100,22)+piece('brushed round',10,5,80,90)+piece('brushed round',15,10,70,80)+piece('loop',36,42,28,13)+piece('dark',29,9,10,7):piece('brushed',19,30,5,66)+piece('brushed',76,30,5,66)+piece('brushed round',27,82,46,15)+piece('brushed',41,75,18,15)+piece('loop',0,24,100,13)+piece('brushed',15,17,70,60)+piece('brushed round',12,5,76,20)+piece('loop',39,8,23,8);break;
+   case 'baconstand':
+    art=item.id?piece('cutwood',0,0,100,100)+[11,29].map(y=>piece('grain round',5,y-3,8,10)+piece('grain round',87,y-3,8,10)+piece('brushed',9,y,82,3)).join(''):piece('cutwood',0,78,100,22)+[8,84].map(x=>piece('grain',x,3,7,87)+piece('grain',x+3,0,7,84)).join('')+piece('brushed',15,5,73,3)+piece('brushed',12,13,73,3);
+    break;
+   case 'donutstand':
+    art=item.id?piece('brushed',12,18,3,78)+piece('brushed',85,18,3,78)+piece('acrylic',0,28,100,13)+[17,49,81].map(x=>piece('acrylic',x,37,3,52)).join(''):piece('brushed',8,88,20,5)+piece('brushed',72,88,20,5)+piece('acrylic',4,0,92,100)+[19,49,79].map(x=>[16,44,72].map(y=>piece('acrylic round',x-4,y,12,14)+piece('brushed',x,y+5,10,3)).join('')).join('');
+    break;
+   case 'twotier':art=tiers(2,'blue bevel');break;
+   case 'threetier':art=tiers(3,'blue bevel');break;
+   case 'greyriser':art=piece('gray',0,0,100,100);break;
+   case 'ovalblack':case 'roundblack':art=piece('dark',0,38,100,24)+piece('brushed round',6,0,88,100)+piece('paninside round',11,6,78,88)+piece('dark round',45,82,10,10);break;
+   case 'heater':art=piece('dark round',0,0,100,100);break;
+   case 'basket':art=piece('wicker',1,1,98,98);break;
+   case 'mat':art=piece('silicone',0,0,100,100)+piece('controlstrip',89,7,8,86)+[22,40,58,76].map(y=>piece('powerdot round',91,y,3,4)).join('');break;
+   case 'pan':art=piece('cooktop',4,2,83,91)+piece('controlstrip',10,79,70,9)+piece('powerdot round',70,81,5,5)+piece('panhandle',59,50,10,44,'transform:rotate(-40deg);transform-origin:50% 5%')+piece('pansteel round',12,7,65,65)+piece('paninside round',18,13,53,53);break;
+   case 'cutboard':art=piece('cutwood',0,0,100,100);break;
+   case 'roundboard':art=piece('cutwood round',0,0,100,100);break;
+   case 'smallcrock':art=piece('dark',0,40,100,18)+piece('dark round rim',6,0,88,100)+piece('paninside round',18,12,64,76);break;
+   case 'blacklamp':art=piece('dark round rim',46,65,43,33)+piece('dark round',52,70,31,23)+piece('dark',65,41,5,39)+piece('silver',68,43,1,33)+piece('dark',35,31,35,5,'transform:rotate(22deg);transform-origin:0 50%')+piece('dark round',64,39,7,6)+piece('dark',38,20,13,17,'transform:rotate(-25deg)')+piece('dark round rim',5,0,54,42)+piece('brushed round',8,3,48,36)+piece('paninside round',13,7,38,28)+piece('brushed round',25,16,14,10);break;
+   case 'condiments':art=piece('dark',0,0,100,100)+piece('brushed',1,0,98,8)+[2,21.5,41,60.5,80].map(x=>piece('whitebin',x,9,18,82)+piece('whitebin',x+5,87,8,9)).join('');break;
+   case 'griddle':art=piece('griddlecord',83,5,15,36)+piece('dark',82,39,18,24)+piece('griddlebody',0,1,88,96)+piece('griddlesurface',4,8,80,80)+piece('dark',36,95,17,5)+piece('dark round',40,85,3,2)+piece('brushed round',92,44,6,14)+piece('dark',94,46,1,5);break;
+   case 'crate':art=piece('grain crate',0,0,100,100);break;
+  }
+  const angle=item.angle||0,sideways=angle%180!==0;
+  return '<span class="sp-art" aria-hidden="true" style="width:'+(item.rotationW?item.rotationW/item.w*100:sideways?item.h/item.w*100:100)+'%;height:'+(item.rotationH?item.rotationH/item.h*100:sideways?item.w/item.h*100:100)+'%;transform:translate(-50%,-50%) rotate('+angle+'deg)">'+art+'</span>';
+ }
+
+ function packingList(){
+  const groups=new Map();let total=0;
+  state.tables.forEach(t=>t.items.forEach(i=>{
+   const key=i.type;
+   if(!groups.has(key))groups.set(key,{name:def(i).name.split(' · ').filter(part=>! /\bin\b/.test(part)).join(' · '),count:0});
+   groups.get(key).count++;total++;
+  }));
+  $('sp-packing-total').textContent=total+' piece'+(total===1?'':'');
+  $('sp-packing-rows').innerHTML=Array.from(groups.values()).sort((a,b)=>a.name.localeCompare(b.name)).map(g=>'<tr><td>'+esc(g.name)+'</td><td>'+g.count+'</td></tr>').join('')||'<tr><td colspan="2">No equipment added yet.</td></tr>';
+ }
+ function drawItems() {
+  packingList();
+  const t=table();
+  $('sp-items').innerHTML=t.items.map((item,n)=>`<button type="button" class="sp-equipment ${def(item).shape} ${item.w>item.h?"landscape":"portrait"} ${item.id===state.selected?'selected':''}" data-item="${esc(item.id)}" aria-label="${esc((item.label||def(item).name)+'; '+(item.product||'no product')+'; '+(t.vendors[item.owner]||'Shared')+'. Arrow keys move equipment.')}" style="left:${item.x/t.w*100}%;top:${item.y/t.h*100}%;width:${item.w/t.w*100}%;height:${item.h/t.h*100}%">${equipmentArt(item)}<span class="sp-number">${n+1}</span><span class="sp-name">${esc(item.label)}</span><span class="sp-product">${esc(item.product)}</span></button>`).join('');
+  $('sp-item-list').innerHTML=t.items.map((i,n)=>`<button type="button" data-pick="${esc(i.id)}" aria-pressed="${i.id===state.selected}">${n+1}. ${esc(i.product||i.label||def(i).name)}</button>`).join('');
+  $('sp-item-list').querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{state.selected=b.dataset.pick;drawItems();inspector();remember();});
+  $('sp-items').querySelectorAll('[data-item]').forEach(button=>{
+   button.onclick=()=>{state.selected=button.dataset.item;highlight();inspector();};
+   button.onkeydown=event=>{const delta={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[event.key];if(!delta)return;event.preventDefault();state.selected=button.dataset.item;const i=selected();i.x+=delta[0]*(event.shiftKey?3:.5);i.y+=delta[1]*(event.shiftKey?3:.5);constrain(i);place(button,i);highlight();inspector();remember();};
+   button.onpointerdown=event=>{
+    if(event.button!==0)return;event.preventDefault();button.focus({preventScroll:true});state.selected=button.dataset.item;highlight();inspector();
+    const item=selected(),rect=$('sp-table').getBoundingClientRect(),start={x:event.clientX,y:event.clientY,ix:item.x,iy:item.y};
+    button.setPointerCapture(event.pointerId);
+    button.onpointermove=e=>{item.x=Math.round((start.ix+(e.clientX-start.x)/rect.width*t.w)*2)/2;item.y=Math.round((start.iy+(e.clientY-start.y)/rect.height*t.h)*2)/2;constrain(item);place(button,item);$('sp-x').value=item.x;$('sp-y').value=item.y;};
+    const finish=()=>{button.onpointermove=null;button.onpointerup=null;button.onpointercancel=null;remember(item.label+' positioned.');};button.onpointerup=finish;button.onpointercancel=finish;
+   };
+  });
+ }
+ function place(button,item){const t=table();button.style.left=item.x/t.w*100+'%';button.style.top=item.y/t.h*100+'%';}
+ function highlight() { $('sp-items').querySelectorAll('[data-item]').forEach(b=>b.classList.toggle('selected',b.dataset.item===state.selected)); }
+ function inspector(){const t=table(),i=selected();$('sp-inspector').hidden=!i;if(!i)return;$('sp-selected-title').textContent=i.label||def(i).name;$('sp-footprint').textContent=(i.rotationW||i.w)+' × '+(i.rotationH||i.h)+' in'+(def(i).estimated?' · example size':'');$('sp-label').value=i.label;const choices=productChoices(t,i);$('sp-product').innerHTML='<option value="">'+(choices.length?'No product':'No event products for this vendor')+'</option>'+choices.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.label)+'</option>').join('')+(i.productId&&!choices.some(p=>p.id===i.productId)?'<option value="'+esc(i.productId)+'" disabled>'+esc(i.product)+' (not in current lineup)</option>':'');$('sp-product').value=i.productId||'';$('sp-owner').innerHTML=tableVendors(t).map((v,n)=>`<option value="${n}">${esc(v||'Vendor')}</option>`).join('')+'<option value="4">Shared supplies</option>';$('sp-owner').value=String(i.owner);$('sp-destination').innerHTML=state.tables.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');$('sp-destination').value=t.id;['width','height','x','y'].forEach(k=>$('sp-'+k).value=(k==='width'?i.rotationW:k==='height'?i.rotationH:null)||i[{width:'w',height:'h',x:'x',y:'y'}[k]]);}
+ function add(key,x,y){const t=table(),e=equipment.find(e=>e.key===key);if(!e)return;if(state.tables.reduce((n,t)=>n+t.items.length,0)>=200){$('sp-status').textContent='Maximum: 200 pieces of equipment.';return;}const i={id:uid(),type:key,label:shortLabel(e),product:'',owner:x!=null?Math.min(vendorCount(t)-1,Math.max(0,Math.floor(x/t.w*vendorCount(t)))):0,w:e.w,h:e.h,x:x==null?5+(t.items.length%5)*4:x-e.w/2,y:y==null?5:y-e.h/2};constrain(i);t.items.push(i);state.selected=i.id;render();remember(e.name+' added.');}
+ $('sp-palette').innerHTML=['Heating','Chafers','Serving','Displays','Original demo pieces'].filter(group=>equipment.some(e=>(e.group||'Original demo pieces')===group)).map((group,n)=>'<details '+(n===0?'open':'')+'><summary>'+group+'</summary><div class="sp-equipment-options">'+equipment.filter(e=>(e.group||'Original demo pieces')===group).map(e=>`<button type="button" draggable="true" data-add="${e.key}" aria-label="Add ${esc(e.name)}"><span class="sp-sample ${e.shape}" aria-hidden="true" style="width:${Math.min(46,38*e.w/e.h)}px;height:${Math.min(38,46*e.h/e.w)}px;flex-basis:${Math.min(46,38*e.w/e.h)}px">${equipmentArt({type:e.key,w:e.w,h:e.h})}</span><span>${esc(e.name)}<small>${e.estimated?'~ ':''}${e.w} × ${e.h} in</small></span></button>`).join('')+'</div></details>').join('');
+ $('sp-palette').querySelectorAll('[data-add]').forEach(b=>{b.onclick=()=>add(b.dataset.add);b.ondragstart=e=>{e.dataTransfer.setData('text/plain',b.dataset.add);e.dataTransfer.effectAllowed='copy';};});
+ $('sp-table').ondragover=e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';};
+ $('sp-table').ondrop=e=>{e.preventDefault();const r=$('sp-table').getBoundingClientRect();add(e.dataTransfer.getData('text/plain'),(e.clientX-r.left)/r.width*table().w,(e.clientY-r.top)/r.height*table().h);};
+ $('sp-size').onchange=e=>{if(e.target.value==='custom'){ $('sp-length').focus();return;}table().w=Number(e.target.value);table().h=30;table().items.forEach(i=>constrain(i));render();remember('Table size changed.');};
+ ['length','depth'].forEach((k,n)=>$('sp-'+k).onchange=e=>{const min=n?24:36,max=n?48:120;table()[n?'h':'w']=Math.min(max,Math.max(min,Number(e.target.value)||min));table().items.forEach(i=>constrain(i));render();remember('Table dimensions updated.');});
+ $('sp-sharing').onchange=e=>{table().sharing=e.target.value;syncProducts(table());render();remember();};
+ ['vendor1','vendor2','vendor3','vendor4'].forEach((k,n)=>$('sp-'+k).onchange=e=>{table().vendors[n]=e.target.value.trim().slice(0,60);syncProducts(table());render();remember();});
+ $('sp-label').onchange=e=>{if(!selected())return;selected().label=e.target.value.trim().slice(0,60);drawItems();inspector();remember();};
+ $('sp-product').onchange=e=>{const p=catalog.find(p=>p.id===e.target.value);selected().product=p?.label||'';selected().productId=p?.id||'';drawItems();remember();};
+ $('sp-owner').onchange=e=>{selected().owner=Number(e.target.value);syncProducts(table());drawItems();inspector();remember();};
+ $('sp-destination').onchange=e=>{const from=table(),to=state.tables.find(t=>t.id===e.target.value),i=selected();if(!to||to===from)return;from.items=from.items.filter(x=>x.id!==i.id);to.items.push(i);state.active=to.id;i.owner=0;syncProducts(to);constrain(i,to);render();remember('Equipment moved to '+to.name+'.');};
+ function rotateSelected(degrees){
+  const i=selected();if(!i)return;
+  const old=i.angle||0,w=i.rotationW||(old%180?i.h:i.w),h=i.rotationH||(old%180?i.w:i.h),angle=(old+degrees)%360;
+  const rad=angle*Math.PI/180,c=Math.abs(Math.cos(rad)),s=Math.abs(Math.sin(rad)),bw=+(w*c+h*s).toFixed(4),bh=+(w*s+h*c).toFixed(4);
+  if(bw>table().w||bh>table().h){$('sp-status').textContent='This angle needs more space than the table allows.';return;}
+  const cx=i.x+i.w/2,cy=i.y+i.h/2;i.rotationW=w;i.rotationH=h;i.angle=angle;i.w=bw;i.h=bh;i.x=cx-bw/2;i.y=cy-bh/2;
+  constrain(i);drawItems();inspector();remember('Rotated to '+angle+'°.');
+ }
+ $('sp-rotate45').onclick=()=>rotateSelected(45);
+ $('sp-rotate').onclick=()=>rotateSelected(90);
+ $('sp-duplicate').onclick=()=>{if(state.tables.reduce((n,t)=>n+t.items.length,0)>=200)return;const i={...selected(),id:uid(),x:selected().x+3,y:selected().y+3};constrain(i);table().items.push(i);state.selected=i.id;render();remember('Equipment duplicated.');};
+ function removeSelected(){if(!selected())return;table().items=table().items.filter(i=>i.id!==state.selected);state.selected='';render();remember('Equipment removed.');}
+ $('sp-remove').onclick=removeSelected;
+ root.addEventListener('keydown',event=>{
+  if(event.key!=='Delete'||event.repeat||event.ctrlKey||event.metaKey||event.altKey||event.isComposing)return;
+  if(event.target.closest('input,textarea,select,[contenteditable]')||!selected())return;
+  event.preventDefault();removeSelected();
+ });
+ ['width','height','x','y'].forEach(k=>$('sp-'+k).onchange=e=>{const i=selected();if(!i)return;if(i.rotationW&&(k==='width'||k==='height')){const prop=k==='width'?'rotationW':'rotationH',before=i[prop];i[prop]=Math.max(4,Number(e.target.value)||4);const a=(i.angle||0)*Math.PI/180;if(i.rotationW*Math.abs(Math.cos(a))+i.rotationH*Math.abs(Math.sin(a))>table().w||i.rotationW*Math.abs(Math.sin(a))+i.rotationH*Math.abs(Math.cos(a))>table().h){i[prop]=before;inspector();return;}rotateSelected(0);return;}i[{width:'w',height:'h',x:'x',y:'y'}[k]]=Number(e.target.value)||0;constrain(i);drawItems();inspector();remember();});
+ function preparePrint(){
+  packingList();
+  root.querySelector('.sp-print-pages').innerHTML=state.tables.map(t=>'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>'+esc(t.name)+'</h2><div>'+esc(tableVendors(t).filter(Boolean).join(' · '))+' · '+t.w+' × '+t.h+' in</div><div class="sp-direction">Customers</div><div class="sp-table" style="aspect-ratio:'+t.w+'/'+t.h+'">'+tableVendors(t).map((v,n)=>'<div class="sp-zone" style="left:'+n*100/vendorCount(t)+'%;width:'+100/vendorCount(t)+'%;background:var(--zone'+(n%2+1)+')"></div>').join('')+t.items.map((i,n)=>'<div class="sp-equipment '+def(i).shape+'" style="left:'+i.x/t.w*100+'%;top:'+i.y/t.h*100+'%;width:'+i.w/t.w*100+'%;height:'+i.h/t.h*100+'%">'+equipmentArt(i)+'<span class="sp-number">'+(n+1)+'</span></div>').join('')+'</div><div class="sp-zone-labels">'+tableVendors(t).map(v=>'<span style="width:'+100/vendorCount(t)+'%">'+esc(v||'Vendor')+'</span>').join('')+'</div><div class="sp-direction">Sales team</div><ol class="sp-print-key">'+t.items.map(i=>'<li>'+esc(i.label||shortLabel(def(i)))+(i.product?' — '+esc(i.product):'')+' · '+esc(i.owner===4?'Shared supplies':t.vendors[i.owner]||'Vendor')+'</li>').join('')+'</ol></section>').join('')+'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>Packing list · all tables</h2><div class="sp-packing"><table><thead><tr><th>Equipment</th><th>Quantity</th></tr></thead><tbody>'+$('sp-packing-rows').innerHTML+'</tbody></table></div></section>';
+ }
+ $('sp-print').onclick=()=>{preparePrint();window.print();};
+ window.addEventListener('beforeprint',preparePrint);
+ root.querySelector('h2').textContent=context.name;
+ $('sp-vendor-options').innerHTML=[...new Set([...context.vendors,...catalog.map(p=>p.vendor),...state.tables.flatMap(t=>t.vendors)])].filter(Boolean).sort().map(v=>'<option value="'+esc(v)+'"></option>').join('');
+ state.tables.forEach(t=>t.items.forEach(i=>{if(i.productId){const p=catalog.find(p=>p.id===i.productId);if(p)i.product=p.label;}}));
+ render();
+})();
+</script>
+</div>
+</div>
+
+</body></html>

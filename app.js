@@ -1306,6 +1306,7 @@ function normalizeMarketVisit(visit) {
     newProductIds: Array.isArray(visit.newProductIds) ? visit.newProductIds : [],
     attendees: Array.isArray(visit.attendees) ? visit.attendees.map(normalizeEventAttendee) : [],
     productNotes: visit.productNotes || {},
+    tableLayout: normalizeTablePlanner(visit.tableLayout),
     foodshowFormat: String(visit.foodshowFormat || "Foodshow"),
     foodshowAudience: String(visit.foodshowAudience || ""),
     conversations: Array.isArray(visit.conversations) ? visit.conversations.map(normalizeFoodshowConversation) : [],
@@ -10599,3 +10600,4 @@ async function saveUnifiedSampleOrder(order) {
 function getEventPrintLogo(choice) {
   return ({usFoods: {src: printBrandLogos.usFoods, name: 'US Foods'}, sysco: {src: 'sysco-logo.png?v=20260917-official1', name: 'Sysco'}, linford: {src: 'linford-logo.svg', name: 'Linford'}})[choice] || null;
 }
+
