@@ -1,0 +1,38 @@
+/* Event agenda and creation chooser. */
+#marketVisitsDialog .market-controls {display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:14px;padding:18px;background:#e5eee9;border:1px solid #adc9bd;border-radius:12px;box-shadow:none;margin:14px 0 22px;}
+#marketVisitsDialog .market-controls > label {display:grid;grid-column:auto;min-width:0;gap:6px;}
+#marketVisitsDialog .market-controls > .market-extra-filter {display:none;}
+#marketVisitsDialog .market-controls .search-box {grid-column:1 / -2;}
+#marketVisitsDialog .market-controls input,#marketVisitsDialog .market-controls select {width:100%;min-width:0;font-size:15px;padding:9px;border-radius:7px;border-color:#a9beb5;}
+#marketVisitsDialog .market-controls label > span {color:#335f52;}
+#marketVisitsDialog .market-list-panel {background:#f7faf7;border:1px solid #bed2c8;border-radius:12px;padding:20px;}
+#marketVisitsDialog .market-list-header-compact {margin-bottom:20px;align-items:flex-start;}
+#marketVisitsDialog .market-list-header-compact h2 {margin:3px 0;color:#245e59;font-size:26px;}
+#marketVisitsDialog .agenda-help {margin:6px 0;color:#526c62;}
+#marketVisitsDialog .market-card-grid {display:block;}
+#marketVisitsDialog .agenda-group {margin:0 0 24px;}
+#marketVisitsDialog .agenda-group > h3 {background:#dcece4;color:#285c4c;border-left:4px solid #3f8470;padding:12px 15px;border-radius:6px;margin:0 0 14px;font-size:19px;}
+#marketVisitsDialog .agenda-group > h3 span {float:right;font-size:14px;padding:3px 8px;background:#fff;border-radius:12px;}
+#marketVisitsDialog .agenda-cards {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:16px;}
+#marketVisitsDialog .market-card {background:#fffefa;border:1px solid #bed2c8;border-radius:10px;box-shadow:0 2px 5px #183c3010;overflow:hidden;}
+#marketVisitsDialog .market-card.active-market-card {border:2px solid #317867;}
+#marketVisitsDialog .market-card-main {background:#f3f8f4;padding:16px;}
+#marketVisitsDialog .market-card-main h3 {color:#233f34;line-height:1.35;margin:12px 0 8px;}
+#marketVisitsDialog .agenda-type {display:inline-block;padding:5px 9px;background:#ddebe4;color:#2b5949;border-radius:5px;font-size:12px;font-weight:700;}
+#marketVisitsDialog .market-card-options {padding:8px 14px;background:#fffefa;}
+#marketVisitsDialog .market-card-options summary {padding:7px 0;}
+#marketVisitsDialog .market-action-row {margin-top:16px;}
+#marketVisitsDialog .market-detail-header {background:#e1ede6;border-color:#aac6b8;color:#254b3d;gap:18px;}
+#marketVisitTypeDialog .market-type-prompt {margin:0 0 18px;line-height:1.5;color:#486256;font-size:16px;}
+#marketVisitTypeDialog .market-type-choices {gap:16px;}
+#marketVisitTypeDialog .market-type-choice {background:#e2eee6;color:#244f41;border:1px solid #91b6a4;box-shadow:none;padding:18px 14px;border-radius:10px;min-height:76px;line-height:1.4;}
+#marketVisitTypeDialog .market-type-choice:hover,#marketVisitTypeDialog .market-type-choice:focus-visible {background:#cde2d5;border-color:#37745d;}
+#marketVisitTypeDialog .market-type-actions {margin-top:24px;padding-top:16px;border-top:1px solid #c4d7cc;}
+#marketVisitTypeDialog .market-type-actions button {padding:10px 22px;box-shadow:none;}
+@media(max-width:700px){#marketVisitsDialog .market-controls{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px;}#marketVisitsDialog .market-controls .search-box{grid-column:1 / -1;}#marketVisitsDialog .market-list-panel{padding:12px;}}
+@media(max-width:400px){#marketVisitTypeDialog .market-type-choices{grid-template-columns:1fr;}#marketVisitsDialog .market-controls{grid-template-columns:minmax(0,1fr);}}
+.market-nav-action {background:#dcece5;border-color:#709f8c;color:#254f40;}
+.market-nav-action.active-view {background:#377b67;border-color:#275a4b;color:#fff;}
+#marketVisitsDialog .active-market-view {background:#377b67;border-color:#275a4b;color:#fff;}
+#marketVisitsDialog .market-controls {width:100%;max-width:none;box-sizing:border-box;}
+#marketVisitsDialog .market-card-date,#marketVisitsDialog .market-card-options {color:#36594b;}

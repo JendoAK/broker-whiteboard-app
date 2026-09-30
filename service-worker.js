@@ -1,5 +1,5 @@
-const CACHE_NAME = "foodbrokerbase-planner11";
-const APP_SHELL = ["./window-layout.css?v=20260930-windows1","./table-planner.js?v=20260930-planner11","./table-planner.css?v=20260930-planner11","./table-planner.html?v=20260930-planner11","./editing-stability.js?v=20260930-planner11","./foodshow-layout.js?v=20260930-planner11", "./foodshow-layout.css?v=20260929-foodshow8",
+const CACHE_NAME = "foodbrokerbase-agenda1";
+const APP_SHELL = ["./event-agenda.js?v=20260930-agenda1","./event-agenda.css?v=20260930-agenda1","./window-layout.css?v=20260930-windows1","./table-planner.js?v=20260930-planner11","./table-planner.css?v=20260930-planner11","./table-planner.html?v=20260930-planner11","./editing-stability.js?v=20260930-planner11","./foodshow-layout.js?v=20260930-planner11", "./foodshow-layout.css?v=20260929-foodshow8",
   "./manager-overview.js?v=20260918-managersettings1",
   "./manager-overview.css?v=20260918-manager1",
   "./todo-drag.js?v=20260917-todopointer1",
