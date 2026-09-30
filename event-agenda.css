@@ -36,3 +36,5 @@
 #marketVisitsDialog .active-market-view {background:#377b67;border-color:#275a4b;color:#fff;}
 #marketVisitsDialog .market-controls {width:100%;max-width:none;box-sizing:border-box;}
 #marketVisitsDialog .market-card-date,#marketVisitsDialog .market-card-options {color:#36594b;}
+#marketVisitsDialog .market-card-main h3 {font-size:clamp(21px,1.6vw,25px);font-weight:900;line-height:1.25;color:#123f38;margin:14px 0 12px;overflow-wrap:anywhere;}
+#marketVisitsDialog .market-card-main .agenda-type {font-size:11px;font-weight:600;}
