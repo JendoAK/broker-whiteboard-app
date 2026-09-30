@@ -228,10 +228,17 @@
 #show-planner-demo .sp-reference-column ol,#show-planner-demo .sp-reference-column ul {margin:0;padding-left:20px;font-size:12px;line-height:1.3;}
 #show-planner-demo .sp-print-key li {margin:3px 0;}
 @media print {#show-planner-demo .sp-print-page .sp-name {top:4px;}#show-planner-demo .sp-product-label {font-size:11px;box-shadow:none;cursor:default;}#show-planner-demo .sp-print-page .sp-number {top:auto;bottom:2px;}}
+
+#show-planner-demo .sp-equipment.text-box {background:#fffef5;border:1px solid #759d8c;border-radius:5px;box-shadow:none;z-index:5;padding:5px 7px;min-height:0;font-size:13px;line-height:1.25;white-space:normal;}
+#show-planner-demo .sp-box-note {white-space:pre-wrap;font-weight:600;}
+#show-planner-demo .sp-box-placeholder {color:#65786c;font-style:italic;}
+#show-planner-demo .text-box .sp-number {display:none!important;}
+#show-planner-demo #sp-label {width:100%;font:inherit;box-sizing:border-box;}
+@media print {#show-planner-demo .sp-equipment.text-box {font-size:11px;}}
 </style>
 <header class="sp-top"><div><h2>US Foods Vendor Showcase</h2><div class="sp-sub">Table layout</div></div></header>
 <div class="sp-row sp-navigation" id="sp-tables"></div>
-<div class="sp-row" style="justify-content:flex-start;margin:10px 0"><button type="button" id="sp-copy-table">Copy table</button><button type="button" id="sp-remove-table">Remove table</button></div>
+<div class="sp-row" style="justify-content:flex-start;margin:10px 0"><button type="button" id="sp-add-text">+ Text box</button><button type="button" id="sp-copy-table">Copy table</button><button type="button" id="sp-remove-table">Remove table</button></div>
 <div class="sp-fields">
  <label>Table size<select id="sp-size"><option value="48">4 ft × 30 in</option><option value="72">6 ft × 30 in</option><option value="96">8 ft × 30 in</option><option value="custom">Custom</option></select></label>
  <label>Length (in)<input id="sp-length" type="number" min="36" max="120" step="1"></label>
@@ -252,7 +259,7 @@
 <section class="sp-inspector" id="sp-inspector" aria-label="Selected equipment">
  <div class="sp-row"><h3 id="sp-selected-title">Selected equipment</h3><span class="sp-sub" id="sp-footprint"></span></div>
  <div class="sp-fields">
-  <label>Label<input id="sp-label"></label>
+  <label>Label / text<textarea id="sp-label" rows="2"></textarea></label>
   <label>Vendor<select id="sp-owner"></select></label>
   <label>Move to table<select id="sp-destination"></select></label>
  </div>
@@ -378,14 +385,14 @@
  updateChaferSizes();
  const vendorCount=t=>({one:1,two:2,three:3,four:4}[t.sharing]||1);
  const tableVendors=t=>Array.from({length:vendorCount(t)},(_,n)=>t.vendors[n]||'');
- function productChoices(t,i){const vendors=(i.owner===4?tableVendors(t):[t.vendors[i.owner]||'']).map(v=>v.trim().toLowerCase());return catalog.filter(p=>vendors.includes(p.vendor.trim().toLowerCase()));}
+ function productChoices(t,i){if(i.type==='text-box')return catalog;const vendors=(i.owner===4?tableVendors(t):[t.vendors[i.owner]||'']).map(v=>v.trim().toLowerCase());return catalog.filter(p=>vendors.includes(p.vendor.trim().toLowerCase()));}
  function assignedProducts(i){return Array.isArray(i.products)?i.products:i.productId||i.product?[{id:i.productId||'',label:i.product||''}]:[];}
  function setProducts(i,products){i.products=products;i.product=products.map(p=>p.label).join(' / ');i.productId=products[0]?.id||'';}
  function syncProducts(t){t.items.forEach(i=>{if(i.owner!==4&&i.owner>=vendorCount(t))i.owner=4;const ids=new Set(productChoices(t,i).map(p=>p.id));setProducts(i,assignedProducts(i).filter(p=>ids.has(p.id)));});}
  function productPicker(t,i){
   const choices=productChoices(t,i).slice().sort((a,b)=>a.label.localeCompare(b.label)),assigned=assignedProducts(i);
   const missing=assigned.filter(p=>!choices.some(c=>c.id===p.id));
-  $('sp-products').innerHTML=choices.map(p=>'<label><input type="checkbox" data-product-id="'+esc(p.id)+'" '+(assigned.some(a=>a.id===p.id)?'checked':'')+'><span>'+esc(p.label)+'</span></label>').join('')+missing.map((p,n)=>'<label><input type="checkbox" data-missing-product="'+n+'" checked><span>'+esc(p.label)+' (not in current lineup)</span></label>').join('')||'<p>No event products for this vendor. Add products to the event first.</p>';
+  $('sp-products').innerHTML=choices.map(p=>'<label><input type="checkbox" data-product-id="'+esc(p.id)+'" '+(assigned.some(a=>a.id===p.id)?'checked':'')+'><span>'+esc(p.label+(i.type==='text-box'?' · '+p.vendor:''))+'</span></label>').join('')+missing.map((p,n)=>'<label><input type="checkbox" data-missing-product="'+n+'" checked><span>'+esc(p.label)+' (not in current lineup)</span></label>').join('')||'<p>No event products for this vendor. Add products to the event first.</p>';
   $('sp-products').querySelectorAll('input').forEach(input=>input.onchange=()=>{
    let products=assignedProducts(i).slice();
    if(input.hasAttribute('data-missing-product'))products=products.filter(p=>p!==missing[Number(input.dataset.missingProduct)]);
@@ -395,7 +402,10 @@
  }
  const table=()=>state.tables.find(t=>t.id===state.active)||state.tables[0];
  const selected=()=>table().items.find(i=>i.id===state.selected);
- const def=i=>equipment.find(e=>e.key===i.type)||equipment[0];
+ const textBoxDefinition={key:'text-box',name:'Text box',w:14,h:4,shape:'text-box'};
+ const def=i=>i.type==='text-box'?textBoxDefinition:equipment.find(e=>e.key===i.type)||equipment[0];
+ const itemNumber=(t,i)=>i.type==='text-box'?'':t.items.filter(x=>x.type!=='text-box').indexOf(i)+1;
+ function textBoxContent(i){return '<span class="sp-box-note">'+esc(i.label)+'</span>'+assignedProducts(i).map(p=>'<span class="sp-product-name">'+esc(shortProduct(p))+'</span>').join('')+(!i.label&&!assignedProducts(i).length?'<span class="sp-box-placeholder">Text box</span>':'');}
  const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const uid=()=> 'demo-'+Date.now().toString(36)+'-'+sequence++;
  function constrain(item,t=table()) { item.w=Math.min(t.w,Math.max(4,item.w));item.h=Math.min(t.h,Math.max(4,item.h));item.x=Math.max(0,Math.min(t.w-item.w,item.x));item.y=Math.max(0,Math.min(t.h-item.h,item.y)); }
@@ -479,25 +489,26 @@
  function shortProduct(p){return p.nickname||p.label.replace(/\b\d+(?:\.\d+)?\s*(?:oz|ounce|ounces|lb|lbs|pack)\b/gi,'').replace(/\b\d+\s*-\s*pack\b/gi,'').replace(/,?\s*thaw and serve\b/gi,'').replace(/\s+/g,' ').replace(/[,· /-]+$/,'').trim()||p.label;}
  function nicknameEditor(i){$('sp-nicknames').innerHTML=assignedProducts(i).map((p,n)=>'<label>'+esc(p.label)+'<input data-nickname="'+n+'" maxlength="60" value="'+esc(p.nickname||'')+'" placeholder="'+esc(shortProduct(p))+'"></label>').join('')||'<p>Select products above to give them short names.</p>';$('sp-nicknames').querySelectorAll('input').forEach(input=>input.onchange=()=>{assignedProducts(i)[Number(input.dataset.nickname)].nickname=input.value.trim();drawItems();remember('Layout nickname saved.');});}
  function labelPosition(i,t){const width=Math.min(14,t.w),height=Math.max(2,assignedProducts(i).length*1.05);return {x:Math.max(0,Math.min(t.w-width,i.x+i.w/2-width/2+(i.labelOffsetX||0))),y:Math.max(0,Math.min(t.h-height,i.y+i.h+.6+(i.labelOffsetY||0))),width};}
- function labelMarkup(t,print=false){return t.items.map(i=>{if(!assignedProducts(i).length)return '';const p=labelPosition(i,t),tag=print?'div':'button';return '<svg class="sp-label-line" viewBox="0 0 '+t.w+' '+t.h+'" preserveAspectRatio="none" aria-hidden="true"><line x1="'+(i.x+i.w/2)+'" y1="'+(i.y+i.h/2)+'" x2="'+(p.x+p.width/2)+'" y2="'+p.y+'" /></svg><'+tag+' class="sp-product-label" '+(print?'':'type="button" data-label-item="'+esc(i.id)+'" title="Drag to move product label; arrow keys nudge"')+' style="left:'+p.x/t.w*100+'%;top:'+p.y/t.h*100+'%;width:'+p.width/t.w*100+'%">'+assignedProducts(i).map(p=>'<span class="sp-product-name">'+esc(shortProduct(p))+'</span>').join('')+'</'+tag+'>';}).join('');}
+ function labelMarkup(t,print=false){return t.items.map(i=>{if(i.type==='text-box'||!assignedProducts(i).length)return '';const p=labelPosition(i,t),tag=print?'div':'button';return '<svg class="sp-label-line" viewBox="0 0 '+t.w+' '+t.h+'" preserveAspectRatio="none" aria-hidden="true"><line x1="'+(i.x+i.w/2)+'" y1="'+(i.y+i.h/2)+'" x2="'+(p.x+p.width/2)+'" y2="'+p.y+'" /></svg><'+tag+' class="sp-product-label" '+(print?'':'type="button" data-label-item="'+esc(i.id)+'" title="Drag to move product label; arrow keys nudge"')+' style="left:'+p.x/t.w*100+'%;top:'+p.y/t.h*100+'%;width:'+p.width/t.w*100+'%">'+assignedProducts(i).map(p=>'<span class="sp-product-name">'+esc(shortProduct(p))+'</span>').join('')+'</'+tag+'>';}).join('');}
  function drawProductLabels(){const t=table();$('sp-product-labels').innerHTML=labelMarkup(t);$('sp-product-labels').querySelectorAll('[data-label-item]').forEach(b=>{const i=t.items.find(i=>i.id===b.dataset.labelItem);b.onfocus=()=>{state.selected=i.id;highlight();inspector();};b.onkeydown=e=>{const d={ArrowLeft:[-.5,0],ArrowRight:[.5,0],ArrowUp:[0,-.5],ArrowDown:[0,.5]}[e.key];if(!d)return;e.preventDefault();i.labelOffsetX=(i.labelOffsetX||0)+d[0];i.labelOffsetY=(i.labelOffsetY||0)+d[1];drawProductLabels();$('sp-product-labels').querySelector('[data-label-item="'+i.id+'"]').focus();remember();};b.onpointerdown=e=>{if(e.button!==0)return;e.preventDefault();e.stopPropagation();state.selected=i.id;highlight();inspector();const r=$('sp-table').getBoundingClientRect(),p=labelPosition(i,t),start={x:e.clientX,y:e.clientY},before=[i.labelOffsetX,i.labelOffsetY];b.setPointerCapture(e.pointerId);b.onpointermove=e=>{i.labelOffsetX=p.x+(e.clientX-start.x)/r.width*t.w-(i.x+i.w/2-p.width/2);i.labelOffsetY=p.y+(e.clientY-start.y)/r.height*t.h-(i.y+i.h+.6);const next=labelPosition(i,t);b.style.left=next.x/t.w*100+'%';b.style.top=next.y/t.h*100+'%';const line=b.previousElementSibling.querySelector('line');line.setAttribute('x2',next.x+next.width/2);line.setAttribute('y2',next.y);};const finish=cancel=>{b.onpointermove=null;b.onpointerup=null;b.onpointercancel=null;if(cancel){i.labelOffsetX=before[0];i.labelOffsetY=before[1];}drawProductLabels();remember('Product label positioned.');};b.onpointerup=()=>finish(false);b.onpointercancel=()=>finish(true);};});}
  $('sp-reset-label').onclick=()=>{const i=selected();if(!i)return;delete i.labelOffsetX;delete i.labelOffsetY;drawItems();remember('Product label position reset.');};
 
  function packingList(){
   const groups=new Map();let total=0;
   state.tables.forEach(t=>t.items.forEach(i=>{
+   if(i.type==='text-box')return;
    const key=i.type;
    if(!groups.has(key))groups.set(key,{name:def(i).name.split(' · ').filter(part=>! /\bin\b/.test(part)).join(' · '),count:0});
    groups.get(key).count++;total++;
   }));
-  $('sp-packing-total').textContent=total+' piece'+(total===1?'':'');
+  $('sp-packing-total').textContent=total+' piece'+(total===1?'':'s');
   $('sp-packing-rows').innerHTML=Array.from(groups.values()).sort((a,b)=>a.name.localeCompare(b.name)).map(g=>'<tr><td>'+esc(g.name)+'</td><td>'+g.count+'</td></tr>').join('')||'<tr><td colspan="2">No equipment added yet.</td></tr>';
  }
  function drawItems() {
   updateRotationHandle();
   packingList();
   const t=table();
-  $('sp-items').innerHTML=t.items.map((item,n)=>`<button type="button" class="sp-equipment ${def(item).shape} ${item.w>item.h?"landscape":"portrait"} ${item.id===state.selected?'selected':''}" data-item="${esc(item.id)}" aria-label="${esc((item.label||def(item).name)+'; '+(item.product||'no product')+'; '+(t.vendors[item.owner]||'Shared')+'. Arrow keys move equipment.')}" style="left:${item.x/t.w*100}%;top:${item.y/t.h*100}%;width:${item.w/t.w*100}%;height:${item.h/t.h*100}%">${equipmentArt(item)}<span class="sp-number">${n+1}</span><span class="sp-name">${esc(item.label)}</span></button>`).join('');
+  $('sp-items').innerHTML=t.items.map((item,n)=>`<button type="button" class="sp-equipment ${def(item).shape} ${item.w>item.h?"landscape":"portrait"} ${item.id===state.selected?'selected':''}" data-item="${esc(item.id)}" aria-label="${esc((item.label||def(item).name)+'; '+(item.product||'no product')+'; '+(t.vendors[item.owner]||'Shared')+'. Arrow keys move equipment.')}" style="left:${item.x/t.w*100}%;top:${item.y/t.h*100}%;width:${item.w/t.w*100}%;height:${item.h/t.h*100}%">${equipmentArt(item)}<span class="sp-number">${itemNumber(t,item)}</span>${item.type==='text-box'?textBoxContent(item):'<span class="sp-name">'+esc(item.label)+'</span>'}</button>`).join('');
   drawProductLabels();
   $('sp-item-list').innerHTML=t.items.map((i,n)=>`<button type="button" data-pick="${esc(i.id)}" aria-pressed="${i.id===state.selected}">${n+1}. ${esc(i.product||i.label||def(i).name)}</button>`).join('');
   $('sp-item-list').querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{state.selected=b.dataset.pick;drawItems();inspector();remember();});
@@ -513,20 +524,21 @@
    };
   });
  }
- function updateRotationHandle(){const i=selected(),h=$('sp-rotation-handle');h.hidden=!i;if(!i)return;const t=table();h.style.left='clamp(16px,'+((i.x+i.w)/t.w*100)+'%,calc(100% - 16px))';h.style.top='clamp(16px,'+(i.y/t.h*100)+'%,calc(100% - 16px))';h.setAttribute('aria-label','Rotate '+(i.label||def(i).name)+', '+(i.angle||0)+' degrees');}
+ function updateRotationHandle(){const i=selected(),h=$('sp-rotation-handle');h.hidden=!i||i.type==='text-box';if(!i||i.type==='text-box')return;const t=table();h.style.left='clamp(16px,'+((i.x+i.w)/t.w*100)+'%,calc(100% - 16px))';h.style.top='clamp(16px,'+(i.y/t.h*100)+'%,calc(100% - 16px))';h.setAttribute('aria-label','Rotate '+(i.label||def(i).name)+', '+(i.angle||0)+' degrees');}
  function place(button,item){const t=table();button.style.left=item.x/t.w*100+'%';button.style.top=item.y/t.h*100+'%';updateRotationHandle();drawProductLabels();}
  function highlight() { updateRotationHandle(); $('sp-items').querySelectorAll('[data-item]').forEach(b=>b.classList.toggle('selected',b.dataset.item===state.selected)); }
- function inspector(){const t=table(),i=selected();$('sp-inspector').hidden=!i;if(!i)return;$('sp-selected-title').textContent=i.label||def(i).name;$('sp-footprint').textContent=(i.rotationW||i.w)+' × '+(i.rotationH||i.h)+' in'+(def(i).estimated?' · example size':'');$('sp-label').value=i.label;productPicker(t,i);nicknameEditor(i);$('sp-owner').innerHTML=tableVendors(t).map((v,n)=>`<option value="${n}">${esc(v||'Vendor')}</option>`).join('')+'<option value="4">Shared supplies</option>';$('sp-owner').value=String(i.owner);$('sp-destination').innerHTML=state.tables.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');$('sp-destination').value=t.id;['width','height','x','y'].forEach(k=>$('sp-'+k).value=(k==='width'?i.rotationW:k==='height'?i.rotationH:null)||i[{width:'w',height:'h',x:'x',y:'y'}[k]]);}
- function add(key,x,y){const t=table(),e=equipment.find(e=>e.key===key);if(!e)return;if(state.tables.reduce((n,t)=>n+t.items.length,0)>=200){$('sp-status').textContent='Maximum: 200 pieces of equipment.';return;}const i={id:uid(),type:key,label:shortLabel(e),product:'',owner:x!=null?Math.min(vendorCount(t)-1,Math.max(0,Math.floor(x/t.w*vendorCount(t)))):0,w:e.w,h:e.h,x:x==null?5+(t.items.length%5)*4:x-e.w/2,y:y==null?5:y-e.h/2};constrain(i);t.items.push(i);state.selected=i.id;render();remember(e.name+' added.');}
+ function inspector(){const t=table(),i=selected();$('sp-inspector').hidden=!i;if(!i)return;const isText=i.type==='text-box';$('sp-inspector').querySelector('.sp-products-field legend').textContent=isText?'Products from any event vendor':'Products on this equipment';['sp-rotate45','sp-rotate','sp-reset-label','sp-owner'].forEach(id=>$(id).disabled=isText);$('sp-label').maxLength=isText?400:60;$('sp-selected-title').textContent=isText?'Text box':i.label||def(i).name;$('sp-footprint').textContent=(i.rotationW||i.w)+' × '+(i.rotationH||i.h)+' in'+(def(i).estimated?' · example size':'');$('sp-label').value=i.label;productPicker(t,i);nicknameEditor(i);$('sp-owner').innerHTML=tableVendors(t).map((v,n)=>`<option value="${n}">${esc(v||'Vendor')}</option>`).join('')+'<option value="4">Shared supplies</option>';if(isText)$('sp-owner').innerHTML='<option value="4">All event vendors</option>';$('sp-owner').value=isText?'4':String(i.owner);$('sp-destination').innerHTML=state.tables.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');$('sp-destination').value=t.id;['width','height','x','y'].forEach(k=>$('sp-'+k).value=(k==='width'?i.rotationW:k==='height'?i.rotationH:null)||i[{width:'w',height:'h',x:'x',y:'y'}[k]]);}
+ function add(key,x,y){const t=table(),e=key==='text-box'?textBoxDefinition:equipment.find(e=>e.key===key);if(!e)return;if(state.tables.reduce((n,t)=>n+t.items.length,0)>=200){$('sp-status').textContent='Maximum: 200 pieces of equipment.';return;}const i={id:uid(),type:key,label:key==='text-box'?'':shortLabel(e),product:'',owner:x!=null?Math.min(vendorCount(t)-1,Math.max(0,Math.floor(x/t.w*vendorCount(t)))):0,w:e.w,h:e.h,x:x==null?5+(t.items.length%5)*4:x-e.w/2,y:y==null?5:y-e.h/2};if(key==='text-box')i.owner=4;constrain(i);t.items.push(i);state.selected=i.id;render();remember(e.name+' added.');}
  $('sp-palette').innerHTML=['Chafers','Displays','Heating','Serving','Original demo pieces'].filter(group=>equipment.some(e=>(e.group||'Original demo pieces')===group)).map((group,n)=>'<details '+(n===0?'open':'')+'><summary>'+group+'</summary><div class="sp-equipment-options">'+equipment.filter(e=>(e.group||'Original demo pieces')===group).sort((a,b)=>a.name.localeCompare(b.name)).map(e=>`<button type="button" draggable="true" data-add="${e.key}" aria-label="Add ${esc(e.name)}"><span class="sp-sample ${e.shape}" aria-hidden="true" style="width:${Math.min(46,38*e.w/e.h)}px;height:${Math.min(38,46*e.h/e.w)}px;flex-basis:${Math.min(46,38*e.w/e.h)}px">${equipmentArt({type:e.key,w:e.w,h:e.h})}</span><span>${esc(e.name)}<small>${e.estimated?'~ ':''}${e.w} × ${e.h} in</small></span></button>`).join('')+'</div></details>').join('');
  $('sp-palette').querySelectorAll('[data-add]').forEach(b=>{b.onclick=()=>add(b.dataset.add);b.ondragstart=e=>{e.dataTransfer.setData('text/plain',b.dataset.add);e.dataTransfer.effectAllowed='copy';};});
  $('sp-table').ondragover=e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';};
  $('sp-table').ondrop=e=>{e.preventDefault();const r=$('sp-table').getBoundingClientRect();add(e.dataTransfer.getData('text/plain'),(e.clientX-r.left)/r.width*table().w,(e.clientY-r.top)/r.height*table().h);};
+ $('sp-add-text').onclick=()=>{add('text-box');$('sp-label').focus();};
  $('sp-size').onchange=e=>{if(e.target.value==='custom'){ $('sp-length').focus();return;}table().w=Number(e.target.value);table().h=30;table().items.forEach(i=>constrain(i));render();remember('Table size changed.');};
  ['length','depth'].forEach((k,n)=>$('sp-'+k).onchange=e=>{const min=n?24:36,max=n?48:120;table()[n?'h':'w']=Math.min(max,Math.max(min,Number(e.target.value)||min));table().items.forEach(i=>constrain(i));render();remember('Table dimensions updated.');});
  $('sp-sharing').onchange=e=>{table().sharing=e.target.value;syncProducts(table());render();remember();};
  ['vendor1','vendor2','vendor3','vendor4'].forEach((k,n)=>$('sp-'+k).onchange=e=>{table().vendors[n]=e.target.value.trim().slice(0,60);syncProducts(table());render();remember();});
- $('sp-label').onchange=e=>{if(!selected())return;selected().label=e.target.value.trim().slice(0,60);drawItems();inspector();remember();};
+ $('sp-label').onchange=e=>{if(!selected())return;selected().label=e.target.value.trim().slice(0,selected().type==='text-box'?400:60);drawItems();inspector();remember();};
  $('sp-owner').onchange=e=>{selected().owner=Number(e.target.value);syncProducts(table());drawItems();inspector();remember();};
  $('sp-destination').onchange=e=>{const from=table(),to=state.tables.find(t=>t.id===e.target.value),i=selected();if(!to||to===from)return;from.items=from.items.filter(x=>x.id!==i.id);to.items.push(i);state.active=to.id;i.owner=0;syncProducts(to);constrain(i,to);render();remember('Equipment moved to '+to.name+'.');};
  function rotateSelected(degrees,preview=false,center=null){
@@ -578,7 +590,7 @@
  };
  function preparePrint(){
   packingList();
-  root.querySelector('.sp-print-pages').innerHTML=state.tables.map(t=>'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>'+esc(t.name)+'</h2><div>'+esc(tableVendors(t).filter(Boolean).join(' · '))+' · '+t.w+' × '+t.h+' in</div><div class="sp-direction">Customers</div><div class="sp-table" style="--print-table-width:'+(4.4*t.w/t.h)+'in;aspect-ratio:'+t.w+'/'+t.h+'">'+tableVendors(t).map((v,n)=>'<div class="sp-zone" style="left:'+n*100/vendorCount(t)+'%;width:'+100/vendorCount(t)+'%;background:var(--zone'+(n%2+1)+')"></div>').join('')+t.items.map((i,n)=>'<div class="sp-equipment '+def(i).shape+'" style="left:'+i.x/t.w*100+'%;top:'+i.y/t.h*100+'%;width:'+i.w/t.w*100+'%;height:'+i.h/t.h*100+'%">'+equipmentArt(i)+'<span class="sp-number">'+(n+1)+'</span><span class="sp-name">'+esc(i.label||shortLabel(def(i)))+'</span></div>').join('')+labelMarkup(t,true)+'</div><div class="sp-zone-labels">'+tableVendors(t).map(v=>'<span style="width:'+100/vendorCount(t)+'%">'+esc(v||'Vendor')+'</span>').join('')+'</div><div class="sp-direction">Sales team</div><div class="sp-print-key"><section class="sp-reference-column"><h3>Equipment</h3><ol>'+t.items.map(i=>'<li>'+esc(i.label||shortLabel(def(i)))+'</li>').join('')+'</ol></section><section class="sp-reference-column"><h3>Products</h3><ul>'+Array.from(new Map(t.items.flatMap(i=>assignedProducts(i)).map(p=>[p.id||p.label,p])).values()).map(p=>'<li>'+esc(p.label)+'</li>').join('')+'</ul></section></div></section>').join('')+'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>Packing list · all tables</h2><div class="sp-packing"><table><thead><tr><th>Equipment</th><th>Quantity</th></tr></thead><tbody>'+$('sp-packing-rows').innerHTML+'</tbody></table></div></section>';
+  root.querySelector('.sp-print-pages').innerHTML=state.tables.map(t=>'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>'+esc(t.name)+'</h2><div>'+esc(tableVendors(t).filter(Boolean).join(' · '))+' · '+t.w+' × '+t.h+' in</div><div class="sp-direction">Customers</div><div class="sp-table" style="--print-table-width:'+(4.4*t.w/t.h)+'in;aspect-ratio:'+t.w+'/'+t.h+'">'+tableVendors(t).map((v,n)=>'<div class="sp-zone" style="left:'+n*100/vendorCount(t)+'%;width:'+100/vendorCount(t)+'%;background:var(--zone'+(n%2+1)+')"></div>').join('')+t.items.map((i,n)=>'<div class="sp-equipment '+def(i).shape+'" style="left:'+i.x/t.w*100+'%;top:'+i.y/t.h*100+'%;width:'+i.w/t.w*100+'%;height:'+i.h/t.h*100+'%">'+equipmentArt(i)+'<span class="sp-number">'+itemNumber(t,i)+'</span>'+(i.type==='text-box'?textBoxContent(i):'<span class="sp-name">'+esc(i.label||shortLabel(def(i)))+'</span>')+'</div>').join('')+labelMarkup(t,true)+'</div><div class="sp-zone-labels">'+tableVendors(t).map(v=>'<span style="width:'+100/vendorCount(t)+'%">'+esc(v||'Vendor')+'</span>').join('')+'</div><div class="sp-direction">Sales team</div><div class="sp-print-key"><section class="sp-reference-column"><h3>Equipment</h3><ol>'+t.items.filter(i=>i.type!=='text-box').map(i=>'<li>'+esc(i.label||shortLabel(def(i)))+'</li>').join('')+'</ol></section><section class="sp-reference-column"><h3>Products</h3><ul>'+Array.from(new Map(t.items.flatMap(i=>assignedProducts(i)).map(p=>[p.id||p.label,p])).values()).map(p=>'<li>'+esc(p.label)+'</li>').join('')+'</ul></section></div></section>').join('')+'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>Packing list · all tables</h2><div class="sp-packing"><table><thead><tr><th>Equipment</th><th>Quantity</th></tr></thead><tbody>'+$('sp-packing-rows').innerHTML+'</tbody></table></div></section>';
  }
  $('sp-print').onclick=()=>{preparePrint();window.print();};
  window.addEventListener('beforeprint',preparePrint);

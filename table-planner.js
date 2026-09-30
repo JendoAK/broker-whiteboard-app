@@ -10,7 +10,7 @@ function normalizeTablePlanner(value) {
     sharing: ['one', 'two', 'three', 'four'].includes(t.sharing) ? t.sharing : 'one',
     vendors: Array.from({ length: 4 }, (_, i) => text(t.vendors?.[i])),
     items: (Array.isArray(t.items) ? t.items : []).slice(0, 200).filter(i => i && typeof i === 'object').map((i, j) => ({
-      id: text(i.id) || `piece-${n}-${j}`, type: text(i.type), label: text(i.label), product: text(i.product, 400), productId: text(i.productId),
+      id: text(i.id) || `piece-${n}-${j}`, type: text(i.type), label: text(i.label,i.type==='text-box'?400:100), product: text(i.product, 400), productId: text(i.productId),
       products: (Array.isArray(i.products) ? i.products : i.productId || i.product ? [{id:i.productId,label:i.product}] : []).slice(0,200).map(p=>({id:text(p.id),label:text(p.label,400),nickname:text(p.nickname,60)})),
       ...(Number.isFinite(i.labelOffsetX)?{labelOffsetX:number(i.labelOffsetX,0,-240,240)}:{}), ...(Number.isFinite(i.labelOffsetY)?{labelOffsetY:number(i.labelOffsetY,0,-96,96)}:{}),
       owner: number(i.owner, 0, 0, 4), x: number(i.x, 0, 0, 240), y: number(i.y, 0, 0, 96),
@@ -63,7 +63,7 @@ function normalizeTablePlanner(value) {
     dialog.innerHTML = '<header><h2>Table layouts &amp; packing list</h2><span role="status"></span><button type="button">Close</button></header><iframe title="Event table planner"></iframe>';
     const token = crypto.randomUUID(), frame = dialog.querySelector('iframe');
     sessions.set(token, { visitId, status: dialog.querySelector('[role=status]'), saved: JSON.stringify(normalizeTablePlanner(visit.tableLayout)) });
-    frame.src = './table-planner.html?v=20260930-planner12#session=' + token;
+    frame.src = './table-planner.html?v=20260930-planner13#session=' + token;
     const close = () => {
       try { if (frame.contentWindow.flushTablePlanner && !frame.contentWindow.flushTablePlanner()) return; }
       catch (error) { sessions.get(token).status.textContent = 'Unable to save. Please retry before closing.'; return; }
