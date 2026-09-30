@@ -209,6 +209,7 @@
 </style>
 <header class="sp-top"><div><h2>US Foods Vendor Showcase</h2><div class="sp-sub">Table layout</div></div><span class="sp-badge">Event table planner</span></header>
 <div class="sp-row sp-navigation" id="sp-tables"></div>
+<div class="sp-row" style="justify-content:flex-start;margin:10px 0"><button type="button" id="sp-copy-table">Copy table</button><button type="button" id="sp-remove-table">Remove table</button></div>
 <div class="sp-fields">
  <label>Table size<select id="sp-size"><option value="48">4 ft × 30 in</option><option value="72">6 ft × 30 in</option><option value="96">8 ft × 30 in</option><option value="custom">Custom</option></select></label>
  <label>Length (in)<input id="sp-length" type="number" min="36" max="120" step="1"></label>
@@ -385,7 +386,7 @@
   const t=table();
   $('sp-tables').innerHTML=state.tables.map(x=>`<button type="button" data-table="${esc(x.id)}" aria-pressed="${x===t}">${esc(x.name)}</button>`).join('')+'<button type="button" class="sp-primary" id="sp-add-table">+ Add table</button>';
   $('sp-tables').querySelectorAll('[data-table]').forEach(b=>b.onclick=()=>{state.active=b.dataset.table;state.selected=table().items[0]?.id||'';render();remember();});
-  $('sp-add-table').onclick=()=>{if(state.tables.length>=30){$('sp-status').textContent='Maximum: 30 tables.';return;}const next={id:uid(),name:'Table '+(state.tables.length+1),w:72,h:30,sharing:'one',vendors:['Vendor',''],items:[]};state.tables.push(next);state.active=next.id;state.selected='';render();remember('Table added.');};
+  $('sp-add-table').onclick=()=>{if(state.tables.length>=30){$('sp-status').textContent='Maximum: 30 tables.';return;}const next=emptyTable();state.tables.push(next);state.active=next.id;state.selected='';render();remember('Table added.');};
   $('sp-size').value=[48,72,96].includes(t.w)&&t.h===30?String(t.w):'custom';
   $('sp-length').value=t.w;$('sp-depth').value=t.h;$('sp-sharing').value=t.sharing;
   [1,2,3,4].forEach((n)=>{$('sp-vendor'+n).value=t.vendors[n-1]||'';$('sp-vendor'+n+'-wrap').hidden=n>vendorCount(t);});
@@ -512,6 +513,23 @@
   event.preventDefault();removeSelected();
  });
  ['width','height','x','y'].forEach(k=>$('sp-'+k).onchange=e=>{const i=selected();if(!i)return;if(i.rotationW&&(k==='width'||k==='height')){const prop=k==='width'?'rotationW':'rotationH',before=i[prop];i[prop]=Math.max(4,Number(e.target.value)||4);const a=(i.angle||0)*Math.PI/180;if(i.rotationW*Math.abs(Math.cos(a))+i.rotationH*Math.abs(Math.sin(a))>table().w||i.rotationW*Math.abs(Math.sin(a))+i.rotationH*Math.abs(Math.cos(a))>table().h){i[prop]=before;inspector();return;}rotateSelected(0);return;}i[{width:'w',height:'h',x:'x',y:'y'}[k]]=Number(e.target.value)||0;constrain(i);drawItems();inspector();remember();});
+ function emptyTable(){let n=1;while(state.tables.some(t=>t.name==='Table '+n))n++;return {id:uid(),name:'Table '+n,w:72,h:30,sharing:'one',vendors:[catalog[0]?.vendor||'','','',''],items:[]};}
+ $('sp-copy-table').onclick=()=>{
+  const source=table();
+  if(state.tables.length>=30){$('sp-status').textContent='Maximum: 30 tables.';return;}
+  if(state.tables.reduce((n,t)=>n+t.items.length,0)+source.items.length>200){$('sp-status').textContent='Copy would exceed the 200-piece equipment limit.';return;}
+  const copy=JSON.parse(JSON.stringify(source));copy.id=uid();
+  const base=source.name.replace(/ \(copy(?: \d+)?\)$/,'').slice(0,75);let n=1,name=base+' (copy)';
+  while(state.tables.some(t=>t.name===name))name=base+' (copy '+(++n)+')';
+  copy.name=name;copy.items.forEach(i=>i.id=uid());state.tables.push(copy);state.active=copy.id;state.selected='';render();remember('Table copied.');
+ };
+ $('sp-remove-table').onclick=()=>{
+  const current=table(),index=state.tables.indexOf(current);
+  const last=state.tables.length===1;
+  if(!confirm('Remove '+current.name+' and its '+current.items.length+' equipment pieces?'+(last?' A new empty table will remain.':'')))return;
+  state.tables.splice(index,1);if(!state.tables.length)state.tables.push(emptyTable());
+  state.active=state.tables[Math.min(index,state.tables.length-1)].id;state.selected='';render();remember('Table removed. Packing list updated.');
+ };
  function preparePrint(){
   packingList();
   root.querySelector('.sp-print-pages').innerHTML=state.tables.map(t=>'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>'+esc(t.name)+'</h2><div>'+esc(tableVendors(t).filter(Boolean).join(' · '))+' · '+t.w+' × '+t.h+' in</div><div class="sp-direction">Customers</div><div class="sp-table" style="aspect-ratio:'+t.w+'/'+t.h+'">'+tableVendors(t).map((v,n)=>'<div class="sp-zone" style="left:'+n*100/vendorCount(t)+'%;width:'+100/vendorCount(t)+'%;background:var(--zone'+(n%2+1)+')"></div>').join('')+t.items.map((i,n)=>'<div class="sp-equipment '+def(i).shape+'" style="left:'+i.x/t.w*100+'%;top:'+i.y/t.h*100+'%;width:'+i.w/t.w*100+'%;height:'+i.h/t.h*100+'%">'+equipmentArt(i)+'<span class="sp-number">'+(n+1)+'</span></div>').join('')+'</div><div class="sp-zone-labels">'+tableVendors(t).map(v=>'<span style="width:'+100/vendorCount(t)+'%">'+esc(v||'Vendor')+'</span>').join('')+'</div><div class="sp-direction">Sales team</div><ol class="sp-print-key">'+t.items.map(i=>'<li>'+esc(i.label||shortLabel(def(i)))+(i.product?' — '+esc(i.product):'')+' · '+esc(i.owner===4?'Shared supplies':t.vendors[i.owner]||'Vendor')+'</li>').join('')+'</ol></section>').join('')+'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>Packing list · all tables</h2><div class="sp-packing"><table><thead><tr><th>Equipment</th><th>Quantity</th></tr></thead><tbody>'+$('sp-packing-rows').innerHTML+'</tbody></table></div></section>';
