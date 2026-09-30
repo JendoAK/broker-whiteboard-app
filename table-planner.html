@@ -41,6 +41,9 @@
 #show-planner-demo .sp-equipment.selected { outline:3px solid var(--teal); outline-offset:2px; }
 #show-planner-demo .sp-equipment .sp-name { font-size:12px; line-height:1.15; }
 #show-planner-demo .sp-equipment .sp-product { font-size:12px; line-height:1.15; font-weight:600; }
+#show-planner-demo .sp-product { max-width:100%; padding:2px 4px; }
+#show-planner-demo .sp-product-name { display:block; }
+#show-planner-demo .sp-product-name + .sp-product-name { margin-top:3px; }
 #show-planner-demo .sp-number { display:none; font-size:12px; }
 #show-planner-demo .sp-zone-labels { display:flex; text-align:center; font-size:13px; margin-top:7px; }
 #show-planner-demo .sp-zone-labels span { overflow-wrap:anywhere; }
@@ -246,7 +249,7 @@
 (() => {
  const token=new URLSearchParams(location.hash.slice(1)).get('session');
  let context;try{context=window.parent.tablePlannerBridge.getContext(token);}catch(error){document.body.textContent='Open Table layouts from a food show or test kitchen event.';return;}
- const catalog=context.products.map(p=>({...p,label:p.description+(p.code?' · '+p.code:'')}));
+ const catalog=context.products.map(p=>({...p,label:p.description}));
  const root=document.getElementById('show-planner-demo');
  const $=id=>root.querySelector('#'+id);
  const equipment=[
@@ -466,7 +469,7 @@
  function drawItems() {
   packingList();
   const t=table();
-  $('sp-items').innerHTML=t.items.map((item,n)=>`<button type="button" class="sp-equipment ${def(item).shape} ${item.w>item.h?"landscape":"portrait"} ${item.id===state.selected?'selected':''}" data-item="${esc(item.id)}" aria-label="${esc((item.label||def(item).name)+'; '+(item.product||'no product')+'; '+(t.vendors[item.owner]||'Shared')+'. Arrow keys move equipment.')}" style="left:${item.x/t.w*100}%;top:${item.y/t.h*100}%;width:${item.w/t.w*100}%;height:${item.h/t.h*100}%">${equipmentArt(item)}<span class="sp-number">${n+1}</span><span class="sp-name">${esc(item.label)}</span><span class="sp-product">${esc(assignedProducts(item).length>1?assignedProducts(item).length+' products':item.product)}</span></button>`).join('');
+  $('sp-items').innerHTML=t.items.map((item,n)=>`<button type="button" class="sp-equipment ${def(item).shape} ${item.w>item.h?"landscape":"portrait"} ${item.id===state.selected?'selected':''}" data-item="${esc(item.id)}" aria-label="${esc((item.label||def(item).name)+'; '+(item.product||'no product')+'; '+(t.vendors[item.owner]||'Shared')+'. Arrow keys move equipment.')}" style="left:${item.x/t.w*100}%;top:${item.y/t.h*100}%;width:${item.w/t.w*100}%;height:${item.h/t.h*100}%">${equipmentArt(item)}<span class="sp-number">${n+1}</span><span class="sp-name">${esc(item.label)}</span><span class="sp-product">${assignedProducts(item).map(p=>'<span class="sp-product-name">'+esc(p.label)+'</span>').join('')}</span></button>`).join('');
   $('sp-item-list').innerHTML=t.items.map((i,n)=>`<button type="button" data-pick="${esc(i.id)}" aria-pressed="${i.id===state.selected}">${n+1}. ${esc(i.product||i.label||def(i).name)}</button>`).join('');
   $('sp-item-list').querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{state.selected=b.dataset.pick;drawItems();inspector();remember();});
   $('sp-items').querySelectorAll('[data-item]').forEach(button=>{
