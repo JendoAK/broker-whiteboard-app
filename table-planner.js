@@ -62,7 +62,7 @@ function normalizeTablePlanner(value) {
     dialog.innerHTML = '<header><h2>Table layouts &amp; packing list</h2><span role="status"></span><button type="button">Close</button></header><iframe title="Event table planner"></iframe>';
     const token = crypto.randomUUID(), frame = dialog.querySelector('iframe');
     sessions.set(token, { visitId, status: dialog.querySelector('[role=status]'), saved: JSON.stringify(normalizeTablePlanner(visit.tableLayout)) });
-    frame.src = './table-planner.html?v=20260930-planner9#session=' + token;
+    frame.src = './table-planner.html?v=20260930-planner10#session=' + token;
     const close = () => {
       try { if (frame.contentWindow.flushTablePlanner && !frame.contentWindow.flushTablePlanner()) return; }
       catch (error) { sessions.get(token).status.textContent = 'Unable to save. Please retry before closing.'; return; }
