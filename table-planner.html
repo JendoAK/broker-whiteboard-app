@@ -235,6 +235,29 @@
 #show-planner-demo .text-box .sp-number {display:none!important;}
 #show-planner-demo #sp-label {width:100%;font:inherit;box-sizing:border-box;}
 @media print {#show-planner-demo .sp-equipment.text-box {font-size:11px;}}
+
+#show-planner-demo .sp-prep-columns {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;margin-top:20px;align-items:start;}
+#show-planner-demo .sp-prep-columns .sp-packing {margin:0;}
+#show-planner-demo .sp-shopping {min-width:0;background:#fffefb;border:1px solid #abc0b5;border-radius:8px;padding:14px;}
+#show-planner-demo .sp-shopping h3 {margin:0 0 10px;}
+#show-planner-demo .sp-shopping-row {display:grid;grid-template-columns:22px minmax(0,1fr) minmax(75px,.45fr) 30px;gap:8px;align-items:end;margin:12px 0;}
+#show-planner-demo .sp-shopping-row input:not([type=checkbox]),#show-planner-demo .sp-shopping-notes textarea {width:100%;box-sizing:border-box;min-width:0;}
+#show-planner-demo .sp-shopping-check {align-self:center;}
+#show-planner-demo .sp-shopping-row button {padding:5px;min-width:0;}
+#show-planner-demo .sp-shopping-notes {display:grid;gap:8px;margin-top:18px;}
+#show-planner-demo .sp-prep-columns .sp-packing th,#show-planner-demo .sp-prep-columns .sp-packing td {padding:5px 4px;}
+@media screen and (max-width:800px){#show-planner-demo .sp-prep-columns {grid-template-columns:1fr;}}
+@media print {
+ #show-planner-demo .sp-prep-columns {gap:28px;margin-top:14px;}
+ #show-planner-demo .sp-prep-columns .sp-shopping {padding:0;border:0;}
+ #show-planner-demo .sp-prep-columns h3 {font-size:15px;margin:0 0 8px;padding-bottom:5px;border-bottom:2px solid #326657;break-after:avoid;}
+ #show-planner-demo .sp-prep-columns table {width:100%;border-collapse:collapse;font-size:12px;}
+ #show-planner-demo .sp-prep-columns th,#show-planner-demo .sp-prep-columns td {text-align:left;padding:5px 4px;border-bottom:1px solid #c9d9cf;overflow-wrap:anywhere;}
+ #show-planner-demo .sp-prep-columns th:last-child,#show-planner-demo .sp-prep-columns td:last-child {width:64px;text-align:right;white-space:normal;}
+ #show-planner-demo .sp-prep-columns .sp-notes-heading {margin-top:18px;}
+ #show-planner-demo .sp-print-notes {white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.5;}
+ #show-planner-demo .sp-note-rule {height:26px;border-bottom:1px solid #c9d9cf;}
+}
 </style>
 <header class="sp-top"><div><h2>US Foods Vendor Showcase</h2><div class="sp-sub">Table layout</div></div></header>
 <div class="sp-row sp-navigation" id="sp-tables"></div>
@@ -268,8 +291,8 @@
  <details><summary>Equipment size &amp; position</summary><div class="sp-fields"><label>Width (in)<input type="number" id="sp-width" min="4" max="36"></label><label>Depth (in)<input type="number" id="sp-height" min="4" max="30"></label><label>From left (in)<input type="number" id="sp-x" min="0" step="0.5"></label><label>From back (in)<input type="number" id="sp-y" min="0" step="0.5"></label></div></details>
 </section>
 <div class="sp-status" id="sp-status" aria-live="polite"></div>
-<section class="sp-packing" aria-label="Packing list for all tables"><div class="sp-row"><h3>Packing list · all tables</h3><span id="sp-packing-total" class="sp-sub"></span></div><table><thead><tr><th scope="col">Equipment</th><th scope="col">Quantity</th></tr></thead><tbody id="sp-packing-rows"></tbody></table></section>
-<div class="sp-row" style="margin-top:16px"><button type="button" id="sp-print">Print layouts &amp; packing list</button></div>
+<div class="sp-prep-columns"><section class="sp-packing" aria-label="Packing list for all tables"><div class="sp-row"><h3>Packing list · all tables</h3><span id="sp-packing-total" class="sp-sub"></span></div><table><thead><tr><th scope="col">Equipment</th><th scope="col">Quantity</th></tr></thead><tbody id="sp-packing-rows"></tbody></table></section><section class="sp-shopping" aria-label="Shopping and notes"><h3>Shopping &amp; notes</h3><p>Garnishes, recipe ingredients, and other supplies for this event.</p><div id="sp-shopping-rows"></div><button type="button" id="sp-add-shopping">+ Shopping item</button><label class="sp-shopping-notes">Notes<textarea id="sp-shopping-notes" rows="5" maxlength="5000" placeholder="Recipe prep, where to shop, or reminders..."></textarea></label></section></div>
+<div class="sp-row" style="margin-top:16px"><button type="button" id="sp-print">Print layouts, packing &amp; shopping</button></div>
 <div class="sp-print-pages"></div>
 <script>
 (() => {
@@ -349,6 +372,7 @@
  const valid=s=>s?.version===1&&Array.isArray(s.tables)&&s.tables.length>0&&s.tables.every(t=>Number.isFinite(t.w)&&Number.isFinite(t.h)&&t.w>=36&&t.h>=24&&Array.isArray(t.items)&&Array.isArray(t.vendors));
  const incoming=context.layout;
  if(valid(incoming)) state=JSON.parse(JSON.stringify(incoming));
+ state.shopping=Array.isArray(state.shopping)?state.shopping:[];state.shoppingNotes=state.shoppingNotes||'';
  function updateChaferSizes(){
   state.tables.forEach(t=>t.items.forEach(i=>{if(i.type==='gold-board'&&['Cutting board','Gold cutting board · 21 × 15 in'].includes(i.label))i.label='Large cutting board';}));
   if(state.shortLabelRevision!==1){
@@ -588,9 +612,21 @@
   state.tables.splice(index,1);if(!state.tables.length)state.tables.push(emptyTable());
   state.active=state.tables[Math.min(index,state.tables.length-1)].id;state.selected='';render();remember('Table removed. Packing list updated.');
  };
+
+ function renderShopping(){
+  $('sp-shopping-rows').innerHTML=state.shopping.map((item,n)=>'<div class="sp-shopping-row" data-shopping-row="'+n+'"><label class="sp-shopping-check"><input type="checkbox" data-shopping-field="bought" aria-label="Purchased item '+(n+1)+'" '+(item.bought?'checked':'')+'></label><label>Item<input data-shopping-field="name" maxlength="160" value="'+esc(item.name||'')+'" placeholder="Parsley, lemons, sauce..."></label><label>Quantity<input data-shopping-field="quantity" maxlength="60" value="'+esc(item.quantity||'')+'" placeholder="2 bunches"></label><button type="button" data-shopping-remove="'+n+'" aria-label="Remove shopping item '+(n+1)+'">×</button></div>').join('');
+  $('sp-shopping-rows').querySelectorAll('[data-shopping-field]').forEach(input=>input.onchange=()=>{const item=state.shopping[Number(input.closest('[data-shopping-row]').dataset.shoppingRow)];item[input.dataset.shoppingField]=input.type==='checkbox'?input.checked:input.value.trim();remember('Shopping list saved.');});
+  $('sp-shopping-rows').querySelectorAll('[data-shopping-remove]').forEach(button=>button.onclick=()=>{state.shopping.splice(Number(button.dataset.shoppingRemove),1);renderShopping();remember('Shopping item removed.');});
+ }
+ $('sp-add-shopping').onclick=()=>{if(state.shopping.length>=100){$('sp-status').textContent='Maximum: 100 shopping items.';return;}state.shopping.push({name:'',quantity:'',bought:false});renderShopping();$('sp-shopping-rows').lastElementChild.querySelector('[data-shopping-field="name"]').focus();remember();};
+ $('sp-shopping-notes').value=state.shoppingNotes;
+ $('sp-shopping-notes').onchange=()=>{state.shoppingNotes=$('sp-shopping-notes').value;remember('Notes saved.');};
+ function printShopping(){return '<h3>Shopping list</h3><table class="sp-shopping-print"><thead><tr><th>Item</th><th>Quantity</th></tr></thead><tbody>'+state.shopping.filter(i=>i.name.trim()).map(i=>'<tr><td><span class="sp-print-check">'+(i.bought?'☑':'☐')+'</span> '+esc(i.name)+'</td><td>'+esc(i.quantity)+'</td></tr>').join('')+'</tbody></table><h3 class="sp-notes-heading">Notes</h3><div class="sp-print-notes">'+(state.shoppingNotes?esc(state.shoppingNotes):'<div class="sp-note-rule"></div><div class="sp-note-rule"></div><div class="sp-note-rule"></div>')+'</div>';}
+ renderShopping();
+
  function preparePrint(){
   packingList();
-  root.querySelector('.sp-print-pages').innerHTML=state.tables.map(t=>'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>'+esc(t.name)+'</h2><div>'+esc(tableVendors(t).filter(Boolean).join(' · '))+' · '+t.w+' × '+t.h+' in</div><div class="sp-direction">Customers</div><div class="sp-table" style="--print-table-width:'+(4.4*t.w/t.h)+'in;aspect-ratio:'+t.w+'/'+t.h+'">'+tableVendors(t).map((v,n)=>'<div class="sp-zone" style="left:'+n*100/vendorCount(t)+'%;width:'+100/vendorCount(t)+'%;background:var(--zone'+(n%2+1)+')"></div>').join('')+t.items.map((i,n)=>'<div class="sp-equipment '+def(i).shape+'" style="left:'+i.x/t.w*100+'%;top:'+i.y/t.h*100+'%;width:'+i.w/t.w*100+'%;height:'+i.h/t.h*100+'%">'+equipmentArt(i)+'<span class="sp-number">'+itemNumber(t,i)+'</span>'+(i.type==='text-box'?textBoxContent(i):'<span class="sp-name">'+esc(i.label||shortLabel(def(i)))+'</span>')+'</div>').join('')+labelMarkup(t,true)+'</div><div class="sp-zone-labels">'+tableVendors(t).map(v=>'<span style="width:'+100/vendorCount(t)+'%">'+esc(v||'Vendor')+'</span>').join('')+'</div><div class="sp-direction">Sales team</div><div class="sp-print-key"><section class="sp-reference-column"><h3>Equipment</h3><ol>'+t.items.filter(i=>i.type!=='text-box').map(i=>'<li>'+esc(i.label||shortLabel(def(i)))+'</li>').join('')+'</ol></section><section class="sp-reference-column"><h3>Products</h3><ul>'+Array.from(new Map(t.items.flatMap(i=>assignedProducts(i)).map(p=>[p.id||p.label,p])).values()).map(p=>'<li>'+esc(p.label)+'</li>').join('')+'</ul></section></div></section>').join('')+'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>Packing list · all tables</h2><div class="sp-packing"><table><thead><tr><th>Equipment</th><th>Quantity</th></tr></thead><tbody>'+$('sp-packing-rows').innerHTML+'</tbody></table></div></section>';
+  root.querySelector('.sp-print-pages').innerHTML=state.tables.map(t=>'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>'+esc(t.name)+'</h2><div>'+esc(tableVendors(t).filter(Boolean).join(' · '))+' · '+t.w+' × '+t.h+' in</div><div class="sp-direction">Customers</div><div class="sp-table" style="--print-table-width:'+(4.4*t.w/t.h)+'in;aspect-ratio:'+t.w+'/'+t.h+'">'+tableVendors(t).map((v,n)=>'<div class="sp-zone" style="left:'+n*100/vendorCount(t)+'%;width:'+100/vendorCount(t)+'%;background:var(--zone'+(n%2+1)+')"></div>').join('')+t.items.map((i,n)=>'<div class="sp-equipment '+def(i).shape+'" style="left:'+i.x/t.w*100+'%;top:'+i.y/t.h*100+'%;width:'+i.w/t.w*100+'%;height:'+i.h/t.h*100+'%">'+equipmentArt(i)+'<span class="sp-number">'+itemNumber(t,i)+'</span>'+(i.type==='text-box'?textBoxContent(i):'<span class="sp-name">'+esc(i.label||shortLabel(def(i)))+'</span>')+'</div>').join('')+labelMarkup(t,true)+'</div><div class="sp-zone-labels">'+tableVendors(t).map(v=>'<span style="width:'+100/vendorCount(t)+'%">'+esc(v||'Vendor')+'</span>').join('')+'</div><div class="sp-direction">Sales team</div><div class="sp-print-key"><section class="sp-reference-column"><h3>Equipment</h3><ol>'+t.items.filter(i=>i.type!=='text-box').map(i=>'<li>'+esc(i.label||shortLabel(def(i)))+'</li>').join('')+'</ol></section><section class="sp-reference-column"><h3>Products</h3><ul>'+Array.from(new Map(t.items.flatMap(i=>assignedProducts(i)).map(p=>[p.id||p.label,p])).values()).map(p=>'<li>'+esc(p.label)+'</li>').join('')+'</ul></section></div></section>').join('')+'<section class="sp-print-page sp-prep-print"><p>'+esc(context.name)+'</p><h2>Packing, shopping &amp; notes</h2><div class="sp-prep-columns"><section class="sp-packing"><h3>Equipment · all tables</h3><table><thead><tr><th>Equipment</th><th>Qty</th></tr></thead><tbody>'+$('sp-packing-rows').innerHTML+'</tbody></table></section><section class="sp-shopping">'+printShopping()+'</section></div></section>';
  }
  $('sp-print').onclick=()=>{preparePrint();window.print();};
  window.addEventListener('beforeprint',preparePrint);

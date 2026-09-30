@@ -1,5 +1,5 @@
-const CACHE_NAME = "foodbrokerbase-planner13";
-const APP_SHELL = ["./event-agenda.js?v=20260930-agenda1","./event-agenda.css?v=20260930-agenda2","./window-layout.css?v=20260930-windows1","./table-planner.js?v=20260930-planner13","./table-planner.css?v=20260930-planner13","./table-planner.html?v=20260930-planner13","./editing-stability.js?v=20260930-planner13","./foodshow-layout.js?v=20260930-planner13", "./foodshow-layout.css?v=20260929-foodshow8",
+const CACHE_NAME = "foodbrokerbase-planner14";
+const APP_SHELL = ["./event-agenda.js?v=20260930-agenda1","./event-agenda.css?v=20260930-agenda2","./window-layout.css?v=20260930-windows1","./table-planner.js?v=20260930-planner14","./table-planner.css?v=20260930-planner14","./table-planner.html?v=20260930-planner14","./editing-stability.js?v=20260930-planner14","./foodshow-layout.js?v=20260930-planner14", "./foodshow-layout.css?v=20260929-foodshow8",
   "./manager-overview.js?v=20260918-managersettings1",
   "./manager-overview.css?v=20260918-manager1",
   "./todo-drag.js?v=20260917-todopointer1",
@@ -26,10 +26,10 @@ const APP_SHELL = ["./event-agenda.js?v=20260930-agenda1","./event-agenda.css?v=
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
   "./market-call-editor.js?v=20260918-callaudit1",
-  "./team-work-view.js?v=20260918-manager1", "./app.js?v=20260930-planner13",
+  "./team-work-view.js?v=20260918-manager1", "./app.js?v=20260930-planner14",
   "./market-week-calendar.js?v=20260918-callaudit1",
   "./market-operator-conversion.js?v=20260909-visitcolors1",
-  "./testkitchen-layout.js?v=20260930-planner13",
+  "./testkitchen-layout.js?v=20260930-planner14",
   "./vendor-visit-print.js?v=20260921-operatoroptions1",
   "./market-visit-layout.js?v=20260921-operatoroptions1",
   "./supabase-config.js",

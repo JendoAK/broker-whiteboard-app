@@ -19,6 +19,7 @@ function normalizeTablePlanner(value) {
     }))
   }));
   return { version: 1, active: text(value.active) || tables[0].id, selected: text(value.selected), tables,
+    shopping: (Array.isArray(value.shopping)?value.shopping:[]).slice(0,100).filter(i=>i&&typeof i==='object').map(i=>({name:text(i.name,160),quantity:text(i.quantity,60),bought:Boolean(i.bought)})), shoppingNotes:text(value.shoppingNotes,5000),
     vendorRevision: 1, shortLabelRevision: 1, basketSizeRevision: 1, chaferSizeRevision: 1, griddleSizeRevision: 1, warmerSizeRevision: 1 };
 }
 
@@ -63,7 +64,7 @@ function normalizeTablePlanner(value) {
     dialog.innerHTML = '<header><h2>Table layouts &amp; packing list</h2><span role="status"></span><button type="button">Close</button></header><iframe title="Event table planner"></iframe>';
     const token = crypto.randomUUID(), frame = dialog.querySelector('iframe');
     sessions.set(token, { visitId, status: dialog.querySelector('[role=status]'), saved: JSON.stringify(normalizeTablePlanner(visit.tableLayout)) });
-    frame.src = './table-planner.html?v=20260930-planner13#session=' + token;
+    frame.src = './table-planner.html?v=20260930-planner14#session=' + token;
     const close = () => {
       try { if (frame.contentWindow.flushTablePlanner && !frame.contentWindow.flushTablePlanner()) return; }
       catch (error) { sessions.get(token).status.textContent = 'Unable to save. Please retry before closing.'; return; }
