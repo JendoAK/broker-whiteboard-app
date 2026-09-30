@@ -216,6 +216,20 @@
 }
 @media screen and (max-width:800px){#show-planner-demo .sp-vendors {grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media screen and (max-width:440px){#show-planner-demo .sp-vendors {grid-template-columns:1fr;}}
+
+#show-planner-demo .sp-equipment .sp-name {position:absolute;top:5px;left:50%;transform:translateX(-50%);width:max-content;font-weight:700;text-align:center;max-width:calc(100% - 8px);}
+#show-planner-demo .sp-product-label {position:absolute;z-index:4;background:#fffef5;border:1px solid #839e92;border-radius:5px;padding:4px 6px;min-height:0;box-shadow:0 1px 2px #0002;font-size:12px;line-height:1.2;color:#183c30;cursor:move;touch-action:none;overflow-wrap:anywhere;text-align:center;}
+#show-planner-demo .sp-label-line {position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3;}
+#show-planner-demo .sp-label-line line {stroke:#526b60;stroke-width:1;vector-effect:non-scaling-stroke;}
+#show-planner-demo #sp-nicknames {display:grid;gap:10px;margin-bottom:12px;}
+#show-planner-demo #sp-nicknames input {width:100%;}
+#show-planner-demo .sp-print-key {columns:auto;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0;}
+#show-planner-demo .sp-reference-title {break-after:avoid;font-size:17px;margin:16px 0 8px;border-bottom:2px solid #326657;padding-bottom:5px;}
+#show-planner-demo .sp-reference-card {break-inside:avoid;border:1px solid #b6ccc1;border-radius:5px;overflow:hidden;background:#fff;}
+#show-planner-demo .sp-reference-card h4 {margin:0;background:#e5efe9;padding:7px 10px;font-size:13px;}
+#show-planner-demo .sp-reference-vendor {font-weight:600;color:#3d6253;margin:6px 10px;}
+#show-planner-demo .sp-reference-card ul {margin:5px 10px 9px;padding-left:18px;}
+@media print {#show-planner-demo .sp-print-page .sp-name {top:4px;}#show-planner-demo .sp-product-label {font-size:11px;box-shadow:none;cursor:default;}#show-planner-demo .sp-print-page .sp-number {top:auto;bottom:2px;}}
 </style>
 <header class="sp-top"><div><h2>US Foods Vendor Showcase</h2><div class="sp-sub">Table layout</div></div></header>
 <div class="sp-row sp-navigation" id="sp-tables"></div>
@@ -232,7 +246,7 @@
 <div class="sp-dimension"><span id="sp-measure"></span><span>Top view</span></div>
 <div class="sp-direction">Customers</div>
 <div class="sp-table" id="sp-table" aria-label="Table layout; select or drag equipment">
- <div id="sp-zones"></div><div class="sp-grid"></div><div id="sp-items"></div><button type="button" id="sp-rotation-handle" hidden aria-label="Rotate selected equipment" title="Drag to rotate. Hold Shift to snap to 45 degrees. Arrow keys rotate 15 degrees.">↻</button>
+ <div id="sp-zones"></div><div class="sp-grid"></div><div id="sp-items"></div><div id="sp-product-labels"></div><button type="button" id="sp-rotation-handle" hidden aria-label="Rotate selected equipment" title="Drag to rotate. Hold Shift to snap to 45 degrees. Arrow keys rotate 15 degrees.">↻</button>
 </div>
 <div class="sp-zone-labels" id="sp-zone-labels"></div>
 <div class="sp-direction">Sales team</div>
@@ -244,7 +258,7 @@
   <label>Vendor<select id="sp-owner"></select></label>
   <label>Move to table<select id="sp-destination"></select></label>
  </div>
- <fieldset class="sp-products-field"><legend>Products on this equipment</legend><div id="sp-products"></div></fieldset>
+ <fieldset class="sp-products-field"><legend>Products on this equipment</legend><div id="sp-products"></div></fieldset><fieldset class="sp-products-field"><legend>Short names on the layout</legend><p>These names only change this layout. Drag product labels to move them.</p><div id="sp-nicknames"></div><button type="button" id="sp-reset-label">Reset label position</button></fieldset>
  <div class="sp-row sp-actions"><button type="button" id="sp-rotate45">Rotate 45°</button><button type="button" id="sp-rotate">Rotate 90°</button><button type="button" id="sp-duplicate">Duplicate</button><button type="button" id="sp-remove">Remove</button></div>
  <details><summary>Equipment size &amp; position</summary><div class="sp-fields"><label>Width (in)<input type="number" id="sp-width" min="4" max="36"></label><label>Depth (in)<input type="number" id="sp-height" min="4" max="30"></label><label>From left (in)<input type="number" id="sp-x" min="0" step="0.5"></label><label>From back (in)<input type="number" id="sp-y" min="0" step="0.5"></label></div></details>
 </section>
@@ -378,7 +392,7 @@
    let products=assignedProducts(i).slice();
    if(input.hasAttribute('data-missing-product'))products=products.filter(p=>p!==missing[Number(input.dataset.missingProduct)]);
    else {const id=input.dataset.productId;products=products.filter(p=>p.id!==id);if(input.checked){const p=catalog.find(p=>p.id===id);if(p)products.push({id:p.id,label:p.label});}}
-   setProducts(i,products);drawItems();remember();
+   setProducts(i,products);drawItems();nicknameEditor(i);remember();
   });
  }
  const table=()=>state.tables.find(t=>t.id===state.active)||state.tables[0];
@@ -463,6 +477,14 @@
   return '<span class="sp-art" aria-hidden="true" style="width:'+(item.rotationW?item.rotationW/item.w*100:sideways?item.h/item.w*100:100)+'%;height:'+(item.rotationH?item.rotationH/item.h*100:sideways?item.w/item.h*100:100)+'%;transform:translate(-50%,-50%) rotate('+angle+'deg)">'+art+'</span>';
  }
 
+
+ function shortProduct(p){return p.nickname||p.label.replace(/\b\d+(?:\.\d+)?\s*(?:oz|ounce|ounces|lb|lbs|pack)\b/gi,'').replace(/\b\d+\s*-\s*pack\b/gi,'').replace(/,?\s*thaw and serve\b/gi,'').replace(/\s+/g,' ').replace(/[,· /-]+$/,'').trim()||p.label;}
+ function nicknameEditor(i){$('sp-nicknames').innerHTML=assignedProducts(i).map((p,n)=>'<label>'+esc(p.label)+'<input data-nickname="'+n+'" maxlength="60" value="'+esc(p.nickname||'')+'" placeholder="'+esc(shortProduct(p))+'"></label>').join('')||'<p>Select products above to give them short names.</p>';$('sp-nicknames').querySelectorAll('input').forEach(input=>input.onchange=()=>{assignedProducts(i)[Number(input.dataset.nickname)].nickname=input.value.trim();drawItems();remember('Layout nickname saved.');});}
+ function labelPosition(i,t){const width=Math.min(14,t.w),height=Math.max(2,assignedProducts(i).length*1.05);return {x:Math.max(0,Math.min(t.w-width,i.x+i.w/2-width/2+(i.labelOffsetX||0))),y:Math.max(0,Math.min(t.h-height,i.y+i.h+.6+(i.labelOffsetY||0))),width};}
+ function labelMarkup(t,print=false){return t.items.map(i=>{if(!assignedProducts(i).length)return '';const p=labelPosition(i,t),tag=print?'div':'button';return '<svg class="sp-label-line" viewBox="0 0 '+t.w+' '+t.h+'" preserveAspectRatio="none" aria-hidden="true"><line x1="'+(i.x+i.w/2)+'" y1="'+(i.y+i.h/2)+'" x2="'+(p.x+p.width/2)+'" y2="'+p.y+'" /></svg><'+tag+' class="sp-product-label" '+(print?'':'type="button" data-label-item="'+esc(i.id)+'" title="Drag to move product label; arrow keys nudge"')+' style="left:'+p.x/t.w*100+'%;top:'+p.y/t.h*100+'%;width:'+p.width/t.w*100+'%">'+assignedProducts(i).map(p=>'<span class="sp-product-name">'+esc(shortProduct(p))+'</span>').join('')+'</'+tag+'>';}).join('');}
+ function drawProductLabels(){const t=table();$('sp-product-labels').innerHTML=labelMarkup(t);$('sp-product-labels').querySelectorAll('[data-label-item]').forEach(b=>{const i=t.items.find(i=>i.id===b.dataset.labelItem);b.onfocus=()=>{state.selected=i.id;highlight();inspector();};b.onkeydown=e=>{const d={ArrowLeft:[-.5,0],ArrowRight:[.5,0],ArrowUp:[0,-.5],ArrowDown:[0,.5]}[e.key];if(!d)return;e.preventDefault();i.labelOffsetX=(i.labelOffsetX||0)+d[0];i.labelOffsetY=(i.labelOffsetY||0)+d[1];drawProductLabels();$('sp-product-labels').querySelector('[data-label-item="'+i.id+'"]').focus();remember();};b.onpointerdown=e=>{if(e.button!==0)return;e.preventDefault();e.stopPropagation();state.selected=i.id;highlight();inspector();const r=$('sp-table').getBoundingClientRect(),p=labelPosition(i,t),start={x:e.clientX,y:e.clientY},before=[i.labelOffsetX,i.labelOffsetY];b.setPointerCapture(e.pointerId);b.onpointermove=e=>{i.labelOffsetX=p.x+(e.clientX-start.x)/r.width*t.w-(i.x+i.w/2-p.width/2);i.labelOffsetY=p.y+(e.clientY-start.y)/r.height*t.h-(i.y+i.h+.6);const next=labelPosition(i,t);b.style.left=next.x/t.w*100+'%';b.style.top=next.y/t.h*100+'%';const line=b.previousElementSibling.querySelector('line');line.setAttribute('x2',next.x+next.width/2);line.setAttribute('y2',next.y);};const finish=cancel=>{b.onpointermove=null;b.onpointerup=null;b.onpointercancel=null;if(cancel){i.labelOffsetX=before[0];i.labelOffsetY=before[1];}drawProductLabels();remember('Product label positioned.');};b.onpointerup=()=>finish(false);b.onpointercancel=()=>finish(true);};});}
+ $('sp-reset-label').onclick=()=>{const i=selected();if(!i)return;delete i.labelOffsetX;delete i.labelOffsetY;drawItems();remember('Product label position reset.');};
+
  function packingList(){
   const groups=new Map();let total=0;
   state.tables.forEach(t=>t.items.forEach(i=>{
@@ -477,7 +499,8 @@
   updateRotationHandle();
   packingList();
   const t=table();
-  $('sp-items').innerHTML=t.items.map((item,n)=>`<button type="button" class="sp-equipment ${def(item).shape} ${item.w>item.h?"landscape":"portrait"} ${item.id===state.selected?'selected':''}" data-item="${esc(item.id)}" aria-label="${esc((item.label||def(item).name)+'; '+(item.product||'no product')+'; '+(t.vendors[item.owner]||'Shared')+'. Arrow keys move equipment.')}" style="left:${item.x/t.w*100}%;top:${item.y/t.h*100}%;width:${item.w/t.w*100}%;height:${item.h/t.h*100}%">${equipmentArt(item)}<span class="sp-number">${n+1}</span><span class="sp-name">${esc(item.label)}</span><span class="sp-product">${assignedProducts(item).map(p=>'<span class="sp-product-name">'+esc(p.label)+'</span>').join('')}</span></button>`).join('');
+  $('sp-items').innerHTML=t.items.map((item,n)=>`<button type="button" class="sp-equipment ${def(item).shape} ${item.w>item.h?"landscape":"portrait"} ${item.id===state.selected?'selected':''}" data-item="${esc(item.id)}" aria-label="${esc((item.label||def(item).name)+'; '+(item.product||'no product')+'; '+(t.vendors[item.owner]||'Shared')+'. Arrow keys move equipment.')}" style="left:${item.x/t.w*100}%;top:${item.y/t.h*100}%;width:${item.w/t.w*100}%;height:${item.h/t.h*100}%">${equipmentArt(item)}<span class="sp-number">${n+1}</span><span class="sp-name">${esc(item.label)}</span></button>`).join('');
+  drawProductLabels();
   $('sp-item-list').innerHTML=t.items.map((i,n)=>`<button type="button" data-pick="${esc(i.id)}" aria-pressed="${i.id===state.selected}">${n+1}. ${esc(i.product||i.label||def(i).name)}</button>`).join('');
   $('sp-item-list').querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{state.selected=b.dataset.pick;drawItems();inspector();remember();});
   $('sp-items').querySelectorAll('[data-item]').forEach(button=>{
@@ -493,9 +516,9 @@
   });
  }
  function updateRotationHandle(){const i=selected(),h=$('sp-rotation-handle');h.hidden=!i;if(!i)return;const t=table();h.style.left='clamp(16px,'+((i.x+i.w)/t.w*100)+'%,calc(100% - 16px))';h.style.top='clamp(16px,'+(i.y/t.h*100)+'%,calc(100% - 16px))';h.setAttribute('aria-label','Rotate '+(i.label||def(i).name)+', '+(i.angle||0)+' degrees');}
- function place(button,item){const t=table();button.style.left=item.x/t.w*100+'%';button.style.top=item.y/t.h*100+'%';updateRotationHandle();}
+ function place(button,item){const t=table();button.style.left=item.x/t.w*100+'%';button.style.top=item.y/t.h*100+'%';updateRotationHandle();drawProductLabels();}
  function highlight() { updateRotationHandle(); $('sp-items').querySelectorAll('[data-item]').forEach(b=>b.classList.toggle('selected',b.dataset.item===state.selected)); }
- function inspector(){const t=table(),i=selected();$('sp-inspector').hidden=!i;if(!i)return;$('sp-selected-title').textContent=i.label||def(i).name;$('sp-footprint').textContent=(i.rotationW||i.w)+' × '+(i.rotationH||i.h)+' in'+(def(i).estimated?' · example size':'');$('sp-label').value=i.label;productPicker(t,i);$('sp-owner').innerHTML=tableVendors(t).map((v,n)=>`<option value="${n}">${esc(v||'Vendor')}</option>`).join('')+'<option value="4">Shared supplies</option>';$('sp-owner').value=String(i.owner);$('sp-destination').innerHTML=state.tables.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');$('sp-destination').value=t.id;['width','height','x','y'].forEach(k=>$('sp-'+k).value=(k==='width'?i.rotationW:k==='height'?i.rotationH:null)||i[{width:'w',height:'h',x:'x',y:'y'}[k]]);}
+ function inspector(){const t=table(),i=selected();$('sp-inspector').hidden=!i;if(!i)return;$('sp-selected-title').textContent=i.label||def(i).name;$('sp-footprint').textContent=(i.rotationW||i.w)+' × '+(i.rotationH||i.h)+' in'+(def(i).estimated?' · example size':'');$('sp-label').value=i.label;productPicker(t,i);nicknameEditor(i);$('sp-owner').innerHTML=tableVendors(t).map((v,n)=>`<option value="${n}">${esc(v||'Vendor')}</option>`).join('')+'<option value="4">Shared supplies</option>';$('sp-owner').value=String(i.owner);$('sp-destination').innerHTML=state.tables.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');$('sp-destination').value=t.id;['width','height','x','y'].forEach(k=>$('sp-'+k).value=(k==='width'?i.rotationW:k==='height'?i.rotationH:null)||i[{width:'w',height:'h',x:'x',y:'y'}[k]]);}
  function add(key,x,y){const t=table(),e=equipment.find(e=>e.key===key);if(!e)return;if(state.tables.reduce((n,t)=>n+t.items.length,0)>=200){$('sp-status').textContent='Maximum: 200 pieces of equipment.';return;}const i={id:uid(),type:key,label:shortLabel(e),product:'',owner:x!=null?Math.min(vendorCount(t)-1,Math.max(0,Math.floor(x/t.w*vendorCount(t)))):0,w:e.w,h:e.h,x:x==null?5+(t.items.length%5)*4:x-e.w/2,y:y==null?5:y-e.h/2};constrain(i);t.items.push(i);state.selected=i.id;render();remember(e.name+' added.');}
  $('sp-palette').innerHTML=['Chafers','Displays','Heating','Serving','Original demo pieces'].filter(group=>equipment.some(e=>(e.group||'Original demo pieces')===group)).map((group,n)=>'<details '+(n===0?'open':'')+'><summary>'+group+'</summary><div class="sp-equipment-options">'+equipment.filter(e=>(e.group||'Original demo pieces')===group).sort((a,b)=>a.name.localeCompare(b.name)).map(e=>`<button type="button" draggable="true" data-add="${e.key}" aria-label="Add ${esc(e.name)}"><span class="sp-sample ${e.shape}" aria-hidden="true" style="width:${Math.min(46,38*e.w/e.h)}px;height:${Math.min(38,46*e.h/e.w)}px;flex-basis:${Math.min(46,38*e.w/e.h)}px">${equipmentArt({type:e.key,w:e.w,h:e.h})}</span><span>${esc(e.name)}<small>${e.estimated?'~ ':''}${e.w} × ${e.h} in</small></span></button>`).join('')+'</div></details>').join('');
  $('sp-palette').querySelectorAll('[data-add]').forEach(b=>{b.onclick=()=>add(b.dataset.add);b.ondragstart=e=>{e.dataTransfer.setData('text/plain',b.dataset.add);e.dataTransfer.effectAllowed='copy';};});
@@ -530,7 +553,7 @@
  };
  $('sp-rotate45').onclick=()=>rotateSelected(45);
  $('sp-rotate').onclick=()=>rotateSelected(90);
- $('sp-duplicate').onclick=()=>{if(state.tables.reduce((n,t)=>n+t.items.length,0)>=200)return;const i={...selected(),id:uid(),x:selected().x+3,y:selected().y+3};constrain(i);table().items.push(i);state.selected=i.id;render();remember('Equipment duplicated.');};
+ $('sp-duplicate').onclick=()=>{if(state.tables.reduce((n,t)=>n+t.items.length,0)>=200)return;const i={...JSON.parse(JSON.stringify(selected())),id:uid(),x:selected().x+3,y:selected().y+3};constrain(i);table().items.push(i);state.selected=i.id;render();remember('Equipment duplicated.');};
  function removeSelected(){if(!selected())return;table().items=table().items.filter(i=>i.id!==state.selected);state.selected='';render();remember('Equipment removed.');}
  $('sp-remove').onclick=removeSelected;
  root.addEventListener('keydown',event=>{
@@ -557,7 +580,7 @@
  };
  function preparePrint(){
   packingList();
-  root.querySelector('.sp-print-pages').innerHTML=state.tables.map(t=>'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>'+esc(t.name)+'</h2><div>'+esc(tableVendors(t).filter(Boolean).join(' · '))+' · '+t.w+' × '+t.h+' in</div><div class="sp-direction">Customers</div><div class="sp-table" style="--print-table-width:'+(4.4*t.w/t.h)+'in;aspect-ratio:'+t.w+'/'+t.h+'">'+tableVendors(t).map((v,n)=>'<div class="sp-zone" style="left:'+n*100/vendorCount(t)+'%;width:'+100/vendorCount(t)+'%;background:var(--zone'+(n%2+1)+')"></div>').join('')+t.items.map((i,n)=>'<div class="sp-equipment '+def(i).shape+'" style="left:'+i.x/t.w*100+'%;top:'+i.y/t.h*100+'%;width:'+i.w/t.w*100+'%;height:'+i.h/t.h*100+'%">'+equipmentArt(i)+'<span class="sp-number">'+(n+1)+'</span><span class="sp-name">'+esc(i.label||shortLabel(def(i)))+'</span><span class="sp-product">'+assignedProducts(i).map(p=>'<span class="sp-product-name">'+esc(p.label)+'</span>').join('')+'</span></div>').join('')+'</div><div class="sp-zone-labels">'+tableVendors(t).map(v=>'<span style="width:'+100/vendorCount(t)+'%">'+esc(v||'Vendor')+'</span>').join('')+'</div><div class="sp-direction">Sales team</div><ol class="sp-print-key">'+t.items.map(i=>'<li>'+esc(i.label||shortLabel(def(i)))+(i.product?' — '+esc(i.product):'')+' · '+esc(i.owner===4?'Shared supplies':t.vendors[i.owner]||'Vendor')+'</li>').join('')+'</ol></section>').join('')+'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>Packing list · all tables</h2><div class="sp-packing"><table><thead><tr><th>Equipment</th><th>Quantity</th></tr></thead><tbody>'+$('sp-packing-rows').innerHTML+'</tbody></table></div></section>';
+  root.querySelector('.sp-print-pages').innerHTML=state.tables.map(t=>'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>'+esc(t.name)+'</h2><div>'+esc(tableVendors(t).filter(Boolean).join(' · '))+' · '+t.w+' × '+t.h+' in</div><div class="sp-direction">Customers</div><div class="sp-table" style="--print-table-width:'+(4.4*t.w/t.h)+'in;aspect-ratio:'+t.w+'/'+t.h+'">'+tableVendors(t).map((v,n)=>'<div class="sp-zone" style="left:'+n*100/vendorCount(t)+'%;width:'+100/vendorCount(t)+'%;background:var(--zone'+(n%2+1)+')"></div>').join('')+t.items.map((i,n)=>'<div class="sp-equipment '+def(i).shape+'" style="left:'+i.x/t.w*100+'%;top:'+i.y/t.h*100+'%;width:'+i.w/t.w*100+'%;height:'+i.h/t.h*100+'%">'+equipmentArt(i)+'<span class="sp-number">'+(n+1)+'</span><span class="sp-name">'+esc(i.label||shortLabel(def(i)))+'</span></div>').join('')+labelMarkup(t,true)+'</div><div class="sp-zone-labels">'+tableVendors(t).map(v=>'<span style="width:'+100/vendorCount(t)+'%">'+esc(v||'Vendor')+'</span>').join('')+'</div><div class="sp-direction">Sales team</div><h3 class="sp-reference-title">Equipment &amp; products</h3><div class="sp-print-key">'+t.items.map((i,n)=>'<section class="sp-reference-card"><h4>'+(n+1)+'. '+esc(i.label||shortLabel(def(i)))+'</h4><p class="sp-reference-vendor">'+esc(i.owner===4?'Shared supplies':t.vendors[i.owner]||'Vendor')+'</p><ul>'+assignedProducts(i).map(p=>'<li>'+esc(p.label)+'</li>').join('')+'</ul></section>').join('')+'</div></section>').join('')+'<section class="sp-print-page"><p>'+esc(context.name)+'</p><h2>Packing list · all tables</h2><div class="sp-packing"><table><thead><tr><th>Equipment</th><th>Quantity</th></tr></thead><tbody>'+$('sp-packing-rows').innerHTML+'</tbody></table></div></section>';
  }
  $('sp-print').onclick=()=>{preparePrint();window.print();};
  window.addEventListener('beforeprint',preparePrint);
@@ -565,7 +588,7 @@
  const eventVendors=[...new Set(catalog.map(p=>p.vendor))].filter(Boolean).sort((a,b)=>a.localeCompare(b));
  [1,2,3,4].forEach(n=>{$('sp-vendor'+n).innerHTML='<option value="">'+(eventVendors.length?'Select event vendor':'Add products to the event first')+'</option>'+eventVendors.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('');});
  state.tables.forEach(t=>{t.vendors=t.vendors.map(v=>eventVendors.includes(v)?v:'');});
- state.tables.forEach(t=>t.items.forEach(i=>setProducts(i,assignedProducts(i).map(p=>({id:p.id,label:catalog.find(c=>c.id===p.id)?.label||p.label})))));
+ state.tables.forEach(t=>t.items.forEach(i=>setProducts(i,assignedProducts(i).map(p=>({...p,id:p.id,label:catalog.find(c=>c.id===p.id)?.label||p.label})))));
  render();
 })();
 </script>
