@@ -290,12 +290,14 @@
  equipment.forEach(e=>{if(refreshedArt[e.key]){e.art=refreshedArt[e.key];e.shape='artshape';}if(['chafer','split'].includes(e.key))e.group='Chafers';if(['round'].includes(e.key))e.group='Heating';if(['bowl','plate'].includes(e.key))e.group='Serving';if(e.key==='riser')e.group='Displays';if(e.key==='blue-bowl')e.name='Chilled salad bowl';if(e.key==='ice-square')e.name='Chilled serving tray';});
  equipment.push(
   {key:'ceramic-long',name:'Long ceramic platter',w:18,h:6,group:'Serving',shape:'artshape',art:'ceramic',estimated:true},
-  {key:'ceramic-square',name:'Square ceramic plate',w:10,h:10,group:'Serving',shape:'artshape',art:'ceramic',estimated:true}
+  {key:'ceramic-square',name:'Square ceramic plate',w:10,h:10,group:'Serving',shape:'artshape',art:'ceramic',estimated:true},
+  {key:'ceramic-round-small',name:'Plate, round, ceramic, small',w:8,h:8,group:'Serving',shape:'artshape',art:'roundplate',estimated:true},
+  {key:'ceramic-round-large',name:'Plate, round, ceramic, large',w:12,h:12,group:'Serving',shape:'artshape',art:'roundplate',estimated:true}
  );
  equipment.push({key:'donut-display',name:'Donut display · 9 pegs · 12 in tall',w:10,h:6,group:'Displays',shape:'artshape',art:'donutstand',estimated:true});
  equipment.push({key:'bacon-display',name:'Bacon display · 10.6 in tall',w:13,h:10.4,group:'Displays',shape:'artshape',art:'baconstand',estimated:false});
  equipment.push({key:'soup-kettle',name:'Soup kettle · 12.5 in tall',w:9.3,h:9.3,group:'Heating',shape:'artshape',art:'soupkettle',estimated:true});
- const shortLabels={'small-crock':'Small crock pot','round-crock':'Medium crock pot','oval-crock':'Large crock pot','black-lamp':'Small heat lamp','lamp-board':'Heat lamp + board','gold-board':'Large cutting board','board':'Cutting board','board-small':'Small cutting board','board-square-small':'Small square board','board-square-large':'Large square board','board-round-small':'Small round board','board-round-large':'Large round board','pan':'Pan + induction','black-tier':'3-tier riser','round-tier':'3-tier display','ceramic-long':'Long platter','ceramic-square':'Square plate','condiments':'Compartment box','triple-warmer':'3-pot warmer'};
+ const shortLabels={'round-plate':'Round ceramic plate','ceramic-round-small':'Small round plate','ceramic-round-large':'Large round plate','small-crock':'Small crock pot','round-crock':'Medium crock pot','oval-crock':'Large crock pot','black-lamp':'Small heat lamp','lamp-board':'Heat lamp + board','gold-board':'Large cutting board','board':'Cutting board','board-small':'Small cutting board','board-square-small':'Small square board','board-square-large':'Large square board','board-round-small':'Small round board','board-round-large':'Large round board','pan':'Pan + induction','black-tier':'3-tier riser','round-tier':'3-tier display','ceramic-long':'Long platter','ceramic-square':'Square plate','condiments':'Compartment box','triple-warmer':'3-pot warmer'};
  const shortLabel=e=>shortLabels[e.key]||e.name.split(' · ')[0];
  equipment.push(
   {key:'basket-small',name:'Small basket',w:8,h:6,group:'Serving',shape:'artshape',art:'basket',estimated:true},
@@ -308,7 +310,7 @@
  'oval-crock':'Crock pot, large · approx. 10 qt','round-crock':'Crock pot, medium · approx. 8 qt','small-crock':'Crock pot, small · approx. 4 qt',
  'black-lamp':'Heat lamp, small · 6 in base','lamp-board':'Heat lamp, with cutting board',
  'chafer':'Chafer, standard','split':'Chafer, divided','full-chafer':'Chafer, full pan','double-chafer':'Chafer, two pan','triple-chafer':'Chafer, three pan','round-chafer':'Chafer, round',
- 'plate':'Plate, serving','rect-plate':'Plate, rectangular','round-plate':'Plate, round','ceramic-square':'Plate, ceramic, square','ceramic-long':'Platter, ceramic, long','chilled-round':'Platter, chilled, round',
+ 'plate':'Plate, serving','rect-plate':'Plate, rectangular','round-plate':'Plate, round, ceramic','ceramic-square':'Plate, ceramic, square','ceramic-long':'Platter, ceramic, long','chilled-round':'Platter, chilled, round',
  'black-tier':'Display, three-tier riser','round-tier':'Display, three-tier round','two-tier':'Display, two-tier','three-tier':'Display, three-tier','donut-display':'Display, donut · 9 pegs · 12 in tall','bacon-display':'Display, bacon · 10.6 in tall','macaron-tower':'Display, macaron tower · 6 tiers · 10 in tall',
  'grey-riser':'Riser, gray','riser':'Riser, wood, small','wood-riser':'Riser, wood, large'
  };
@@ -406,7 +408,7 @@
   let art='';
   switch(e.art){
    case 'goldboard':art=piece('gold',0,0,100,100);break;
-   case 'pizzaboard':art=piece('cutwood',44,70,12,30)+piece('gold round',0,0,100,80,'background:light-dark(#ad552b,#b8683c);');break;
+   case 'pizzaboard':art=piece('cutwood',44,70,12,30)+piece('gold round',0,0,100,80,'border-radius:50%;background:light-dark(#ad552b,#b8683c);');break;
    case 'lampboard':art=piece('dark',40,0,20,100)+piece('gold',0,6,100,88)+piece('dark',47,0,6,82)+piece('brushed round',26,22,48,34)+piece('brushed round',26,58,48,34);break;
    case 'blacktier':art=tiers(3,'blacktray');break;
    case 'roundtier':art=piece('dark',40,20,5,62,'transform:rotate(25deg)')+piece('dark round',27,0,45,43)+piece('dark round',0,54,45,43)+piece('dark round',55,43,45,43);break;
