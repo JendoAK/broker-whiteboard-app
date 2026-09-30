@@ -38,3 +38,13 @@
 #marketVisitsDialog .market-card-date,#marketVisitsDialog .market-card-options {color:#36594b;}
 #marketVisitsDialog .market-card-main h3 {font-size:clamp(21px,1.6vw,25px);font-weight:900;line-height:1.25;color:#123f38;margin:14px 0 12px;overflow-wrap:anywhere;}
 #marketVisitsDialog .market-card-main .agenda-type {font-size:11px;font-weight:600;}
+/* Consistent card colors help identify event types across every grouping. */
+#marketVisitsDialog .market-card[data-agenda-type="personal"] {--card-fill:#dcecdf;--card-border:#95b99f;--card-badge:#c2ddc8;}
+#marketVisitsDialog .market-card[data-agenda-type="manufacturer"] {--card-fill:#dceaf4;--card-border:#98b5cb;--card-badge:#bfd8ea;}
+#marketVisitsDialog .market-card[data-agenda-type="testkitchen"] {--card-fill:#e9e1f1;--card-border:#b4a1c7;--card-badge:#d6c7e5;}
+#marketVisitsDialog .market-card[data-agenda-type="foodshow"] {--card-fill:#f5e9cb;--card-border:#cbb582;--card-badge:#ead69f;}
+#marketVisitsDialog .market-card[data-agenda-type] {background:var(--card-fill);border-color:var(--card-border);}
+#marketVisitsDialog .market-card[data-agenda-type] .market-card-main {background:var(--card-fill);}
+#marketVisitsDialog .market-card[data-agenda-type] .market-card-options {background:var(--card-fill);border-top:1px solid var(--card-border);}
+#marketVisitsDialog .market-card[data-agenda-type] .agenda-type {background:var(--card-badge);color:#29493e;}
+#marketVisitsDialog .market-card[data-agenda-type].active-market-card {border-color:#245e59;box-shadow:0 0 0 1px #245e59;}
