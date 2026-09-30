@@ -24,7 +24,7 @@
 <script src="time-picker.js?v=20260917-time1"></script>
 <script src="copy-email.js?v=20260917-copyemail1"></script>
 <link rel="stylesheet" href="manager-overview.css?v=20260918-manager1" />
-<link rel="stylesheet" href="foodshow-layout.css?v=20260929-foodshow8" /><link rel="stylesheet" href="table-planner.css?v=20260930-planner5" /><script src="table-planner.js?v=20260930-planner5"></script></head>
+<link rel="stylesheet" href="foodshow-layout.css?v=20260929-foodshow8" /><link rel="stylesheet" href="table-planner.css?v=20260930-planner5" /><script src="table-planner.js?v=20260930-planner5"></script><link rel="stylesheet" href="window-layout.css?v=20260930-windows1" /></head>
   <body class="auth-pending">
     <datalist id="timelineSearchSuggestions"></datalist>
     <div class="app-shell">
@@ -852,19 +852,17 @@
         </div>
         <input id="marketVisitId" type="hidden" />
         <input id="marketVisitType" type="hidden" />
-        <div class="field-grid">
-          <label class="market-pc-field wide"><span>Visit name</span><input id="marketVisitName" autocomplete="off" /></label>
-          <label class="market-mfr-field"><span>Manufacturer / vendor</span><select id="marketVisitVendor"><option value="">Choose vendor</option></select><small class="market-vendor-lock-note">Vendor is locked after the visit is created.</small></label>
-          <label><span>Regional manager name</span><input id="marketVisitorName" autocomplete="off" placeholder="Enter the regional manager's name" /></label>
-          <label><span>Start date</span><input id="marketStartDate" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
-          <label><span>End date</span><input id="marketEndDate" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
-          <label class="market-pc-field"><span>Start time</span><input id="marketStartTime" type="text" placeholder="8:00 AM" autocomplete="off" /></label>
-          <label class="market-pc-field"><span>End time</span><input id="marketEndTime" type="text" placeholder="5:00 PM" autocomplete="off" /></label>
-          <label class="market-pc-field wide"><span>Location / area</span><input id="marketLocation" autocomplete="off" /></label>
-          <label class="market-pc-field wide"><span>Sales reps involved</span><input id="marketSalesReps" list="salesRepSuggestions" placeholder="Alexa, Dudley..." autocomplete="off" /></label>
-          <label class="market-pc-field"><span>Status</span><select id="marketStatus"><option>Planned</option><option>In Progress</option><option>Completed</option><option>Follow Up Needed</option></select></label>
-          <label class="wide"><span>Notes</span><textarea id="marketNotes" rows="4"></textarea></label>
-        </div>
+<fieldset class="window-section"><legend>Event details</legend><div class="field-grid"><label class="market-pc-field wide"><span>Visit name</span><input id="marketVisitName" autocomplete="off" /></label>
+<label class="market-mfr-field"><span>Manufacturer / vendor</span><select id="marketVisitVendor"><option value="">Choose vendor</option></select><small class="market-vendor-lock-note">Vendor is locked after the visit is created.</small></label>
+<label><span>Regional manager name</span><input id="marketVisitorName" autocomplete="off" placeholder="Enter the regional manager's name" /></label>
+<label class="market-pc-field"><span>Status</span><select id="marketStatus"><option>Planned</option><option>In Progress</option><option>Completed</option><option>Follow Up Needed</option></select></label></div></fieldset>
+<fieldset class="window-section"><legend>When &amp; where</legend><div class="field-grid"><label><span>Start date</span><input id="marketStartDate" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
+<label><span>End date</span><input id="marketEndDate" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
+<label class="market-pc-field"><span>Start time</span><input id="marketStartTime" type="text" placeholder="8:00 AM" autocomplete="off" /></label>
+<label class="market-pc-field"><span>End time</span><input id="marketEndTime" type="text" placeholder="5:00 PM" autocomplete="off" /></label>
+<label class="market-pc-field wide"><span>Location / area</span><input id="marketLocation" autocomplete="off" /></label></div></fieldset>
+<fieldset class="window-section"><legend>Team &amp; notes</legend><div class="field-grid"><label class="market-pc-field wide"><span>Sales reps involved</span><input id="marketSalesReps" list="salesRepSuggestions" placeholder="Alexa, Dudley..." autocomplete="off" /></label>
+<label class="wide"><span>Notes</span><textarea id="marketNotes" rows="4"></textarea></label></div></fieldset>
         <div class="form-actions">
           <button class="danger-action" id="deleteMarketVisit" type="button">Delete</button>
           <span></span>

@@ -1,0 +1,52 @@
+/* Shared window hierarchy. Screen-only to preserve existing printed documents. */
+@media screen {
+  dialog:not(.event-table-planner-dialog) {
+    border: 1px solid #b8cbc7;
+    border-radius: 16px;
+    background: #f4f7f6;
+    color: #203c38;
+    box-shadow: 0 24px 80px #172f3b40;
+    max-height: calc(100dvh - 24px);
+    overflow: auto;
+  }
+  dialog::backdrop { background: #162e3d66; backdrop-filter: blur(2px); }
+  dialog .note-form, dialog .account-panel { padding: 20px; }
+  dialog .form-header {
+    align-items: flex-start;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    border-radius: 11px;
+    background: #245e59;
+    border-bottom: 4px solid #e2bc67;
+    color: white;
+  }
+  dialog .form-header h2 { color: white; font-size: 1.65rem; line-height: 1.2; margin: 0; overflow-wrap: anywhere; }
+  dialog .form-header .eyebrow { color: #d4e8e1; font-size: .75rem; letter-spacing: .08em; margin: 0 0 5px; }
+  dialog .form-header .account-subtitle { color: #e4efec; }
+  dialog .form-header .icon-button { flex-shrink: 0; background: #fffdf6; border: 1px solid #b8cec8; color: #244b46; border-radius: 9px; box-shadow: none; width: 38px; min-height: 38px; }
+  dialog label > span:first-child { color: #36564f; font-size: .82rem; line-height: 1.4; letter-spacing: .025em; }
+  dialog :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]),select,textarea) { background: #fffefb; border: 1px solid #a8bcb4; border-radius: 8px; color: #233b35; font-size: 1rem; padding: 9px 11px; }
+  dialog :is(input,select,textarea,button):focus-visible { outline: 3px solid #33867b; outline-offset: 2px; }
+  dialog .field-grid { gap: 12px 16px; }
+  dialog .window-section { min-width: 0; margin: 0 0 15px; padding: 12px 15px 15px; border: 1px solid #c1d4ca; border-radius: 11px; background: #fffefb; }
+  dialog .window-section legend { padding: 5px 12px; border: 1px solid #c1d4ca; border-radius: 7px; background: #e3eee7; color: #28574b; font-size: .95rem; font-weight: 800; }
+  dialog .window-section:nth-of-type(2) { border-color: #ddcfac; }
+  dialog .window-section:nth-of-type(2) legend { background: #f7edd6; border-color: #ddcfac; color: #65501e; }
+  dialog .foodshow-form > label { background: #fffefb; border: 1px solid #d0ddd5; border-radius: 10px; padding: 13px 15px; }
+  dialog :is(.foodshow-interest-picker,.visit-product-choices) { background: #fffefb; border-color: #bfd3c9; border-radius: 10px; }
+  dialog :is(.section-label-row,.foodshow-section-heading) { background: #e3eee7; padding: 10px 13px; border-radius: 8px; }
+  dialog .form-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; border-top: 1px solid #c7d8cf; padding-top: 15px; margin-top: 16px; }
+  dialog .form-actions > .danger-action { margin-right: auto; }
+  dialog .form-actions > span:empty { display: none; }
+  dialog .form-actions button { min-height: 40px; padding: 9px 17px; border-radius: 8px; box-shadow: none; }
+  dialog .form-actions .primary-action { background: #f0cc68; color: #352900; border-color: #ad872a; font-weight: 800; }
+  dialog .form-actions .ghost-action { background: #fffefb; border-color: #a8bcb4; color: #294d43; }
+  .market-form-dialog .note-form { max-height: none; }
+  @media (max-width: 600px) {
+    dialog .note-form, dialog .account-panel { padding: 12px; }
+    dialog .form-header { padding: 15px; gap: 10px; }
+    dialog .form-header h2 { font-size: 1.35rem; }
+    dialog .window-section { padding: 10px; }
+    .market-form-dialog .field-grid { grid-template-columns: minmax(0,1fr); }
+  }
+}
