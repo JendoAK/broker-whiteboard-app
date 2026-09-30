@@ -165,6 +165,24 @@
  #show-planner-demo tr {break-inside:avoid;}
  #show-planner-demo thead {display:table-header-group;}
 }
+#show-planner-demo .sp-products-field {margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:6px;}
+#show-planner-demo #sp-products {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;}
+#show-planner-demo #sp-products label {display:flex;align-items:flex-start;gap:10px;padding:6px 0;}
+#show-planner-demo #sp-products input {width:20px;height:20px;flex:0 0 20px;margin:2px 0;}
+#show-planner-demo #sp-products span {overflow-wrap:anywhere;}
+@media screen {
+ #show-planner-demo {font-size:17px;}
+ #show-planner-demo h2 {font-size:26px;}
+ #show-planner-demo h3 {font-size:19px;}
+ #show-planner-demo label,#show-planner-demo .sp-sub,#show-planner-demo .sp-zone-labels,#show-planner-demo .sp-dimension,#show-planner-demo .sp-status,#show-planner-demo .sp-packing table {font-size:16px;}
+ #show-planner-demo .sp-palette button {font-size:16px;min-height:64px;}
+ #show-planner-demo .sp-equipment-options small,#show-planner-demo .sp-badge {font-size:14px;}
+ #show-planner-demo .sp-palette summary,#show-planner-demo .sp-direction {font-size:18px;}
+ #show-planner-demo .sp-equipment .sp-name {font-size:14px;}
+ #show-planner-demo .sp-equipment .sp-product {font-size:13px;}
+}
+@media(max-width:600px){#show-planner-demo #sp-products{grid-template-columns:1fr;}#show-planner-demo .sp-equipment-options{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media print {#show-planner-demo .sp-print-key{font-size:14px;}#show-planner-demo .sp-packing table{font-size:15px;}}
 </style>
 <header class="sp-top"><div><h2>US Foods Vendor Showcase</h2><div class="sp-sub">Table layout</div></div><span class="sp-badge">Event table planner</span></header>
 <div class="sp-row sp-navigation" id="sp-tables"></div>
@@ -189,10 +207,10 @@
  <div class="sp-row"><h3 id="sp-selected-title">Selected equipment</h3><span class="sp-sub" id="sp-footprint"></span></div>
  <div class="sp-fields">
   <label>Label<input id="sp-label"></label>
-  <label>Product<select id="sp-product"><option value="">No product</option></select></label>
   <label>Vendor<select id="sp-owner"></select></label>
   <label>Move to table<select id="sp-destination"></select></label>
  </div>
+ <fieldset class="sp-products-field"><legend>Products on this equipment</legend><div id="sp-products"></div></fieldset>
  <div class="sp-row sp-actions"><button type="button" id="sp-rotate45">Rotate 45°</button><button type="button" id="sp-rotate">Rotate 90°</button><button type="button" id="sp-duplicate">Duplicate</button><button type="button" id="sp-remove">Remove</button></div>
  <details><summary>Equipment size &amp; position</summary><div class="sp-fields"><label>Width (in)<input type="number" id="sp-width" min="4" max="36"></label><label>Depth (in)<input type="number" id="sp-height" min="4" max="30"></label><label>From left (in)<input type="number" id="sp-x" min="0" step="0.5"></label><label>From back (in)<input type="number" id="sp-y" min="0" step="0.5"></label></div></details>
 </section>
@@ -236,6 +254,7 @@
   if(e.key==='round-plate')e.name='Plate';
   if(e.key==='black-lamp')e.name='Small heat lamp · 6 in base';
   if(e.key==='pizza-board')e.name='Red pizza board';
+  if(e.key==='gold-board')e.name='Large cutting board';
   if(['chafer','split','triple-chafer','double-chafer','full-chafer'].includes(e.key)){e.w=20;e.h=12.5;e.estimated=false;}
  });
  equipment.push(
@@ -243,7 +262,7 @@
   {key:'chilled-round',name:'Round chilled platter',w:11.81,h:11.81,group:'Serving',shape:'artshape',art:'chilledround'},
   {key:'macaron-tower',name:'Macaron tower · 6 tiers · 10 in tall',w:9,h:9,group:'Displays',shape:'artshape',art:'tower'}
  );
- const refreshedArt={'lamp-board':'lampboard','gold-board':'goldboard','pizza-board':'pizzaboard',lamp:'blacklamp',chafer:'fullpan',split:'twopan',round:'roundblack',bowl:'chilledbowl',board:'cutboard',riser:'woodriser',plate:'rectplate','blue-bowl':'chilledbowl','ice-square':'ice'};
+ const refreshedArt={'lamp-board':'lampboard','gold-board':'cutboard','pizza-board':'pizzaboard',lamp:'blacklamp',chafer:'fullpan',split:'twopan',round:'roundblack',bowl:'chilledbowl',board:'cutboard',riser:'woodriser',plate:'rectplate','blue-bowl':'chilledbowl','ice-square':'ice'};
  equipment.forEach(e=>{if(refreshedArt[e.key]){e.art=refreshedArt[e.key];e.shape='artshape';}if(['chafer','split'].includes(e.key))e.group='Chafers';if(['round'].includes(e.key))e.group='Heating';if(['bowl','plate'].includes(e.key))e.group='Serving';if(e.key==='riser')e.group='Displays';if(e.key==='blue-bowl')e.name='Chilled salad bowl';if(e.key==='ice-square')e.name='Chilled serving tray';});
  equipment.push(
   {key:'ceramic-long',name:'Long ceramic platter',w:18,h:6,group:'Serving',shape:'artshape',art:'ceramic',estimated:true},
@@ -252,7 +271,7 @@
  equipment.push({key:'donut-display',name:'Donut display · 9 pegs · 12 in tall',w:10,h:6,group:'Displays',shape:'artshape',art:'donutstand',estimated:true});
  equipment.push({key:'bacon-display',name:'Bacon display · 10.6 in tall',w:13,h:10.4,group:'Displays',shape:'artshape',art:'baconstand',estimated:false});
  equipment.push({key:'soup-kettle',name:'Soup kettle · 12.5 in tall',w:9.3,h:9.3,group:'Heating',shape:'artshape',art:'soupkettle',estimated:true});
- const shortLabels={'small-crock':'Small crock pot','round-crock':'Medium crock pot','oval-crock':'Large crock pot','black-lamp':'Small heat lamp','lamp-board':'Heat lamp + board','gold-board':'Cutting board','board':'Cutting board','board-small':'Small cutting board','board-square-small':'Small square board','board-square-large':'Large square board','board-round-small':'Small round board','board-round-large':'Large round board','pan':'Pan + induction','black-tier':'3-tier riser','round-tier':'3-tier display','ceramic-long':'Long platter','ceramic-square':'Square plate','condiments':'Compartment box','triple-warmer':'3-pot warmer'};
+ const shortLabels={'small-crock':'Small crock pot','round-crock':'Medium crock pot','oval-crock':'Large crock pot','black-lamp':'Small heat lamp','lamp-board':'Heat lamp + board','gold-board':'Large cutting board','board':'Cutting board','board-small':'Small cutting board','board-square-small':'Small square board','board-square-large':'Large square board','board-round-small':'Small round board','board-round-large':'Large round board','pan':'Pan + induction','black-tier':'3-tier riser','round-tier':'3-tier display','ceramic-long':'Long platter','ceramic-square':'Square plate','condiments':'Compartment box','triple-warmer':'3-pot warmer'};
  const shortLabel=e=>shortLabels[e.key]||e.name.split(' · ')[0];
  equipment.push(
   {key:'basket-small',name:'Small basket',w:8,h:6,group:'Serving',shape:'artshape',art:'basket',estimated:true},
@@ -264,6 +283,7 @@
  const incoming=context.layout;
  if(valid(incoming)) state=JSON.parse(JSON.stringify(incoming));
  function updateChaferSizes(){
+  state.tables.forEach(t=>t.items.forEach(i=>{if(i.type==='gold-board'&&['Cutting board','Gold cutting board · 21 × 15 in'].includes(i.label))i.label='Large cutting board';}));
   if(state.shortLabelRevision!==1){
    state.tables.forEach(t=>t.items.forEach(i=>{const e=equipment.find(e=>e.key===i.type);if(e&&(!i.label||i.label===e.name))i.label=shortLabel(e);}));
    state.shortLabelRevision=1;
@@ -299,7 +319,20 @@
  const vendorCount=t=>({one:1,two:2,three:3,four:4}[t.sharing]||1);
  const tableVendors=t=>Array.from({length:vendorCount(t)},(_,n)=>t.vendors[n]||'');
  function productChoices(t,i){const vendors=(i.owner===4?tableVendors(t):[t.vendors[i.owner]||'']).map(v=>v.trim().toLowerCase());return catalog.filter(p=>vendors.includes(p.vendor.trim().toLowerCase()));}
- function syncProducts(t){t.items.forEach(i=>{if(i.owner!==4&&i.owner>=vendorCount(t))i.owner=4;if(i.product&&!productChoices(t,i).some(p=>p.id===i.productId)){i.product='';i.productId='';}});}
+ function assignedProducts(i){return Array.isArray(i.products)?i.products:i.productId||i.product?[{id:i.productId||'',label:i.product||''}]:[];}
+ function setProducts(i,products){i.products=products;i.product=products.map(p=>p.label).join(' / ');i.productId=products[0]?.id||'';}
+ function syncProducts(t){t.items.forEach(i=>{if(i.owner!==4&&i.owner>=vendorCount(t))i.owner=4;const ids=new Set(productChoices(t,i).map(p=>p.id));setProducts(i,assignedProducts(i).filter(p=>ids.has(p.id)));});}
+ function productPicker(t,i){
+  const choices=productChoices(t,i).slice().sort((a,b)=>a.label.localeCompare(b.label)),assigned=assignedProducts(i);
+  const missing=assigned.filter(p=>!choices.some(c=>c.id===p.id));
+  $('sp-products').innerHTML=choices.map(p=>'<label><input type="checkbox" data-product-id="'+esc(p.id)+'" '+(assigned.some(a=>a.id===p.id)?'checked':'')+'><span>'+esc(p.label)+'</span></label>').join('')+missing.map((p,n)=>'<label><input type="checkbox" data-missing-product="'+n+'" checked><span>'+esc(p.label)+' (not in current lineup)</span></label>').join('')||'<p>No event products for this vendor. Add products to the event first.</p>';
+  $('sp-products').querySelectorAll('input').forEach(input=>input.onchange=()=>{
+   let products=assignedProducts(i).slice();
+   if(input.hasAttribute('data-missing-product'))products=products.filter(p=>p!==missing[Number(input.dataset.missingProduct)]);
+   else {const id=input.dataset.productId;products=products.filter(p=>p.id!==id);if(input.checked){const p=catalog.find(p=>p.id===id);if(p)products.push({id:p.id,label:p.label});}}
+   setProducts(i,products);drawItems();remember();
+  });
+ }
  const table=()=>state.tables.find(t=>t.id===state.active)||state.tables[0];
  const selected=()=>table().items.find(i=>i.id===state.selected);
  const def=i=>equipment.find(e=>e.key===i.type)||equipment[0];
@@ -395,7 +428,7 @@
  function drawItems() {
   packingList();
   const t=table();
-  $('sp-items').innerHTML=t.items.map((item,n)=>`<button type="button" class="sp-equipment ${def(item).shape} ${item.w>item.h?"landscape":"portrait"} ${item.id===state.selected?'selected':''}" data-item="${esc(item.id)}" aria-label="${esc((item.label||def(item).name)+'; '+(item.product||'no product')+'; '+(t.vendors[item.owner]||'Shared')+'. Arrow keys move equipment.')}" style="left:${item.x/t.w*100}%;top:${item.y/t.h*100}%;width:${item.w/t.w*100}%;height:${item.h/t.h*100}%">${equipmentArt(item)}<span class="sp-number">${n+1}</span><span class="sp-name">${esc(item.label)}</span><span class="sp-product">${esc(item.product)}</span></button>`).join('');
+  $('sp-items').innerHTML=t.items.map((item,n)=>`<button type="button" class="sp-equipment ${def(item).shape} ${item.w>item.h?"landscape":"portrait"} ${item.id===state.selected?'selected':''}" data-item="${esc(item.id)}" aria-label="${esc((item.label||def(item).name)+'; '+(item.product||'no product')+'; '+(t.vendors[item.owner]||'Shared')+'. Arrow keys move equipment.')}" style="left:${item.x/t.w*100}%;top:${item.y/t.h*100}%;width:${item.w/t.w*100}%;height:${item.h/t.h*100}%">${equipmentArt(item)}<span class="sp-number">${n+1}</span><span class="sp-name">${esc(item.label)}</span><span class="sp-product">${esc(assignedProducts(item).length>1?assignedProducts(item).length+' products':item.product)}</span></button>`).join('');
   $('sp-item-list').innerHTML=t.items.map((i,n)=>`<button type="button" data-pick="${esc(i.id)}" aria-pressed="${i.id===state.selected}">${n+1}. ${esc(i.product||i.label||def(i).name)}</button>`).join('');
   $('sp-item-list').querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{state.selected=b.dataset.pick;drawItems();inspector();remember();});
   $('sp-items').querySelectorAll('[data-item]').forEach(button=>{
@@ -412,9 +445,9 @@
  }
  function place(button,item){const t=table();button.style.left=item.x/t.w*100+'%';button.style.top=item.y/t.h*100+'%';}
  function highlight() { $('sp-items').querySelectorAll('[data-item]').forEach(b=>b.classList.toggle('selected',b.dataset.item===state.selected)); }
- function inspector(){const t=table(),i=selected();$('sp-inspector').hidden=!i;if(!i)return;$('sp-selected-title').textContent=i.label||def(i).name;$('sp-footprint').textContent=(i.rotationW||i.w)+' × '+(i.rotationH||i.h)+' in'+(def(i).estimated?' · example size':'');$('sp-label').value=i.label;const choices=productChoices(t,i);$('sp-product').innerHTML='<option value="">'+(choices.length?'No product':'No event products for this vendor')+'</option>'+choices.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.label)+'</option>').join('')+(i.productId&&!choices.some(p=>p.id===i.productId)?'<option value="'+esc(i.productId)+'" disabled>'+esc(i.product)+' (not in current lineup)</option>':'');$('sp-product').value=i.productId||'';$('sp-owner').innerHTML=tableVendors(t).map((v,n)=>`<option value="${n}">${esc(v||'Vendor')}</option>`).join('')+'<option value="4">Shared supplies</option>';$('sp-owner').value=String(i.owner);$('sp-destination').innerHTML=state.tables.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');$('sp-destination').value=t.id;['width','height','x','y'].forEach(k=>$('sp-'+k).value=(k==='width'?i.rotationW:k==='height'?i.rotationH:null)||i[{width:'w',height:'h',x:'x',y:'y'}[k]]);}
+ function inspector(){const t=table(),i=selected();$('sp-inspector').hidden=!i;if(!i)return;$('sp-selected-title').textContent=i.label||def(i).name;$('sp-footprint').textContent=(i.rotationW||i.w)+' × '+(i.rotationH||i.h)+' in'+(def(i).estimated?' · example size':'');$('sp-label').value=i.label;productPicker(t,i);$('sp-owner').innerHTML=tableVendors(t).map((v,n)=>`<option value="${n}">${esc(v||'Vendor')}</option>`).join('')+'<option value="4">Shared supplies</option>';$('sp-owner').value=String(i.owner);$('sp-destination').innerHTML=state.tables.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');$('sp-destination').value=t.id;['width','height','x','y'].forEach(k=>$('sp-'+k).value=(k==='width'?i.rotationW:k==='height'?i.rotationH:null)||i[{width:'w',height:'h',x:'x',y:'y'}[k]]);}
  function add(key,x,y){const t=table(),e=equipment.find(e=>e.key===key);if(!e)return;if(state.tables.reduce((n,t)=>n+t.items.length,0)>=200){$('sp-status').textContent='Maximum: 200 pieces of equipment.';return;}const i={id:uid(),type:key,label:shortLabel(e),product:'',owner:x!=null?Math.min(vendorCount(t)-1,Math.max(0,Math.floor(x/t.w*vendorCount(t)))):0,w:e.w,h:e.h,x:x==null?5+(t.items.length%5)*4:x-e.w/2,y:y==null?5:y-e.h/2};constrain(i);t.items.push(i);state.selected=i.id;render();remember(e.name+' added.');}
- $('sp-palette').innerHTML=['Heating','Chafers','Serving','Displays','Original demo pieces'].filter(group=>equipment.some(e=>(e.group||'Original demo pieces')===group)).map((group,n)=>'<details '+(n===0?'open':'')+'><summary>'+group+'</summary><div class="sp-equipment-options">'+equipment.filter(e=>(e.group||'Original demo pieces')===group).map(e=>`<button type="button" draggable="true" data-add="${e.key}" aria-label="Add ${esc(e.name)}"><span class="sp-sample ${e.shape}" aria-hidden="true" style="width:${Math.min(46,38*e.w/e.h)}px;height:${Math.min(38,46*e.h/e.w)}px;flex-basis:${Math.min(46,38*e.w/e.h)}px">${equipmentArt({type:e.key,w:e.w,h:e.h})}</span><span>${esc(e.name)}<small>${e.estimated?'~ ':''}${e.w} × ${e.h} in</small></span></button>`).join('')+'</div></details>').join('');
+ $('sp-palette').innerHTML=['Chafers','Displays','Heating','Serving','Original demo pieces'].filter(group=>equipment.some(e=>(e.group||'Original demo pieces')===group)).map((group,n)=>'<details '+(n===0?'open':'')+'><summary>'+group+'</summary><div class="sp-equipment-options">'+equipment.filter(e=>(e.group||'Original demo pieces')===group).sort((a,b)=>a.name.localeCompare(b.name)).map(e=>`<button type="button" draggable="true" data-add="${e.key}" aria-label="Add ${esc(e.name)}"><span class="sp-sample ${e.shape}" aria-hidden="true" style="width:${Math.min(46,38*e.w/e.h)}px;height:${Math.min(38,46*e.h/e.w)}px;flex-basis:${Math.min(46,38*e.w/e.h)}px">${equipmentArt({type:e.key,w:e.w,h:e.h})}</span><span>${esc(e.name)}<small>${e.estimated?'~ ':''}${e.w} × ${e.h} in</small></span></button>`).join('')+'</div></details>').join('');
  $('sp-palette').querySelectorAll('[data-add]').forEach(b=>{b.onclick=()=>add(b.dataset.add);b.ondragstart=e=>{e.dataTransfer.setData('text/plain',b.dataset.add);e.dataTransfer.effectAllowed='copy';};});
  $('sp-table').ondragover=e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';};
  $('sp-table').ondrop=e=>{e.preventDefault();const r=$('sp-table').getBoundingClientRect();add(e.dataTransfer.getData('text/plain'),(e.clientX-r.left)/r.width*table().w,(e.clientY-r.top)/r.height*table().h);};
@@ -423,7 +456,6 @@
  $('sp-sharing').onchange=e=>{table().sharing=e.target.value;syncProducts(table());render();remember();};
  ['vendor1','vendor2','vendor3','vendor4'].forEach((k,n)=>$('sp-'+k).onchange=e=>{table().vendors[n]=e.target.value.trim().slice(0,60);syncProducts(table());render();remember();});
  $('sp-label').onchange=e=>{if(!selected())return;selected().label=e.target.value.trim().slice(0,60);drawItems();inspector();remember();};
- $('sp-product').onchange=e=>{const p=catalog.find(p=>p.id===e.target.value);selected().product=p?.label||'';selected().productId=p?.id||'';drawItems();remember();};
  $('sp-owner').onchange=e=>{selected().owner=Number(e.target.value);syncProducts(table());drawItems();inspector();remember();};
  $('sp-destination').onchange=e=>{const from=table(),to=state.tables.find(t=>t.id===e.target.value),i=selected();if(!to||to===from)return;from.items=from.items.filter(x=>x.id!==i.id);to.items.push(i);state.active=to.id;i.owner=0;syncProducts(to);constrain(i,to);render();remember('Equipment moved to '+to.name+'.');};
  function rotateSelected(degrees){
@@ -453,7 +485,7 @@
  window.addEventListener('beforeprint',preparePrint);
  root.querySelector('h2').textContent=context.name;
  $('sp-vendor-options').innerHTML=[...new Set([...context.vendors,...catalog.map(p=>p.vendor),...state.tables.flatMap(t=>t.vendors)])].filter(Boolean).sort().map(v=>'<option value="'+esc(v)+'"></option>').join('');
- state.tables.forEach(t=>t.items.forEach(i=>{if(i.productId){const p=catalog.find(p=>p.id===i.productId);if(p)i.product=p.label;}}));
+ state.tables.forEach(t=>t.items.forEach(i=>setProducts(i,assignedProducts(i).map(p=>({id:p.id,label:catalog.find(c=>c.id===p.id)?.label||p.label})))));
  render();
 })();
 </script>
