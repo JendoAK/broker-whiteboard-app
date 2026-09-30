@@ -183,6 +183,29 @@
 }
 @media(max-width:600px){#show-planner-demo #sp-products{grid-template-columns:1fr;}#show-planner-demo .sp-equipment-options{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media print {#show-planner-demo .sp-print-key{font-size:14px;}#show-planner-demo .sp-packing table{font-size:15px;}}
+@media screen {
+ #show-planner-demo {color-scheme:light;--line:#a8beb5;--soft:#e8f1ec;--paper:#fffefb;background:#f5f8f5;}
+ #show-planner-demo .sp-top {background:#dcece5;border:1px solid #a6bfb3;border-left:5px solid #347566;border-radius:9px;padding:14px;}
+ #show-planner-demo .sp-top h2,#show-planner-demo h3 {color:#24594d;}
+ #show-planner-demo .sp-vendors {grid-template-columns:repeat(4,minmax(0,1fr));background:#e8f1ec;padding:12px;border:1px solid #a6bfb3;border-radius:8px;}
+ #show-planner-demo input,#show-planner-demo select {background:#fffefb;border-color:#91aaa0;box-shadow:0 1px 2px #254c3d12;}
+ #show-planner-demo .sp-library>h3 {margin:16px 0 10px;}
+ #show-planner-demo .sp-palette details {padding:0;margin:10px 0;border:1px solid #abc0b5;border-radius:8px;overflow:hidden;background:#fffefb;}
+ #show-planner-demo .sp-palette summary {padding:11px 14px;background:#dcece5;color:#254f43;font-weight:600;}
+ #show-planner-demo .sp-equipment-options {padding:12px;gap:10px;}
+ #show-planner-demo .sp-equipment-options button {border:1px solid #aec2b7;background:#f8faf6;box-shadow:0 2px 3px #213b3010;}
+ #show-planner-demo .sp-equipment-options button:hover {background:#e7f1e9;border-color:#4e8973;}
+ #show-planner-demo .sp-inspector {background:#fff6e1;border:1px solid #d7bf89;border-top:4px solid #b99a54;border-radius:8px;padding:14px;margin-top:16px;}
+ #show-planner-demo .sp-products-field {background:#fffdf6;border-color:#d4be8e;}
+ #show-planner-demo .sp-products-field legend {font-weight:600;color:#665024;}
+ #show-planner-demo .sp-packing {background:#fffefb;border:1px solid #abc0b5;border-radius:8px;padding:14px;}
+ #show-planner-demo .sp-packing thead {background:#e8f1ec;}
+ #show-planner-demo .sp-direction {background:#dcece5;color:#254f43;border-radius:5px;padding:6px;}
+ #show-planner-demo .sp-actions button {border-color:#ac9567;background:#fffdf6;}
+ #show-planner-demo #sp-print {background:#276757;color:#fff;border-color:#276757;}
+}
+@media screen and (max-width:800px){#show-planner-demo .sp-vendors {grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media screen and (max-width:440px){#show-planner-demo .sp-vendors {grid-template-columns:1fr;}}
 </style>
 <header class="sp-top"><div><h2>US Foods Vendor Showcase</h2><div class="sp-sub">Table layout</div></div><span class="sp-badge">Event table planner</span></header>
 <div class="sp-row sp-navigation" id="sp-tables"></div>
@@ -192,8 +215,8 @@
  <label>Depth (in)<input id="sp-depth" type="number" min="24" max="48" step="1"></label>
  <label>Vendor arrangement<select id="sp-sharing"><option value="one">One vendor</option><option value="two">Two vendors</option><option value="three">Three vendors</option><option value="four">Four vendors</option></select></label>
 </div>
-<div class="sp-vendors"><label id="sp-vendor1-wrap">Vendor<input id="sp-vendor1" list="sp-vendor-options"></label><label id="sp-vendor2-wrap">Second vendor<input id="sp-vendor2" list="sp-vendor-options"></label><label id="sp-vendor3-wrap">Third vendor<input id="sp-vendor3" list="sp-vendor-options"></label><label id="sp-vendor4-wrap">Fourth vendor<input id="sp-vendor4" list="sp-vendor-options"></label></div>
-<datalist id="sp-vendor-options"></datalist>
+<div class="sp-vendors"><label id="sp-vendor1-wrap">Vendor<select id="sp-vendor1"></select></label><label id="sp-vendor2-wrap">Second vendor<select id="sp-vendor2"></select></label><label id="sp-vendor3-wrap">Third vendor<select id="sp-vendor3"></select></label><label id="sp-vendor4-wrap">Fourth vendor<select id="sp-vendor4"></select></label></div>
+
 <section class="sp-library"><h3>Equipment</h3><div class="sp-palette" id="sp-palette"></div></section>
 <div class="sp-dimension"><span id="sp-measure"></span><span>Top view</span></div>
 <div class="sp-direction">Customers</div>
@@ -277,6 +300,18 @@
   {key:'basket-small',name:'Small basket',w:8,h:6,group:'Serving',shape:'artshape',art:'basket',estimated:true},
   {key:'basket-mini',name:'Mini basket',w:6,h:4,group:'Serving',shape:'artshape',art:'basket',estimated:true}
  );
+ const familyNames={
+ 'gold-board':'Cutting board, large','board':'Cutting board, medium','board-small':'Cutting board, small',
+ 'board-square-large':'Cutting board, square, large','board-square-small':'Cutting board, square, small','board-round-large':'Cutting board, round, large','board-round-small':'Cutting board, round, small',
+ 'basket':'Basket, large','basket-small':'Basket, small','basket-mini':'Basket, mini',
+ 'oval-crock':'Crock pot, large · approx. 10 qt','round-crock':'Crock pot, medium · approx. 8 qt','small-crock':'Crock pot, small · approx. 4 qt',
+ 'black-lamp':'Heat lamp, small · 6 in base','lamp-board':'Heat lamp, with cutting board',
+ 'chafer':'Chafer, standard','split':'Chafer, divided','full-chafer':'Chafer, full pan','double-chafer':'Chafer, two pan','triple-chafer':'Chafer, three pan','round-chafer':'Chafer, round',
+ 'plate':'Plate, serving','rect-plate':'Plate, rectangular','round-plate':'Plate, round','ceramic-square':'Plate, ceramic, square','ceramic-long':'Platter, ceramic, long','chilled-round':'Platter, chilled, round',
+ 'black-tier':'Display, three-tier riser','round-tier':'Display, three-tier round','two-tier':'Display, two-tier','three-tier':'Display, three-tier','donut-display':'Display, donut · 9 pegs · 12 in tall','bacon-display':'Display, bacon · 10.6 in tall','macaron-tower':'Display, macaron tower · 6 tiers · 10 in tall',
+ 'grey-riser':'Riser, gray','riser':'Riser, wood, small','wood-riser':'Riser, wood, large'
+ };
+ equipment.forEach(e=>{if(familyNames[e.key])e.name=familyNames[e.key];});
  let sequence=10;
  let state={version:1,active:'t1',selected:'',vendorRevision:1,shortLabelRevision:1,tables:[{id:'t1',name:'Table 1',w:72,h:30,sharing:'one',vendors:[catalog[0]?.vendor||'','','',''],items:[]}]};
  const valid=s=>s?.version===1&&Array.isArray(s.tables)&&s.tables.length>0&&s.tables.every(t=>Number.isFinite(t.w)&&Number.isFinite(t.h)&&t.w>=36&&t.h>=24&&Array.isArray(t.items)&&Array.isArray(t.vendors));
@@ -484,7 +519,9 @@
  $('sp-print').onclick=()=>{preparePrint();window.print();};
  window.addEventListener('beforeprint',preparePrint);
  root.querySelector('h2').textContent=context.name;
- $('sp-vendor-options').innerHTML=[...new Set([...context.vendors,...catalog.map(p=>p.vendor),...state.tables.flatMap(t=>t.vendors)])].filter(Boolean).sort().map(v=>'<option value="'+esc(v)+'"></option>').join('');
+ const eventVendors=[...new Set(catalog.map(p=>p.vendor))].filter(Boolean).sort((a,b)=>a.localeCompare(b));
+ [1,2,3,4].forEach(n=>{$('sp-vendor'+n).innerHTML='<option value="">'+(eventVendors.length?'Select event vendor':'Add products to the event first')+'</option>'+eventVendors.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('');});
+ state.tables.forEach(t=>{t.vendors=t.vendors.map(v=>eventVendors.includes(v)?v:'');});
  state.tables.forEach(t=>t.items.forEach(i=>setProducts(i,assignedProducts(i).map(p=>({id:p.id,label:catalog.find(c=>c.id===p.id)?.label||p.label})))));
  render();
 })();

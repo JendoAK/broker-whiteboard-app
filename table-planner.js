@@ -29,7 +29,7 @@ function normalizeTablePlanner(value) {
       if (!session) throw new Error('Open the table planner from an event.');
       const visit = marketVisits.find(v => v.id === session.visitId);
       if (!visit) throw new Error('This event is no longer available.');
-      return { name: visit.name, layout: normalizeTablePlanner(visit.tableLayout), vendors: getVendorOptions(), products: getMarketVisitProducts(visit).map(p => ({ id: p.id, vendor: p.vendor || 'No vendor', description: p.description, code: p.supc || p.apn || p.manufacturerNumber || '' })) };
+      return { name: visit.name, layout: normalizeTablePlanner(visit.tableLayout), vendors: [...new Set(getMarketVisitProducts(visit).map(p=>p.vendor || 'No vendor'))].sort(), products: getMarketVisitProducts(visit).map(p => ({ id: p.id, vendor: p.vendor || 'No vendor', description: p.description, code: p.supc || p.apn || p.manufacturerNumber || '' })) };
     },
     save(token, value) {
       const session = sessions.get(token), layout = normalizeTablePlanner(value);
@@ -62,7 +62,7 @@ function normalizeTablePlanner(value) {
     dialog.innerHTML = '<header><h2>Table layouts &amp; packing list</h2><span role="status"></span><button type="button">Close</button></header><iframe title="Event table planner"></iframe>';
     const token = crypto.randomUUID(), frame = dialog.querySelector('iframe');
     sessions.set(token, { visitId, status: dialog.querySelector('[role=status]'), saved: JSON.stringify(normalizeTablePlanner(visit.tableLayout)) });
-    frame.src = './table-planner.html?v=20260930-planner2#session=' + token;
+    frame.src = './table-planner.html?v=20260930-planner3#session=' + token;
     const close = () => {
       try { if (frame.contentWindow.flushTablePlanner && !frame.contentWindow.flushTablePlanner()) return; }
       catch (error) { sessions.get(token).status.textContent = 'Unable to save. Please retry before closing.'; return; }
