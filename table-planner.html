@@ -521,9 +521,8 @@
   if(state.tables.length>=30){$('sp-status').textContent='Maximum: 30 tables.';return;}
   if(state.tables.reduce((n,t)=>n+t.items.length,0)+source.items.length>200){$('sp-status').textContent='Copy would exceed the 200-piece equipment limit.';return;}
   const copy=JSON.parse(JSON.stringify(source));copy.id=uid();
-  const base=source.name.replace(/ \(copy(?: \d+)?\)$/,'').slice(0,75);let n=1,name=base+' (copy)';
-  while(state.tables.some(t=>t.name===name))name=base+' (copy '+(++n)+')';
-  copy.name=name;copy.items.forEach(i=>i.id=uid());state.tables.push(copy);state.active=copy.id;state.selected='';render();remember('Table copied.');
+  const nextNumber=Math.max(state.tables.length,...state.tables.map(t=>Number(/^Table (\d+)$/i.exec(t.name.trim())?.[1])||0))+1;
+  copy.name='Table '+nextNumber;copy.items.forEach(i=>i.id=uid());state.tables.push(copy);state.active=copy.id;state.selected='';render();remember('Table copied.');
  };
  $('sp-remove-table').onclick=()=>{
   const current=table(),index=state.tables.indexOf(current);
