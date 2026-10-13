@@ -6613,7 +6613,7 @@ function printMarketVisit(id, sections = { schedule: true, products: true }) {
     return;
   }
   closeMarketPrintOptions();
-  openPrintWindow(renderMarketVisitPrintDocument(visit, sections));
+  openPrintWindow(renderMarketVisitPrintDocument(visit, sections), { logoChosen: true });
 }
 
 function renderMarketVisitPrintDocument(visit, sections = { schedule: true, products: true }) {
@@ -9594,7 +9594,47 @@ function renderLeadListPrintRow(card) {
   </tr>`;
 }
 
-function openPrintWindow(html) {
+function openPrintLogoOptions(html) {
+  const dialog = document.createElement("dialog");
+  dialog.className = "note-dialog market-print-dialog";
+  dialog.id = "printLogoDialog";
+  dialog.innerHTML = `<form class="note-form">
+    <div class="form-header"><div><p class="eyebrow">Print options</p><h2>Print list</h2></div><button class="icon-button" type="button" data-close-print aria-label="Close">&times;</button></div>
+    <label><span>Distributor logo</span><select name="logo"><option value="none">No distributor logo</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option></select></label>
+    <div class="form-actions"><button class="ghost-action" type="button" data-cancel-print>Cancel</button><button class="primary-action" type="submit">Print</button></div>
+  </form>`;
+  document.body.append(dialog);
+  dialog.addEventListener("close", () => dialog.remove(), { once: true });
+  const closeDialog = () => { dialog.close(); dialog.remove(); };
+  dialog.querySelector("[data-close-print]").onclick = closeDialog;
+  dialog.querySelector("[data-cancel-print]").onclick = closeDialog;
+  dialog.querySelector("form").onsubmit = event => {
+    event.preventDefault();
+    const selected = dialog.querySelector("select").value;
+    const printDocument = new DOMParser().parseFromString(html, "text/html");
+    printDocument.querySelectorAll(".print-brand-header").forEach(header => {
+      header.querySelectorAll(".print-brand-usf").forEach(image => image.remove());
+      const logo = getEventPrintLogo(selected);
+      if (logo) {
+        const image = printDocument.createElement("img");
+        image.className = "print-brand-logo print-brand-usf";
+        image.src = getPrintAssetUrl(logo.src);
+        image.alt = logo.name;
+        header.append(image);
+      }
+    });
+    dialog.close();
+    dialog.remove();
+    openPrintWindow("<!doctype html>" + printDocument.documentElement.outerHTML, { logoChosen: true });
+  };
+  dialog.showModal();
+}
+
+function openPrintWindow(html, options = {}) {
+  if (!options.logoChosen) {
+    openPrintLogoOptions(html);
+    return;
+  }
   const printWindow = window.open("", "_blank", "width=900,height=700");
   if (!printWindow) {
     alert("Please allow popups for this page so the print view can open.");

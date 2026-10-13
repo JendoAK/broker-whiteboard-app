@@ -26,7 +26,7 @@ function printMarketOperatorProducts(visitId, operatorId, panel) {
   body.querySelector("form").onsubmit = event => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    openPrintWindow(renderOperatorProductPrint(selection, { companyLogo: data.has("companyLogo"), logo: data.get("logo"), codes: data.getAll("codes") }));
+    openPrintWindow(renderOperatorProductPrint(selection, { companyLogo: data.has("companyLogo"), logo: data.get("logo"), codes: data.getAll("codes") }), { logoChosen: true });
     dialog.close();
   };
   dialog.showModal();
