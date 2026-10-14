@@ -11,7 +11,7 @@ function renderCompactTestkitchen(panel, visit) {
     </div>
     <div class="market-detail-tabs kitchen-organizations"><section class="visit-organizations-panel"><h3>Organizations &amp; feedback</h3><div class="kitchen-operator-list">${operators.map(operator => `<button class="compact-operator" type="button" data-kitchen-open-operator="${escapeAttribute(operator.id)}"><strong>${escapeHtml(getMarketOperatorDisplayName(operator))}</strong><span>Products, notes, leads &amp; vendor reports</span></button>`).join('') || '<p class="empty-state">Add an organization to record feedback or create a lead or vendor report.</p>'}</div></section></div>
     <details class="compact-visit-extra"><summary>Event notes${visit.notes ? ' · Notes added' : ''}</summary>${renderMarketNotesSection(visit)}</details>
-    ${visit.newProductIds.length ? `<details class="compact-visit-extra"><summary>Manage new products &amp; stock links</summary>${visit.newProductIds.map(renderEventProductEditor).join('')}</details>` : ''}`;
+    ${visit.newProductIds.length ? `<details class="compact-visit-extra" open><summary>New products · Add or link to stock</summary>${visit.newProductIds.map(renderEventProductEditor).join('')}</details>` : ''}`;
   panel.querySelector("[data-table-planner]").onclick = () => openEventTablePlanner(visit.id);
   bindMarketDetailActions(panel, visit);
   bindMarketEventActions(panel, visit);

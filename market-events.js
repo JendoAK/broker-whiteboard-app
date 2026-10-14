@@ -83,18 +83,47 @@ function renderEventSelectedProduct(product) {
 }
 
 function renderEventProductEditor(id) {
-  const product = eventProducts.find((item) => item.id === id);
+  const product = eventProducts.find(item => item.id === id);
   if (!product) return "";
-  const linked = stockProducts.find((item) => item.id === product.linkedStockId);
-  return `<details class="market-nested-card event-product-editor"><summary>${escapeHtml(product.description)} · ${linked ? "Stock connection" : "Edit or link to stock"}</summary>
-    ${linked ? `<p>Linked to ${escapeHtml(formatMarketProductOption(linked))}. Current stock details appear in event lists.</p><button class="edit-card" type="button" data-unlink-event-product="${escapeAttribute(id)}">Unlink from stock</button>` : `
-    <form class="event-entry-grid" data-edit-event-product="${escapeAttribute(id)}">${renderEventProductFields(product)}<button class="small-action" type="submit">Save shared product</button></form>
-    <form class="event-library-picker" data-link-event-stock="${escapeAttribute(id)}"><label>Link to an existing stocked item<select name="stockId" required><option value="">Choose the matching stock item</option>${stockProducts.map((stock) => `<option value="${escapeAttribute(stock.id)}">${escapeHtml(formatMarketProductOption(stock))}</option>`).join("")}</select></label><button class="small-action" type="submit">Link to stock</button></form>
-    <details><summary>Add this product to the stock list</summary><p>Use this when the product becomes stocked. If it is already listed, link it above.</p><form class="event-entry-grid" data-promote-event-product="${escapeAttribute(id)}">
-      <label>Distributor<select name="distributor"><option>US Foods Anchorage</option><option>US Foods Southeast</option><option>Sysco</option><option>Linford</option></select></label>
-      <label>APN<input name="apn" placeholder="Optional" /></label><label>Sysco product code<input name="supc" placeholder="Optional" /></label>
-      <button class="small-action" type="submit">Create stocked item & link</button></form></details>`}</details>`;
+  const linked = stockProducts.find(item => item.id === product.linkedStockId);
+  return `<section class="market-nested-card event-product-editor" aria-label="Stock options for ${escapeAttribute(product.description)}">
+    <div class="event-stock-heading"><div><strong>${escapeHtml(product.description)}</strong><span>${escapeHtml(product.vendor)}${product.manufacturerNumber ? ' · MF# ' + escapeHtml(product.manufacturerNumber) : ''}</span></div><span class="event-stock-status">${linked ? 'Linked to stock' : 'New · Not yet stocked'}</span></div>
+    ${linked ? `<div class="event-stock-connected"><p>Linked to <strong>${escapeHtml(formatMarketProductOption(linked))}</strong>. Stock details now appear in event lists.</p><button class="edit-card" type="button" data-unlink-event-product="${escapeAttribute(id)}">Unlink from stock</button></div>` : `<div class="event-stock-actions">
+      <section class="event-stock-option event-stock-add"><h4>Add to stock list</h4><p>Product is now stocked? Choose its distributor and enter the item number.</p><form data-promote-event-product="${escapeAttribute(id)}">
+        <label>Distributor<select name="distributor"><option>US Foods Anchorage</option><option>US Foods Southeast</option><option>Sysco</option><option>Linford</option></select></label>
+        <div class="event-stock-codes"><label>US Foods APN<input name="apn" placeholder="Optional" /></label><label>Sysco SUPC<input name="supc" placeholder="Optional" /></label></div>
+        <button class="event-stock-add-button" type="submit">+ Add to stock list</button></form></section>
+      <section class="event-stock-option event-stock-link"><h4>Link an existing item</h4><p>Already on a stock list? Connect it here to avoid a duplicate.</p><form data-link-event-stock="${escapeAttribute(id)}"><label>Matching stocked item<select name="stockId" required><option value="">Choose the matching stock item</option>${stockProducts.map(stock => `<option value="${escapeAttribute(stock.id)}">${escapeHtml(formatMarketProductOption(stock))}</option>`).join('')}</select></label><button class="event-stock-link-button" type="submit">Link existing item</button></form></section>
+    </div><details class="event-stock-edit"><summary>Edit product details &amp; notes</summary><form class="event-entry-grid" data-edit-event-product="${escapeAttribute(id)}">${renderEventProductFields(product)}<button class="small-action" type="submit">Save product details</button></form></details>`}
+  </section>`;
 }
+
+function openEventProductStockOptions(visitId, productId) {
+  const visit = marketVisits.find(item => item.id === visitId);
+  if (!visit || !eventProducts.some(item => item.id === productId)) return;
+  const dialog = createVisitDialog("Product & stock options");
+  dialog.classList.add("event-stock-dialog");
+  const body = dialog.querySelector("[data-visit-entry-body]");
+  const render = () => {
+    body.innerHTML = renderEventProductEditor(productId);
+    bindMarketEventActions(body, visit);
+    body.querySelectorAll("form").forEach(form => {
+      let previous;
+      form.addEventListener("submit", () => { previous = eventProducts.find(item => item.id === productId); }, true);
+      form.addEventListener("submit", () => {
+        if (previous !== eventProducts.find(item => item.id === productId)) render();
+      });
+    });
+    body.querySelector("[data-unlink-event-product]")?.addEventListener("click", render);
+  };
+  render();
+  dialog.showModal();
+}
+
+document.addEventListener("click", event => {
+  const button = event.target.closest("[data-product-stock-options]");
+  if (button) openEventProductStockOptions(button.dataset.visitId, button.dataset.productStockOptions);
+});
 
 function renderMarketEventDetail(panel, visit) {
   if (visit.type === "foodshow") { renderFoodshow(panel, visit); return; }
@@ -117,13 +146,15 @@ function renderMarketEventDetail(panel, visit) {
 }
 
 function saveSharedEventProduct(id, patch) {
+  const previous = eventProducts;
   eventProducts = eventProducts.map((product) => {
     if (product.id !== id) return product;
     const updated = normalizeEventProduct({ ...product, ...patch, updatedAt: new Date().toISOString() });
     stampSharedRecord(updated, "Updated");
     return updated;
   });
-  persistEventProducts();
+  try { persistEventProducts(); }
+  catch (error) { eventProducts = previous; throw error; }
 }
 
 function removeEventProduct(visit, id) {
@@ -173,41 +204,73 @@ function bindMarketEventActions(panel, visit) {
     persistEventProducts();
     updateMarketVisit(visit.id, { newProductIds: [...visit.newProductIds, product.id] });
   });
-  panel.querySelectorAll("[data-edit-event-product]").forEach((form) => form.addEventListener("submit", (event) => {
+  const productAction = (control, action) => {
+    let message = control.querySelector('[data-stock-action-message]');
+    if (!message) {
+      message = document.createElement('p');
+      message.dataset.stockActionMessage = '';
+      message.setAttribute('role', 'alert');
+      control.append(message);
+    }
+    message.textContent = '';
+    try { action(); }
+    catch (error) {
+      message.textContent = error.message === 'duplicate' ? 'This item number is already on a stock list. Use Link existing item instead.' : 'Could not save this change. Your entered details are still here. ' + (error.name === 'QuotaExceededError' ? 'Browser storage is full. Export a backup and remove a large attachment, then try again.' : 'Please try again.');
+      console.error('Event product save failed', error);
+    }
+  };
+  panel.querySelectorAll("[data-edit-event-product]").forEach(form => form.addEventListener('submit', event => {
     event.preventDefault();
-    const values = Object.fromEntries(new FormData(form));
-    if (!values.description.trim() || !values.vendor.trim()) return;
-    saveSharedEventProduct(form.dataset.editEventProduct, values);
-    renderMarketVisits();
+    productAction(form, () => {
+      const values = Object.fromEntries(new FormData(form));
+      if (!values.description.trim() || !values.vendor.trim()) return;
+      values.description = values.description.trim();
+      saveSharedEventProduct(form.dataset.editEventProduct, values);
+      renderMarketVisits();
+    });
   }));
-  panel.querySelectorAll("[data-link-event-stock]").forEach((form) => form.addEventListener("submit", (event) => {
+  panel.querySelectorAll("[data-link-event-stock]").forEach(form => form.addEventListener('submit', event => {
     event.preventDefault();
-    const id = new FormData(form).get("stockId");
-    if (!stockProducts.some((product) => product.id === id)) return;
-    saveSharedEventProduct(form.dataset.linkEventStock, { linkedStockId: id });
-    renderMarketVisits();
+    productAction(form, () => {
+      const id = new FormData(form).get('stockId');
+      if (!stockProducts.some(product => product.id === id)) return;
+      saveSharedEventProduct(form.dataset.linkEventStock, { linkedStockId: id });
+      renderMarketVisits();
+    });
   }));
-  panel.querySelectorAll("[data-promote-event-product]").forEach((form) => form.addEventListener("submit", (event) => {
+  panel.querySelectorAll("[data-promote-event-product]").forEach(form => form.addEventListener('submit', event => {
     event.preventDefault();
-    const product = eventProducts.find((item) => item.id === form.dataset.promoteEventProduct);
-    if (!product || product.linkedStockId) return;
-    const values = Object.fromEntries(new FormData(form));
-    values.apn = values.apn.trim();
-    values.supc = values.supc.trim();
-    const duplicate = stockProducts.find((item) => (values.apn && item.apn === values.apn) || (values.supc && item.supc === values.supc));
-    if (duplicate) { alert("That product code already exists. Select the matching stocked item under Link to an existing stocked item."); return; }
-    const stocked = normalizeStockProduct({ ...product, ...values, id: crypto.randomUUID(), createdAt: new Date().toISOString() });
-    stampSharedRecord(stocked, "Created");
-    const previous = stockProducts;
-    stockProducts = [...stockProducts, stocked];
-    if (!persistStockProducts()) { stockProducts = previous; return; }
-    saveSharedEventProduct(product.id, { linkedStockId: stocked.id });
-    renderMarketVisits();
+    productAction(form, () => {
+      const product = eventProducts.find(item => item.id === form.dataset.promoteEventProduct);
+      if (!product || product.linkedStockId) return;
+      const editor = form.closest('.event-product-editor').querySelector('[data-edit-event-product]');
+      if (editor && !editor.reportValidity()) return;
+      const details = editor ? Object.fromEntries(new FormData(editor)) : {};
+      const values = Object.fromEntries(new FormData(form));
+      values.apn = values.apn.trim();
+      values.supc = values.supc.trim();
+      const duplicate = stockProducts.find(item => (values.apn && item.apn === values.apn) || (values.supc && item.supc === values.supc));
+      if (duplicate) throw new Error('duplicate');
+      const stocked = normalizeStockProduct({ ...product, ...details, ...values, id: crypto.randomUUID(), linkedStockId: '', createdAt: new Date().toISOString() });
+      stampSharedRecord(stocked, 'Created');
+      const previous = stockProducts;
+      stockProducts = [...stockProducts, stocked];
+      if (!persistStockProducts()) { stockProducts = previous; return; }
+      try { saveSharedEventProduct(product.id, { ...details, linkedStockId: stocked.id }); }
+      catch (error) {
+        stockProducts = previous;
+        persistStockProducts();
+        throw error;
+      }
+      renderMarketVisits();
+    });
   }));
-  panel.querySelectorAll("[data-remove-event-product]").forEach((button) => button.addEventListener("click", () => removeEventProduct(visit, button.dataset.removeEventProduct)));
-  panel.querySelectorAll("[data-unlink-event-product]").forEach((button) => button.addEventListener("click", () => {
-    saveSharedEventProduct(button.dataset.unlinkEventProduct, { linkedStockId: "" });
-    renderMarketVisits();
+  panel.querySelectorAll("[data-remove-event-product]").forEach(button => button.addEventListener('click', () => removeEventProduct(visit, button.dataset.removeEventProduct)));
+  panel.querySelectorAll("[data-unlink-event-product]").forEach(button => button.addEventListener('click', () => {
+    productAction(button.closest('.event-product-editor'), () => {
+      saveSharedEventProduct(button.dataset.unlinkEventProduct, { linkedStockId: '' });
+      renderMarketVisits();
+    });
   }));
 }
 
