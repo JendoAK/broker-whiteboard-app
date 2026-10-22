@@ -1500,8 +1500,8 @@ function normalizeAddressBookEntry(entry) {
 
 function normalizeStockProduct(product) {
   const oldDistributorNumber = product.distributorNumber || "";
-  const existingApn = product.apn || (/^US Foods/i.test(product.distributor || "") ? oldDistributorNumber : "");
-  const existingSupc = product.supc || ((product.distributor || "") === "Sysco" ? oldDistributorNumber : "");
+  const existingApn = String(Object.hasOwn(product, "apn") ? product.apn ?? "" : /^US Foods/i.test(product.distributor || "") ? oldDistributorNumber : "").trim();
+  const existingSupc = String(Object.hasOwn(product, "supc") ? product.supc ?? "" : (product.distributor || "") === "Sysco" ? oldDistributorNumber : "").trim();
   return {
     id: product.id || crypto.randomUUID(),
     distributor: product.distributor || "US Foods Anchorage",

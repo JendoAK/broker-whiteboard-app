@@ -82,6 +82,8 @@ function renderEventProductFields(product = {}) {
     <label>Vendor / manufacturer<input name="vendor" data-event-vendor list="stockVendorSuggestions" autocomplete="off" required value="${escapeAttribute(product.vendor || "")}" /></label>
     <label>Manufacturer product number (MF#)<input name="manufacturerNumber" value="${escapeAttribute(product.manufacturerNumber || "")}" placeholder="Optional" /></label>
     <label>Packaging<input name="packaging" value="${escapeAttribute(product.packaging || "")}" placeholder="Case / pack size" /></label>
+    <label>US Foods APN<input name="apn" type="text" value="${escapeAttribute(product.apn || "")}" placeholder="Optional" /></label>
+    <label>Sysco SUPC<input name="supc" type="text" value="${escapeAttribute(product.supc || "")}" placeholder="Optional" /></label>
     <label>Storage<input name="storage" value="${escapeAttribute(product.storage || "")}" placeholder="Frozen, refrigerated, dry…" /></label>
     <label>Product notes<textarea name="notes">${escapeHtml(product.notes || "")}</textarea></label>`;
 }
@@ -91,7 +93,7 @@ function renderEventProducts(visit) {
   const stocked = selected.filter((product) => !product.isNewEventProduct);
   const upcoming = selected.filter((product) => product.isNewEventProduct);
   const available = eventProducts.filter((product) => !isEventProductLocked(product) && !(visit.newProductIds || []).includes(product.id));
-  return `<div class="quick-list-header"><p class="market-section-help">Select stocked items or add new products without product codes. The new-product library is shared and reusable across events.</p><button class="edit-card market-section-action" data-market-print-products type="button">Print product list</button></div>
+  return `<div class="quick-list-header"><p class="market-section-help">Select stocked items or add new products that are not yet stocked. Product codes are optional. The new-product library is shared and reusable across events.</p><button class="edit-card market-section-action" data-market-print-products type="button">Print product list</button></div>
     <h4>Stocked products</h4>
     <div class="market-product-add-row"><input data-add-product-search list="marketProductSuggestions" aria-label="Search stocked products" placeholder="Search description, vendor, APN or Sysco code…" /><button class="small-action" data-add-market-product type="button">Add stocked product</button></div>
     <datalist id="marketProductSuggestions">${getMarketProductCandidates(visit).map((product) => `<option value="${escapeAttribute(formatMarketProductOption(product))}"></option>`).join("")}</datalist>
@@ -130,7 +132,7 @@ function renderEventProductEditor(id, options = {}) {
     ${locked ? `<p class="event-product-readonly">${linked ? 'This product is on a stock list. Stock details appear in event lists.' : 'This product has already moved to a stock list.'} Its shared product details are locked.</p>` : `<div class="event-stock-actions">
       <section class="event-stock-option event-stock-add"><h4>Add to stock list</h4><p>Product is now stocked? Choose its distributor and enter the item number.</p><form data-promote-event-product="${escapeAttribute(id)}">
         <label>Distributor<select name="distributor"><option>US Foods Anchorage</option><option>US Foods Southeast</option><option>Sysco</option><option>Linford</option></select></label>
-        <div class="event-stock-codes"><label>US Foods APN<input name="apn" placeholder="Optional" /></label><label>Sysco SUPC<input name="supc" placeholder="Optional" /></label></div>
+        <div class="event-stock-codes"><label>US Foods APN<input name="apn" type="text" value="${escapeAttribute(product.apn || "")}" placeholder="Optional" /></label><label>Sysco SUPC<input name="supc" type="text" value="${escapeAttribute(product.supc || "")}" placeholder="Optional" /></label></div>
         <button class="event-stock-add-button" type="submit">+ Add to stock list</button></form></section>
       <section class="event-stock-option event-stock-link"><h4>Link an existing item</h4><p>Already on a stock list? Connect it here to avoid a duplicate.</p><form data-link-event-stock="${escapeAttribute(id)}"><label>Matching stocked item<select name="stockId" required><option value="">Choose the matching stock item</option>${stockProducts.map(stock => `<option value="${escapeAttribute(stock.id)}">${escapeHtml(formatMarketProductOption(stock))}</option>`).join('')}</select></label><button class="event-stock-link-button" type="submit">Link existing item</button></form></section>
     </div><p class="event-product-stock-help">Adding or linking this product to stock locks its shared details.</p>`}
@@ -211,7 +213,7 @@ function renderMarketEventDetail(panel, visit) {
 
 function saveSharedEventProduct(id, patch) {
   editableEventProduct(id);
-  const allowed = ["description", "vendor", "manufacturerNumber", "packaging", "storage", "notes", "linkedStockId"];
+  const allowed = ["description", "vendor", "manufacturerNumber", "packaging", "apn", "supc", "storage", "notes", "linkedStockId"];
   const changes = Object.fromEntries(Object.entries(patch).filter(([key]) => allowed.includes(key)));
   if (changes.linkedStockId) {
     if (!stockProducts.some(product => product.id === changes.linkedStockId)) throw new Error("Choose an available stocked item.");
