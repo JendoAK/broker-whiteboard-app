@@ -17,7 +17,7 @@ function normalizeEventProduct(product) {
 }
 
 function isEventProductLocked(product) {
-  return Boolean(product?.linkedStockId || product?.stockLockedAt);
+  return Boolean(product?.linkedStockId || product?.stockLockedAt || window.foodBrokerProducts?.stockMatch(product, stockProducts));
 }
 
 function editableEventProduct(id) {
@@ -33,7 +33,7 @@ function editableEventProduct(id) {
 
 function eventProductStatus(product) {
   if (!isEventProductLocked(product)) return "New · Not yet stocked";
-  return stockProducts.some(item => item.id === product.linkedStockId) ? "Stocked · Read only" : "Previously stocked · Read only";
+  return window.foodBrokerProducts?.stockMatch(product, stockProducts) || stockProducts.some(item => item.id === product.linkedStockId) ? "Stocked · Read only" : "Previously stocked · Read only";
 }
 
 function loadEventProducts() {
@@ -56,6 +56,7 @@ function persistEventProducts() {
 function resolveEventProduct(id) {
   const product = eventProducts.find((item) => item.id === id);
   if (!product) return null;
+  if (window.foodBrokerProducts) return window.foodBrokerProducts.resolve(product, stockProducts);
   const stocked = stockProducts.find((item) => item.id === product.linkedStockId);
   return { ...product, ...(stocked || {}), id: product.id, linkedStockId: product.linkedStockId,
     stockLockedAt: product.stockLockedAt, isNewEventProduct: !isEventProductLocked(product), notes: product.notes };
@@ -92,7 +93,7 @@ function renderEventProducts(visit) {
   const selected = getMarketVisitProducts(visit);
   const stocked = selected.filter((product) => !product.isNewEventProduct);
   const upcoming = selected.filter((product) => product.isNewEventProduct);
-  const available = eventProducts.filter((product) => !isEventProductLocked(product) && !(visit.newProductIds || []).includes(product.id));
+  const available = window.foodBrokerProducts.choices(eventProducts.filter((product) => !isEventProductLocked(product) && !(visit.newProductIds || []).includes(product.id)), stockProducts).filter(product => !selected.some(item => window.foodBrokerProducts.same(product, item)));
   return `<div class="quick-list-header"><p class="market-section-help">Select stocked items or add new products that are not yet stocked. Product codes are optional. The new-product library is shared and reusable across events.</p><button class="edit-card market-section-action" data-market-print-products type="button">Print product list</button></div>
     <h4>Stocked products</h4>
     <div class="market-product-add-row"><input data-add-product-search list="marketProductSuggestions" aria-label="Search stocked products" placeholder="Search description, vendor, APN or Sysco code…" /><button class="small-action" data-add-market-product type="button">Add stocked product</button></div>
@@ -121,7 +122,7 @@ function renderEventSelectedProduct(product, options = {}) {
 function renderEventProductEditor(id, options = {}) {
   const product = eventProducts.find(item => item.id === id);
   if (!product) return "";
-  const linked = stockProducts.find(item => item.id === product.linkedStockId);
+  const linked = window.foodBrokerProducts?.stockMatch(product, stockProducts) || stockProducts.find(item => item.id === product.linkedStockId);
   const locked = isEventProductLocked(product);
   if (options.edit && !locked) return `<section class="event-product-editor"><p class="market-section-help">Changes update this shared new product in every event where it is used.</p><form class="event-entry-grid" data-edit-event-product="${escapeAttribute(id)}">${renderEventProductFields(product)}<div class="event-product-form-actions"><button class="ghost-action" type="button" data-cancel-event-product-edit>Cancel</button><button class="primary-action" type="submit">Save product</button></div></form></section>`;
   const details = resolveEventProduct(id);
@@ -134,7 +135,7 @@ function renderEventProductEditor(id, options = {}) {
         <label>Distributor<select name="distributor"><option>US Foods Anchorage</option><option>US Foods Southeast</option><option>Sysco</option><option>Linford</option></select></label>
         <div class="event-stock-codes"><label>US Foods APN<input name="apn" type="text" value="${escapeAttribute(product.apn || "")}" placeholder="Optional" /></label><label>Sysco SUPC<input name="supc" type="text" value="${escapeAttribute(product.supc || "")}" placeholder="Optional" /></label></div>
         <button class="event-stock-add-button" type="submit">+ Add to stock list</button></form></section>
-      <section class="event-stock-option event-stock-link"><h4>Link an existing item</h4><p>Already on a stock list? Connect it here to avoid a duplicate.</p><form data-link-event-stock="${escapeAttribute(id)}"><label>Matching stocked item<select name="stockId" required><option value="">Choose the matching stock item</option>${stockProducts.map(stock => `<option value="${escapeAttribute(stock.id)}">${escapeHtml(formatMarketProductOption(stock))}</option>`).join('')}</select></label><button class="event-stock-link-button" type="submit">Link existing item</button></form></section>
+      <section class="event-stock-option event-stock-link"><h4>Link an existing item</h4><p>Already on a stock list? Connect it here to avoid a duplicate.</p><form data-link-event-stock="${escapeAttribute(id)}"><label>Matching stocked item<select name="stockId" required><option value="">Choose the matching stock item</option>${window.foodBrokerProducts.choices(stockProducts, stockProducts).map(stock => `<option value="${escapeAttribute(stock.id)}">${escapeHtml(formatMarketProductOption(stock))}</option>`).join('')}</select></label><button class="event-stock-link-button" type="submit">Link existing item</button></form></section>
     </div><p class="event-product-stock-help">Adding or linking this product to stock locks its shared details.</p>`}
   </section>`;
 }
@@ -161,9 +162,10 @@ function openEventProductStockOptions(visitId, productId, options = {}) {
       body.querySelector("[data-cancel-event-product-edit]")?.addEventListener("click", () => render());
       if (edit) body.querySelector("input[name=description]")?.focus();
     } else {
-      const product = stockProducts.find(item => item.id === productId);
-      if (!product) { dialog.close(); return; }
-      const fields = [["Vendor / manufacturer", product.vendor], ["Manufacturer product number (MF#)", product.manufacturerNumber], ["Packaging", product.packaging], ["Storage", product.storage], ["US Foods APN", product.apn], ["Sysco SUPC", product.supc]];
+      const source = stockProducts.find(item => item.id === productId);
+      if (!source) { dialog.close(); return; }
+      const product = visit && getMarketVisitProducts(visit).find(item => marketProductIdsInclude([productId], item)) || window.foodBrokerProducts.resolve(source, stockProducts);
+      const fields = [["Vendor / manufacturer", product.vendor], ["Manufacturer product number (MF#)", product.manufacturerNumber], ["Packaging", product.packaging], ["Storage", product.storage], ["US Foods APN", product.apn], ["Sysco SUPC", product.supc], ["Product notes", product.notes]];
       body.innerHTML = `<span class="event-product-state is-stocked">Stocked · Read only</span><dl class="event-product-details">${fields.filter(([, value]) => value).map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(String(value))}</dd></div>`).join("")}</dl><p class="event-product-readonly">Stocked product details are read only in Events &amp; Visits.</p>`;
     }
   };
@@ -212,9 +214,13 @@ function renderMarketEventDetail(panel, visit) {
 }
 
 function saveSharedEventProduct(id, patch) {
-  editableEventProduct(id);
   const allowed = ["description", "vendor", "manufacturerNumber", "packaging", "apn", "supc", "storage", "notes", "linkedStockId"];
   const changes = Object.fromEntries(Object.entries(patch).filter(([key]) => allowed.includes(key)));
+  const existing = eventProducts.find(product => product.id === id);
+  // A promotion has just added its new stock record before persisting this link.
+  // Lock that exact link without reopening any product details for editing.
+  const attachingMatchedStock = existing && !existing.linkedStockId && !existing.stockLockedAt && Object.keys(changes).length === 1 && changes.linkedStockId && window.foodBrokerProducts?.stockMatch(existing, stockProducts)?.id === changes.linkedStockId;
+  if (!attachingMatchedStock) editableEventProduct(id);
   if (changes.linkedStockId) {
     if (!stockProducts.some(product => product.id === changes.linkedStockId)) throw new Error("Choose an available stocked item.");
     changes.stockLockedAt = new Date().toISOString();
@@ -231,8 +237,11 @@ function saveSharedEventProduct(id, patch) {
 }
 
 function removeEventProduct(visit, id) {
-  updateMarketVisit(visit.id, { newProductIds: visit.newProductIds.filter((value) => value !== id),
-    operatorLinks: visit.operatorLinks.map((link) => ({ ...link, productIds: link.productIds.filter((value) => value !== id) })) });
+  const product = getMarketVisitProducts(visit).find(item => marketProductIdsInclude([id], item)) || resolveEventProduct(id);
+  const aliases = new Set([id, ...(product?.aliasProductIds || [])]);
+  updateMarketVisit(visit.id, { productIds: visit.productIds.filter(value => !aliases.has(value)), newProductIds: visit.newProductIds.filter(value => !aliases.has(value)),
+    operatorLinks: visit.operatorLinks.map(link => ({ ...link, productIds: link.productIds.filter(value => !aliases.has(value)) })),
+    calls: visit.calls.map(call => ({ ...call, productIds: call.productIds.filter(value => !aliases.has(value)) })) });
 }
 
 function bindMarketEventActions(panel, visit) {
@@ -265,6 +274,8 @@ function bindMarketEventActions(panel, visit) {
     event.preventDefault();
     const id = new FormData(event.currentTarget).get("productId");
     if (!eventProducts.some((product) => product.id === id && !isEventProductLocked(product)) || visit.newProductIds.includes(id)) return;
+    const product = resolveEventProduct(id);
+    if (getMarketVisitProducts(visit).some(item => window.foodBrokerProducts.same(item, product))) return;
     updateMarketVisit(visit.id, { newProductIds: [...visit.newProductIds, id] });
   });
   panel.querySelector("[data-event-new-product-form]")?.addEventListener("submit", (event) => {
@@ -361,11 +372,11 @@ function bindMarketEventActions(panel, visit) {
 
 function renderMarketEventPrintDocument(visit, sections) {
   const products = getMarketVisitProducts(visit);
-  const productTable = list => renderVisitProductPrintTable(visit.type === "foodshow" ? list.map(product => ({...product, notes: [product.notes, foodshowPrepText(visit, product)].filter(Boolean).join("\n")})) : visit.type === "testkitchen" ? list.map(product => ({...product, notes: visit.productNotes?.[product.id]?.note || ""})) : list, sections.codeMode, visit.type === "testkitchen" ? Boolean(sections.productNotes) : true);
+  const productTable = list => renderVisitProductPrintTable(visit.type === "foodshow" ? list.map(product => ({...product, notes: [product.notes, foodshowPrepText(visit, product)].filter(Boolean).join("\n")})) : visit.type === "testkitchen" ? list.map(product => ({...product, notes: getMarketProductNote(visit, product).note || ""})) : list, sections.codeMode, visit.type === "testkitchen" ? Boolean(sections.productNotes) : true);
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(visit.name)} — Product list</title><style>${renderPrintBrandStyles()}@page { size: landscape; margin: .4in; } body { font: 12px Arial,sans-serif; color: #211d18; } table { width: 100%; border-collapse: collapse; margin-bottom: 18px; } th,td { border: 1px solid #ccc; padding: 7px; text-align: left; overflow-wrap: anywhere; } th { background: #f5e3df; } tr { break-inside: avoid; } thead { display: table-header-group; } p,td { white-space: pre-wrap; } h2 { font-size: 17px; }</style></head><body>
     ${renderPrintBrandHeader({ title: visit.name, distributorLogo: sections.logo || "none", lines: [visit.type === "foodshow" ? [visit.foodshowFormat, visit.foodshowAudience].filter(Boolean).join(" · ") : marketVisitTypes[visit.type], formatDateRange(visit.startDate, visit.endDate), [visit.startTime, visit.endTime].filter(Boolean).join(" – "), visit.location].filter(Boolean) })}
     ${sections.products ? `<h2>Products by vendor</h2>${productTable(products)}` : ""}
-    ${sections.schedule ? `<h2>Attendees & organizations</h2><table><thead><tr><th>Name</th><th>Organization</th><th>Type / role</th><th>Contact</th></tr></thead><tbody>${visit.attendees.map((person) => `<tr>${[person.name, person.organization, [person.category, person.role].filter(Boolean).join(" · "), person.contact].map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`).join("") || '<tr><td colspan="4">No attendees listed.</td></tr>'}</tbody></table><h2>Notes & leads</h2><p>${escapeHtml(visit.notes)}</p>${getMarketVisitOperators(visit).map((operator) => `<h3>${escapeHtml(getMarketOperatorDisplayName(operator))}</h3><p>${escapeHtml(operator.notes)}</p>${products.filter((product) => operator.productIds.includes(product.id)).map((product) => `<p>${escapeHtml(product.description)}${operator.productNotes?.[product.id]?.note ? `: ${escapeHtml(operator.productNotes[product.id].note)}` : ""}</p>`).join("")}`).join("")}` : ""}
+    ${sections.schedule ? `<h2>Attendees & organizations</h2><table><thead><tr><th>Name</th><th>Organization</th><th>Type / role</th><th>Contact</th></tr></thead><tbody>${visit.attendees.map((person) => `<tr>${[person.name, person.organization, [person.category, person.role].filter(Boolean).join(" · "), person.contact].map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`).join("") || '<tr><td colspan="4">No attendees listed.</td></tr>'}</tbody></table><h2>Notes & leads</h2><p>${escapeHtml(visit.notes)}</p>${getMarketVisitOperators(visit).map((operator) => `<h3>${escapeHtml(getMarketOperatorDisplayName(operator))}</h3><p>${escapeHtml(operator.notes)}</p>${products.filter((product) => marketProductIdsInclude(operator.productIds, product)).map((product) => `<p>${escapeHtml(product.description)}${getMarketProductNote(operator, product).note ? `: ${escapeHtml(getMarketProductNote(operator, product).note)}` : ""}</p>`).join("")}`).join("")}` : ""}
     ${visit.type === "foodshow" && sections.schedule ? renderFoodshowConversationPrint(visit) : ""}</body></html>`;
 }
 
@@ -389,3 +400,4 @@ function correctThaiCurryVendor() {
   if (changed) persistEventProducts();
 }
 window.addEventListener('DOMContentLoaded', correctThaiCurryVendor);
+

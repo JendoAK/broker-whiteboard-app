@@ -1324,11 +1324,39 @@ function normalizeMarketVisit(visit) {
   };
 }
 
+function getMarketOperatorDistributor(operator) {
+  const value = String(operator?.leadDistributor || operator?.distributor || "US Foods").trim();
+  if (/^us\s*foods\b/i.test(value)) return "US Foods";
+  return ["Sysco", "Linford", "Other"].find(item => item.toLowerCase() === value.toLowerCase()) || "US Foods";
+}
+
+function readMarketOperatorDistributor(panel, operatorId, fallback = "US Foods") {
+  const controls = [...panel.querySelectorAll("[data-event-lead-distributor]")].filter(input => input.dataset.eventLeadDistributor === operatorId);
+  const selected = controls.find(input => input.matches("input[type=radio]:checked")) || controls.find(input => input.tagName === "SELECT");
+  return getMarketOperatorDistributor({ leadDistributor: selected?.value || fallback });
+}
+
+function getMarketOperatorProductNumber(product, distributor) {
+  const manufacturerNumber = String(product.manufacturerNumber || "").trim();
+  if (distributor === "Sysco") return String(product.supc || manufacturerNumber).trim();
+  if (distributor === "Other") return manufacturerNumber;
+  if (distributor === "Linford") {
+    const linford = stockProducts.filter(item => distributorMatchesStock(item, "Linford"));
+    const aliases = linford.filter(item => marketProductIdsInclude([item.id], product));
+    const numbers = [...new Set(aliases.map(item => String(item.distributorNumber || "").trim()).filter(Boolean))];
+    if (numbers.length) return numbers.length === 1 ? numbers[0] : manufacturerNumber;
+    const match = window.foodBrokerProducts.stockMatch({ ...product, linkedStockId: "", canonicalStockId: "", explicitLinkedStockId: "", aliasProductIds: [] }, linford);
+    return String(match?.distributorNumber || (distributorMatchesStock(product, "Linford") ? product.distributorNumber : "") || manufacturerNumber).trim();
+  }
+  return String(product.apn || (distributorMatchesStock(product, "US Foods") ? product.distributorNumber : "") || manufacturerNumber).trim();
+}
+
 function normalizeMarketOperatorLink(link) {
   return {
     id: link.id || crypto.randomUUID(),
     operatorId: link.operatorId || "",
     operatorName: link.operatorName || "",
+    leadDistributor: getMarketOperatorDistributor(link),
     productIds: Array.isArray(link.productIds) ? link.productIds : [],
     notes: link.notes || "",
     productNotes: link.productNotes || {}
@@ -3474,9 +3502,15 @@ function setupSuggestionMenus() {
     const listId = input?.dataset.suggestionList;
     const list = listId ? document.getElementById(listId) : null;
     if (!list) return [];
+    const seen = new Set();
     return Array.from(list.querySelectorAll("option"))
       .map((option) => (option.value || option.textContent || "").trim())
-      .filter((value, index, values) => value && values.indexOf(value) === index);
+      .filter((value) => {
+        const key = value.replace(/\s+/g, " ").toLocaleLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
   };
 
   const positionMenu = () => {
@@ -4756,7 +4790,7 @@ function getVisibleStockProducts() {
       if (query && !getStockSearchText(product).includes(query)) return false;
       return true;
     })
-    .sort((a, b) => a.distributor.localeCompare(b.distributor) || a.vendor.localeCompare(b.vendor) || a.description.localeCompare(b.description));
+    .sort((a, b) => window.foodBrokerProducts.compare(a, b) || a.distributor.localeCompare(b.distributor) || a.vendor.localeCompare(b.vendor));
 }
 
 function getStockSearchText(product) {
@@ -5530,26 +5564,26 @@ function renderMarketOperatorsSection(visit, operators) {
 function renderMarketOperator(visit, operator) {
   const products = getMarketVisitProducts(visit);
   const operatorName = operator.operatorName || getOperatorName(operator.operatorId) || "Operator";
-  const selectedProductIds = new Set(operator.productIds || []);
-  const selectedProductCount = products.filter((product) => selectedProductIds.has(product.id)).length;
+  const selectedProductCount = products.filter(product => marketProductIdsInclude(operator.productIds, product)).length;
   return `
-    <details class="market-nested-card market-operator-card">
+    <details class="market-nested-card market-operator-card operator-products-card">
       <summary class="market-operator-summary">
-        <span>
-          <strong>${escapeHtml(operatorName)}</strong>
+        <span class="operator-products-heading">
+          <strong class="operator-products-name">${escapeHtml(operatorName)}</strong>
           <small data-operator-product-count>${selectedProductCount} of ${products.length} ${products.length === 1 ? "product" : "products"} planned</small>
         </span>
         <span class="market-operator-actions">
-          <button class="edit-card market-save-operator" type="button" data-save-market-operator="${escapeAttribute(operator.id)}">Save Operator</button>
-          ${visit.type === "manufacturer" ? `<button class="edit-card" type="button" data-print-operator-products="${escapeAttribute(operator.id)}">Print Product List</button>` : ""}
+          <button class="edit-card market-save-operator operator-products-icon" type="button" data-save-market-operator="${escapeAttribute(operator.id)}" aria-label="Save operator" title="Save operator">${renderOperatorActionIcon("save")}</button>
           <button class="edit-card market-convert-lead" type="button" data-convert-market-operator="${escapeAttribute(operator.id)}">Convert to Lead</button>
           <button class="edit-card" type="button" data-report-market-operator="${escapeAttribute(operator.id)}">Convert to Vendor Report</button>
-          <button class="remove-product" type="button" data-remove-market-operator="${escapeAttribute(operator.id)}" data-remove-market-operator-id="${escapeAttribute(operator.operatorId || "")}" data-remove-market-operator-name="${escapeAttribute(operatorName)}">Remove</button>
+          <button class="remove-product operator-products-icon" type="button" data-remove-market-operator="${escapeAttribute(operator.id)}" data-remove-market-operator-id="${escapeAttribute(operator.operatorId || "")}" data-remove-market-operator-name="${escapeAttribute(operatorName)}" aria-label="Delete operator from this event" title="Delete operator from this event">${renderOperatorActionIcon("trash")}</button>
         </span>
       </summary>
       <div class="market-operator-detail">
-        <label>Lead distributor<select data-event-lead-distributor="${escapeAttribute(operator.id)}"><option>US Foods</option><option>Sysco</option><option>Other</option></select></label>
-        ${products.length && visit.type === "manufacturer" ? `<div class="section-label-row"><button class="ghost-action" type="button" data-uncheck-operator-products>Uncheck all products</button></div>` : ""}
+        <div class="operator-products-options">
+          ${renderOperatorDistributorChoices(operator)}
+          ${visit.type === "manufacturer" ? `<div class="operator-products-secondary-actions"><button class="edit-card operator-products-icon" type="button" data-print-operator-products="${escapeAttribute(operator.id)}" aria-label="Print product list" title="Print product list">${renderOperatorActionIcon("print")}</button>${products.length ? `<button class="ghost-action" type="button" data-uncheck-operator-products>Uncheck all</button>` : ""}</div>` : ""}
+        </div>
         ${products.length ? `<div class="operator-product-notes">${products.map((product) => renderOperatorProductNote(operator, product)).join("")}</div>` : `<div class="empty-state">Add products to this visit, then they will show here for this operator.</div>`}
         <label class="operator-general-note"><span>Operator note</span><textarea class="market-operator-note" data-market-operator-notes="${escapeAttribute(operator.id)}" placeholder="Operator notes, feedback, next step...">${escapeHtml(operator.notes)}</textarea></label>
       </div>
@@ -5557,10 +5591,28 @@ function renderMarketOperator(visit, operator) {
   `;
 }
 
+function renderOperatorActionIcon(action) {
+  const paths = {
+    save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2Z"/><path d="M7 3v6h10V3M7 21v-8h10v8M14 3v4"/>',
+    trash: '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>',
+    print: '<path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/><path d="M18 12h.01"/>',
+  };
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${paths[action] || ""}</svg>`;
+}
+
+function renderOperatorDistributorChoices(operator) {
+  const selected = getMarketOperatorDistributor(operator);
+  const choices = [["US Foods", "usFoods"], ["Sysco", "sysco"], ["Linford", "linford"], ["Other", ""]];
+  return `<fieldset class="operator-distributor-picker"><legend>Lead distributor</legend><div class="operator-distributor-choices">${choices.map(([name, logoKey]) => {
+    const logo = logoKey && getEventPrintLogo(logoKey);
+    return `<label class="operator-distributor-choice"><input type="radio" name="operator-distributor-${escapeAttribute(operator.id)}" value="${escapeAttribute(name)}" data-event-lead-distributor="${escapeAttribute(operator.id)}" ${selected === name ? "checked" : ""} /><span class="operator-distributor-logo">${logo ? `<img src="${escapeAttribute(logoKey === "usFoods" ? "us-foods-logo.svg" : logo.src)}" alt="${escapeAttribute(name)}" />` : name}</span></label>`;
+  }).join("")}</div></fieldset>`;
+}
+
 function renderOperatorProductNote(operator, product) {
   const number = formatVisitProductCodes(product);
-  const note = operator.productNotes?.[product.id]?.note || "";
-  const checked = (operator.productIds || []).includes(product.id);
+  const note = getMarketProductNote(operator, product).note || "";
+  const checked = marketProductIdsInclude(operator.productIds, product);
   return `
     <div class="operator-product-note-row">
       <label class="operator-product-select">
@@ -5900,11 +5952,13 @@ function bindMarketDetailActions(panel, visit) {
   });
   panel.querySelectorAll("[data-remove-market-product]").forEach((button) => {
     button.addEventListener("click", () => {
+      const product = getMarketVisitProducts(visit).find(item => marketProductIdsInclude([button.dataset.removeMarketProduct], item)) || button.dataset.removeMarketProduct;
+      const keep = id => !marketProductIdsInclude([id], product);
       updateMarketVisit(visit.id, {
-        productIds: visit.productIds.filter((id) => id !== button.dataset.removeMarketProduct),
-        newProductIds: visit.newProductIds.filter((id) => id !== button.dataset.removeMarketProduct),
-        operatorLinks: visit.operatorLinks.map((link) => ({ ...link, productIds: link.productIds.filter((id) => id !== button.dataset.removeMarketProduct) })),
-        calls: visit.calls.map((call) => ({ ...call, productIds: call.productIds.filter((id) => id !== button.dataset.removeMarketProduct) }))
+        productIds: visit.productIds.filter(keep),
+        newProductIds: visit.newProductIds.filter(keep),
+        operatorLinks: visit.operatorLinks.map(link => ({ ...link, productIds: link.productIds.filter(keep) })),
+        calls: visit.calls.map(call => ({ ...call, productIds: call.productIds.filter(keep) }))
       });
     });
   });
@@ -5939,12 +5993,14 @@ function bindMarketDetailActions(panel, visit) {
       const removeId = button.dataset.removeMarketOperator || "";
       const removeOperatorId = button.dataset.removeMarketOperatorId || "";
       const removeName = button.dataset.removeMarketOperatorName || "";
+      const currentVisit = marketVisits.find(item => item.id === visit.id);
+      if (!currentVisit) return;
       updateMarketVisit(visit.id, {
-        operatorLinks: visit.operatorLinks.filter((link) => {
+        operatorLinks: currentVisit.operatorLinks.filter((link) => {
           const linkName = link.operatorName || getOperatorName(link.operatorId);
           return link.id !== removeId && (!removeOperatorId || link.operatorId !== removeOperatorId) && (!removeName || linkName !== removeName);
         }),
-        calls: visit.calls.filter((call) => {
+        calls: currentVisit.calls.filter((call) => {
           const callName = call.operatorName || getOperatorName(call.operatorId);
           return `call-${call.id}` !== removeId && (!removeOperatorId || call.operatorId !== removeOperatorId) && (!removeName || callName !== removeName);
         })
@@ -5973,22 +6029,44 @@ function bindMarketDetailActions(panel, visit) {
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      saveMarketOperatorDetails(visit.id, button.dataset.saveMarketOperator, panel);
+      try {
+        if (saveMarketOperatorDetails(visit.id, button.dataset.saveMarketOperator, panel)) button.dispatchEvent(new Event("market-operator-saved"));
+      } catch (error) {
+        window.foodBrokerSaveStatus?.recordError(error, { operation: "Save operator products", section: marketVisitStorageKey, localFailure: true });
+        const card = button.closest(".market-operator-card");
+        let message = card?.querySelector("[data-operator-save-error]");
+        if (!message && card) {
+          message = document.createElement("p");
+          message.dataset.operatorSaveError = "";
+          message.setAttribute("role", "alert");
+          card.querySelector(".market-operator-detail").prepend(message);
+        }
+        if (message) message.textContent = "Could not save. Your selections are still here; please try again. Error details have been kept.";
+      }
     })
   );
-  panel.querySelectorAll("[data-uncheck-operator-products]").forEach(button => {
-    const card = button.closest(".market-operator-card");
+  panel.querySelectorAll(".market-operator-card").forEach(card => {
+    const button = card.querySelector("[data-uncheck-operator-products]");
     const inputs = [...card.querySelectorAll("[data-operator-lead-product]")];
     const updateCount = () => {
-      card.querySelector("[data-operator-product-count]").textContent = `${inputs.filter(input => input.checked).length} of ${inputs.length} ${inputs.length === 1 ? "product" : "products"} planned`;
-      button.disabled = !inputs.some(input => input.checked);
+      const counter = card.querySelector("[data-operator-product-count]");
+      if (counter) counter.textContent = `${inputs.filter(input => input.checked).length} of ${inputs.length} ${inputs.length === 1 ? "product" : "products"} planned`;
+      if (button) button.disabled = !inputs.some(input => input.checked);
     };
-    button.addEventListener("click", () => {
+    button?.addEventListener("click", () => {
       inputs.forEach(input => { input.checked = false; });
       updateCount();
     });
     inputs.forEach(input => input.addEventListener("change", updateCount));
     updateCount();
+  });
+  panel.querySelectorAll("[data-event-lead-distributor]").forEach(input => {
+    input.addEventListener("change", () => {
+      if (input.type === "radio" && !input.checked) return;
+      saveMarketOperatorDataWithoutRender(visit.id, input.dataset.eventLeadDistributor, {
+        leadDistributor: readMarketOperatorDistributor(panel, input.dataset.eventLeadDistributor)
+      });
+    });
   });
   panel.querySelectorAll("[data-market-operator-notes]").forEach((textarea) => {
     textarea.addEventListener("input", () => saveMarketOperatorDataWithoutRender(visit.id, textarea.dataset.marketOperatorNotes, { notes: textarea.value }));
@@ -6176,7 +6254,7 @@ function updateMarketVisit(id, patch) {
 }
 
 function saveMarketProductNote(visit, productId, key, value) {
-  updateMarketVisit(visit.id, { productNotes: { ...visit.productNotes, [productId]: { ...(visit.productNotes?.[productId] || {}), [key]: value } } });
+  updateMarketVisit(visit.id, { productNotes: withMarketProductNote(visit, productId, { [key]: value }) });
 }
 
 function saveMarketOperatorDataWithoutRender(visitId, operatorId, patch) {
@@ -6202,10 +6280,7 @@ function saveMarketOperatorProductNoteWithoutRender(visitId, operatorId, product
         if (link.id !== operatorId) return link;
         return {
           ...link,
-          productNotes: {
-            ...(link.productNotes || {}),
-            [productId]: { ...(link.productNotes?.[productId] || {}), note }
-          }
+          productNotes: withMarketProductNote(link, getMarketVisitProducts(visit).find(product => marketProductIdsInclude([productId], product)) || productId, { note })
         };
       }),
       updatedAt: new Date().toISOString()
@@ -6218,24 +6293,25 @@ function saveMarketOperatorProductNoteWithoutRender(visitId, operatorId, product
 
 function saveMarketOperatorDetails(visitId, operatorId, panel) {
   const currentVisit = marketVisits.find((visit) => visit.id === visitId);
-  if (!currentVisit) return;
+  if (!currentVisit) return false;
   const operators = getMarketVisitOperators(currentVisit);
   const operator = currentVisit.operatorLinks.find((link) => link.id === operatorId) || operators.find((link) => link.id === operatorId);
-  if (!operator) return;
+  if (!operator) return false;
 
   const operatorName = operator.operatorName || getOperatorName(operator.operatorId) || "";
   const selectedProductIds = [...panel.querySelectorAll("[data-operator-lead-product]")]
     .filter((input) => input.dataset.operatorLeadProduct === operatorId && input.checked)
     .map((input) => input.value);
   const noteInput = [...panel.querySelectorAll("[data-market-operator-notes]")].find((input) => input.dataset.marketOperatorNotes === operatorId);
-  const productNotes = { ...(operator.productNotes || {}) };
+  const leadDistributor = readMarketOperatorDistributor(panel, operatorId, getMarketOperatorDistributor(operator));
+  let productNotes = { ...(operator.productNotes || {}) };
 
   panel.querySelectorAll("[data-market-operator-product-note]").forEach((input) => {
     if (input.dataset.marketOperatorProductNote !== operatorId) return;
     const productId = input.dataset.productId;
     const note = input.value.trim();
-    if (note) productNotes[productId] = { ...(productNotes[productId] || {}), note };
-    else delete productNotes[productId];
+    const product = getMarketVisitProducts(currentVisit).find(item => marketProductIdsInclude([productId], item)) || productId;
+    productNotes = withMarketProductNote({ productNotes }, product, { note });
   });
 
   let matchedExistingOperator = false;
@@ -6249,6 +6325,7 @@ function saveMarketOperatorDetails(visitId, operatorId, panel) {
       ...link,
       operatorId: link.operatorId || operator.operatorId || "",
       operatorName: link.operatorName || operatorName,
+      leadDistributor,
       productIds: selectedProductIds,
       notes: noteInput?.value || "",
       productNotes
@@ -6260,6 +6337,7 @@ function saveMarketOperatorDetails(visitId, operatorId, panel) {
       normalizeMarketOperatorLink({
         operatorId: operator.operatorId || "",
         operatorName,
+        leadDistributor,
         productIds: selectedProductIds,
         notes: noteInput?.value || operator.notes || "",
         productNotes
@@ -6267,7 +6345,14 @@ function saveMarketOperatorDetails(visitId, operatorId, panel) {
     );
   }
 
-  updateMarketVisit(visitId, { operatorLinks });
+  const previousVisits = marketVisits;
+  try {
+    updateMarketVisit(visitId, { operatorLinks });
+    return true;
+  } catch (error) {
+    marketVisits = previousVisits;
+    throw error;
+  }
 }
 
 function convertMarketOperatorToLead(visit, operatorId, panel) {
@@ -6283,7 +6368,7 @@ function convertMarketOperatorToLead(visit, operatorId, panel) {
   const now = new Date().toISOString();
   const productNotes = products
     .map((product) => {
-      const note = operator.productNotes?.[product.id]?.note;
+      const note = getMarketProductNote(operator, product).note;
       return note ? `${product.description}: ${note}` : "";
     })
     .filter(Boolean)
@@ -6307,7 +6392,7 @@ function convertMarketOperatorToLead(visit, operatorId, panel) {
     syscoSalesRep: distributor === "Sysco" ? currentVisit.salesReps.join(", ") : "",
     products: products.map((product) => ({
       id: crypto.randomUUID(),
-      apn: (distributor === "Sysco" ? product.supc : product.apn) || product.manufacturerNumber || "",
+      apn: getMarketOperatorProductNumber(product, distributor),
       description: product.description || "",
       vendor: product.vendor || product.brandName || ""
     })),
@@ -6363,18 +6448,52 @@ function getMarketVisitDateKeys(visit) {
   return dates;
 }
 
-function getMarketVisitProducts(visit) {
-  const products = visit.productIds.map((id) => stockProducts.find((product) => product.id === id)).filter(Boolean);
-  const seen = new Set(products.map((product) => product.id));
-  for (const id of visit.newProductIds || []) {
-    const product = resolveEventProduct(id);
-    if (!product) continue;
-    const key = product.linkedStockId || product.id;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    products.push(product);
+function marketProductAliases(productOrId, owner = null) {
+  let product = productOrId;
+  if (!product || typeof product !== "object") {
+    const id = String(productOrId || "");
+    product = owner && (owner.productIds || owner.newProductIds) ? getMarketVisitProducts(owner).find(item => [item.id, ...(item.aliasProductIds || [])].includes(id)) : null;
+    product ||= stockProducts.find(item => item.id === id) || resolveEventProduct(id) || { id };
   }
-  return products;
+  return [...new Set([product.id, product.linkedStockId, product.canonicalStockId, ...(product.aliasProductIds || [])].filter(Boolean))];
+}
+
+function marketProductIdsInclude(ids, productOrId) {
+  const selected = new Set(ids || []);
+  return marketProductAliases(productOrId).some(id => selected.has(id));
+}
+
+function getMarketProductNote(owner, productOrId) {
+  const merged = {};
+  for (const id of marketProductAliases(productOrId, owner)) {
+    const fields = owner?.productNotes?.[id];
+    if (!fields || typeof fields !== "object") continue;
+    for (const [key, value] of Object.entries(fields)) {
+      if (typeof value === "boolean") merged[key] = Boolean(merged[key] || value);
+      else if (typeof value === "string") {
+        if (!value.trim()) continue;
+        const existing = merged[key];
+        if (!existing) merged[key] = value;
+        else if (existing !== value && !String(existing).split("\n\n").includes(value)) merged[key] = existing + "\n\n" + value;
+      } else if (!(key in merged)) merged[key] = value;
+    }
+  }
+  return merged;
+}
+
+function withMarketProductNote(owner, productOrId, patch) {
+  const ids = marketProductAliases(productOrId, owner);
+  const notes = { ...(owner.productNotes || {}) };
+  const fields = { ...getMarketProductNote(owner, productOrId), ...patch };
+  for (const id of ids) delete notes[id];
+  if (ids.length) notes[ids[0]] = fields;
+  return notes;
+}
+
+function getMarketVisitProducts(visit) {
+  const selectedStock = (visit.productIds || []).map(id => stockProducts.find(product => product.id === id)).filter(Boolean);
+  const selectedNew = (visit.newProductIds || []).map(resolveEventProduct).filter(Boolean);
+  return window.foodBrokerProducts.choices([...selectedStock, ...selectedNew], stockProducts);
 }
 
 function getProductsByVendor(vendor) {
@@ -6383,8 +6502,8 @@ function getProductsByVendor(vendor) {
 
 function getMarketProductCandidates(visit) {
   const source = visit.type === "manufacturer" && visit.vendor ? getProductsByVendor(visit.vendor) : stockProducts;
-  const linkedIds = (visit.newProductIds || []).map((id) => resolveEventProduct(id)?.linkedStockId).filter(Boolean);
-  return source.filter((product) => !visit.productIds.includes(product.id) && !linkedIds.includes(product.id));
+  const selected = getMarketVisitProducts(visit);
+  return window.foodBrokerProducts.choices(source, stockProducts).filter(product => !selected.some(item => window.foodBrokerProducts.same(product, item)));
 }
 
 function formatMarketProductOption(product) {
@@ -6405,7 +6524,7 @@ function findMarketProductFromSearch(value, visit) {
   const scored = candidates
     .map((product) => ({ product, score: getMarketProductSearchScore(product, query) }))
     .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score || (a.product.description || "").localeCompare(b.product.description || ""));
+    .sort((a, b) => b.score - a.score || window.foodBrokerProducts.compare(a.product, b.product));
   return scored[0]?.product || null;
 }
 
@@ -6428,12 +6547,12 @@ function getMarketProductSearchScore(product, query) {
   if (numbers.some((number) => number.includes(query))) return 70;
   if (vendor === query || brand === query) return 55;
   if (vendor.startsWith(query) || brand.startsWith(query)) return 45;
-  if (option.includes(query)) return 25;
+  if (option.includes(query) || normalizeProductSearchText(window.foodBrokerProducts.searchable(product)).includes(query)) return 25;
   return 0;
 }
 
 function getMarketVisitOperators(visit) {
-  const callOperators = visit.calls.map((call) => ({ id: `call-${call.id}`, operatorId: call.operatorId, operatorName: call.operatorName || getOperatorName(call.operatorId), productIds: call.productIds, notes: call.notes, productNotes: {} })).filter((operator) => operator.operatorId || operator.operatorName);
+  const callOperators = visit.calls.map((call) => ({ id: `call-${call.id}`, operatorId: call.operatorId, operatorName: call.operatorName || getOperatorName(call.operatorId), leadDistributor: getMarketOperatorDistributor(call), productIds: call.productIds, notes: call.notes, productNotes: {} })).filter((operator) => operator.operatorId || operator.operatorName);
   const keyed = new Map();
   [...visit.operatorLinks, ...callOperators].forEach((operator) => {
     const key = operator.operatorId || operator.operatorName;
@@ -7048,7 +7167,7 @@ function getMarketVisitTimelineItems(terms) {
       [visit.name, visit.vendor, visit.visitorName, visit.location, visit.notes, visit.status, visit.salesReps.join(" "), productText, operatorText]
     );
     visit.calls.forEach((call) => {
-      const callProducts = products.filter((product) => call.productIds?.includes(product.id));
+      const callProducts = products.filter((product) => marketProductIdsInclude(call.productIds, product));
       const callProductText = callProducts.map((product) => [product.vendor, product.description, product.apn, product.supc].filter(Boolean).join(" ")).join(" ");
       const operatorName = getMarketCallTitle(call);
       pushTimelineItem(
@@ -9737,11 +9856,15 @@ function updateAccountSuggestions() {
 
 function updateTimelineSearchSuggestions() {
   if (!elements.timelineSearchSuggestions) return;
+  const products = window.foodBrokerProducts.choices([
+    ...stockProducts,
+    ...[...new Set(cards.map((card) => card.distributor || "US Foods"))].flatMap(getLeadProductSuggestionProducts),
+    ...marketVisits.flatMap(getMarketVisitProducts)
+  ], stockProducts);
+  const productSuggestions = products.flatMap((product) => [product.description, product.vendor, product.brandName, product.apn, product.supc]);
   const suggestions = [
     ...getAccountDirectory().map((account) => account.name),
     ...addressBook.map((entry) => entry.operation),
-    ...stockProducts.flatMap((product) => [product.description, product.vendor, product.brandName, product.apn, product.supc]),
-    ...cards.flatMap((card) => getTimelineLeadProducts(card).flatMap((product) => [product.description, product.vendor, product.apn, product.supc])),
     ...manualVendorReports.flatMap((report) => [report.account, report.vendor, report.productShown]),
     ...samples.flatMap((sample) => [sample.product, sample.requestedFor, sample.orderedBy]),
     ...todos.flatMap((todo) => [todo.title, todo.account, todo.vendor, todo.assignedBy]),
@@ -9749,14 +9872,20 @@ function updateTimelineSearchSuggestions() {
       visit.name,
       visit.vendor,
       visit.visitorName,
-      ...getMarketVisitOperators(visit).map((operator) => operator.operatorName || getOperatorName(operator.operatorId)),
-      ...getMarketVisitProducts(visit).flatMap((product) => [product.description, product.vendor, product.apn, product.supc])
+      ...getMarketVisitOperators(visit).map((operator) => operator.operatorName || getOperatorName(operator.operatorId))
     ])
   ]
     .map((value) => String(value || "").trim())
     .filter(Boolean);
-  elements.timelineSearchSuggestions.innerHTML = [...new Set(suggestions)]
-    .sort((a, b) => a.localeCompare(b))
+  const seen = new Set();
+  elements.timelineSearchSuggestions.innerHTML = [...productSuggestions, ...suggestions.sort((a, b) => a.localeCompare(b))]
+    .map((value) => String(value || "").trim())
+    .filter((value) => {
+      const key = value.replace(/\s+/g, " ").toLocaleLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
     .slice(0, 500)
     .map((value) => `<option value="${escapeAttribute(value)}"></option>`)
     .join("");
@@ -9881,86 +10010,76 @@ function getProductNumberForDistributor(product, distributor) {
   return String(product.apn || product.distributorNumber || "").trim();
 }
 
-function getProductDirectory(distributor = elements.leadDistributor?.value || "US Foods") {
-  const directory = new Map();
-  stockProducts.forEach((product) => {
-    if (!distributorMatchesStock(product, distributor)) return;
-    const number = getProductNumberForDistributor(product, distributor);
-    if (!number) return;
-    const key = number.toLowerCase();
-    if (!directory.has(key) || product.description || product.vendor) {
-      directory.set(key, {
-        number,
-        description: String(product.description || "").trim(),
-        vendor: String(product.vendor || product.brandName || "").trim()
-      });
-    }
-  });
-  cards.forEach((card) => {
-    const cardDistributor = card.distributor || "US Foods";
-    if (cardDistributor !== distributor) return;
-    normalizeProducts(card).forEach((product) => {
+function getLeadProductSuggestionProducts(distributor = elements.leadDistributor?.value || "US Foods") {
+  const stocks = stockProducts.filter((product) => distributorMatchesStock(product, distributor));
+  const historical = cards.flatMap((card) => {
+    if (!distributorMatchesStock({ distributor: card.distributor || "US Foods" }, distributor)) return [];
+    return normalizeProducts(card).map((product) => {
+      // Lead rows use the APN field for the chosen distributor's item number.
       const number = String(product.apn || "").trim();
-      if (!number) return;
-      const key = number.toLowerCase();
-      if (!directory.has(key) || product.description || product.vendor) {
-        directory.set(key, {
-          number,
-          description: String(product.description || "").trim(),
-          vendor: String(product.vendor || "").trim()
-        });
-      }
+      const description = String(product.description || "").trim();
+      const vendor = String(product.vendor || "").trim();
+      const label = [number, description, vendor].filter(Boolean).join(" | ");
+      return {
+        ...product,
+        distributor,
+        apn: distributor === "Sysco" || distributor === "Linford" ? "" : number,
+        supc: distributor === "Sysco" ? number : "",
+        distributorNumber: number,
+        searchAliases: [...(product.searchAliases || []), label]
+      };
     });
   });
-  return [...directory.values()].sort((a, b) => a.number.localeCompare(b.number));
+  return window.foodBrokerProducts.choices([...stocks, ...historical], stocks);
+}
+
+function getProductDirectory(distributor = elements.leadDistributor?.value || "US Foods") {
+  const directory = new Map();
+  getLeadProductSearchDirectory(distributor).forEach((product) => {
+    if (!product.number) return;
+    const key = product.number.replace(/\s+/g, "").toLowerCase();
+    if (!directory.has(key)) directory.set(key, product);
+  });
+  return [...directory.values()];
 }
 
 function getLeadProductSearchDirectory(distributor = elements.leadDistributor?.value || "US Foods") {
   const directory = new Map();
-  const addProduct = (product) => {
-    const number = String(product.number || product.apn || "").trim();
+  getLeadProductSuggestionProducts(distributor).forEach((product) => {
+    const number = getProductNumberForDistributor(product, distributor);
     const description = String(product.description || "").trim();
-    const vendor = String(product.vendor || "").trim();
+    const vendor = String(product.vendor || product.brandName || "").trim();
     if (!number && !description && !vendor) return;
-    const key = [number, description, vendor].join("|").toLowerCase();
-    if (directory.has(key)) return;
+    // Unnumbered items keep distinct variants; only exact duplicate rows collapse.
+    const key = [number, description, vendor, product.manufacturerNumber, product.packaging, product.storage]
+      .map((value) => String(value || "").replace(/\s+/g, " ").trim().toLowerCase()).join("|");
     const label = [number, description, vendor].filter(Boolean).join(" | ");
-    directory.set(key, { number, description, vendor, label });
-  };
-
-  stockProducts.forEach((product) => {
-    if (!distributorMatchesStock(product, distributor)) return;
-    addProduct({
-      number: getProductNumberForDistributor(product, distributor),
-      description: product.description,
-      vendor: product.vendor || product.brandName
-    });
+    const existing = directory.get(key);
+    const searchAliases = [...new Set([...(existing?.searchAliases || []), ...(product.searchAliases || []), label])];
+    if (existing) existing.searchAliases = searchAliases;
+    else directory.set(key, { ...product, number, description, vendor, label, searchAliases });
   });
-
-  cards.forEach((card) => {
-    const cardDistributor = card.distributor || "US Foods";
-    if (cardDistributor !== distributor) return;
-    normalizeProducts(card).forEach((product) => {
-      addProduct({
-        number: product.apn,
-        description: product.description,
-        vendor: product.vendor
-      });
-    });
+  const products = [...directory.values()].sort(window.foodBrokerProducts.compare);
+  const labelCounts = new Map();
+  const labelKey = (label) => label.replace(/\s+/g, " ").trim().toLowerCase();
+  products.forEach((product) => labelCounts.set(labelKey(product.label), (labelCounts.get(labelKey(product.label)) || 0) + 1));
+  products.forEach((product) => {
+    if (labelCounts.get(labelKey(product.label)) < 2) return;
+    const details = [product.packaging && `Pack: ${product.packaging}`, product.manufacturerNumber && `MF#: ${product.manufacturerNumber}`, product.storage].filter(Boolean);
+    product.label = `${product.label} | ${details.join(" | ") || "Pack and MF# not recorded"}`;
   });
-
-  return [...directory.values()].sort((a, b) => a.label.localeCompare(b.label));
+  return products;
 }
 
 function findLeadProductSearchMatch(value) {
   const typed = String(value || "").trim().toLowerCase();
   if (!typed) return null;
   const products = getLeadProductSearchDirectory(elements.leadDistributor.value);
-  const exact = products.find((product) => product.label.toLowerCase() === typed || product.number.toLowerCase() === typed);
+  const exact = products.find((product) => product.label.toLowerCase() === typed || product.number.toLowerCase() === typed || (product.searchAliases || []).some((alias) => String(alias).trim().toLowerCase() === typed));
   if (exact) return exact;
   const terms = typed.split(/\s+/).filter(Boolean);
   return products.find((product) => {
-    const haystack = [product.number, product.description, product.vendor, product.label].join(" ").toLowerCase();
+    const haystack = [product.number, product.description, product.vendor, product.label, ...(product.searchAliases || [])].join(" ").toLowerCase();
     return terms.every((term) => haystack.includes(term));
   });
 }

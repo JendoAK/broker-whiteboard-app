@@ -6,13 +6,13 @@ function readMarketOperatorConversion(visitId, operatorId, panel) {
   if (!operator) return null;
   const selected = [...panel.querySelectorAll('[data-operator-lead-product]')].filter(input => input.dataset.operatorLeadProduct === operatorId && input.checked).map(input => input.value);
   const notesInput = [...panel.querySelectorAll('[data-market-operator-notes]')].find(input => input.dataset.marketOperatorNotes === operatorId);
-  const productNotes = { ...(operator.productNotes || {}) };
+  let productNotes = { ...(operator.productNotes || {}) };
   panel.querySelectorAll('[data-market-operator-product-note]').forEach(input => {
-    if (input.dataset.marketOperatorProductNote === operatorId) productNotes[input.dataset.productId] = { note: input.value.trim() };
+    if (input.dataset.marketOperatorProductNote === operatorId) productNotes = withMarketProductNote({ productNotes }, getMarketVisitProducts(visit).find(product => product.id === input.dataset.productId) || input.dataset.productId, { note: input.value.trim() });
   });
   return { visit, operator: { ...operator, notes: notesInput?.value || '', productNotes },
     products: getMarketVisitProducts(visit).filter(product => selected.includes(product.id)),
-    distributor: [...panel.querySelectorAll('[data-event-lead-distributor]')].find(input => input.dataset.eventLeadDistributor === operatorId)?.value || 'US Foods' };
+    distributor: readMarketOperatorDistributor(panel, operatorId, getMarketOperatorDistributor(operator)) };
 }
 
 function marketConversionSourceMatches(record, visit, operator) {
@@ -21,7 +21,7 @@ function marketConversionSourceMatches(record, visit, operator) {
 
 function marketConversionNotes(visit, operator, products) {
   return [`From ${marketVisitTypes[visit.type]}: ${getMarketVisitDisplayName(visit)}`, operator.notes,
-    ...products.map(product => operator.productNotes?.[product.id]?.note ? `${product.description}: ${operator.productNotes[product.id].note}` : ''),
+    ...products.map(product => getMarketProductNote(operator, product).note ? `${product.description}: ${getMarketProductNote(operator, product).note}` : ''),
     ...(visit.attendees || []).filter(person => normalizeOperatorKey(person.organization) === normalizeOperatorKey(getMarketOperatorDisplayName(operator))).map(person => [person.name, person.role, person.contact].filter(Boolean).join(' | '))].filter(Boolean).join('\n\n');
 }
 
@@ -53,7 +53,7 @@ function convertMarketOperatorToVendorReport(visit, operatorId, panel) {
     if (!persist()) { cards = previousCards; return; }
   }
   const additions = products.filter(product => !covered.has(product.id)).map(product => {
-    const existing = manualVendorReports.find(report => marketConversionSourceMatches(report, visit, operator) && report.sourceMarketProductId === product.id);
+    const existing = manualVendorReports.find(report => marketConversionSourceMatches(report, visit, operator) && marketProductIdsInclude([report.sourceMarketProductId], product));
     return normalizeManualVendorReport({ ...existing,
     account: getMarketOperatorDisplayName(operator), vendor: product.vendor || product.brandName || visit.vendor,
     productShown: product.description, opportunityNote: marketConversionNotes(visit, operator, [product]),

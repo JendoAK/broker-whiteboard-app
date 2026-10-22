@@ -88,14 +88,14 @@ function renderKitchenProductWithNote(visit, product) {
 }
 function renderKitchenProductNote(visit, product) {
   if (visit.type !== 'testkitchen') return '';
-  const note = visit.productNotes?.[product.id]?.note || '';
+  const note = getMarketProductNote(visit, product).note || '';
   return '<div class="kitchen-product-note"><textarea ' + (note ? 'readonly ' : '') + 'rows="2" data-kitchen-product-note="' + escapeAttribute(product.id) + '" data-note-visit="' + escapeAttribute(visit.id) + '" aria-label="Note for ' + escapeAttribute(product.description) + '" placeholder="In stock, coming into stock, new product…">' + escapeHtml(note) + '</textarea><button type="button" class="edit-card" data-kitchen-note-action>' + (note ? 'Edit' : 'Save') + '</button></div>';
 }
 function persistKitchenNote(input) {
   const visit = marketVisits.find(item => item.id === input.dataset.noteVisit);
   if (!visit) return;
   const productId = input.dataset.kitchenProductNote;
-  visit.productNotes = {...visit.productNotes, [productId]: {...visit.productNotes?.[productId], note: input.value}};
+  visit.productNotes = withMarketProductNote(visit, productId, { note: input.value });
   visit.updatedAt = new Date().toISOString();
   stampSharedRecord(visit, 'Updated');
   persistMarketVisits();

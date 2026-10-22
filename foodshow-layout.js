@@ -5,7 +5,7 @@ function normalizeFoodshowConversation(value) {
   return { contactId: String(item.contactId || ''), contactOperatorId: String(item.contactOperatorId || ''), contactSlot: String(item.contactSlot || ''), operatorId: String(item.operatorId || ''), category: String(item.category || 'Other'), id: String(item.id || crypto.randomUUID()), name: String(item.name || ''), organization: String(item.organization || ''), role: String(item.role || ''), contact: String(item.contact || ''), notes: String(item.notes || ''), followUp: String(item.followUp || ''), interests: Array.isArray(item.interests) ? item.interests.map(product => ({ id: String(product.id || ''), description: String(product.description || ''), vendor: String(product.vendor || ''), apn: String(product.apn || ''), supc: String(product.supc || ''), manufacturerNumber: String(product.manufacturerNumber || '') })) : [] };
 }
 function foodshowPrepText(visit, product) {
-  const prep = visit.productNotes?.[product.id] || {};
+  const prep = getMarketProductNote(visit, product);
   return [prep.preparation, prep.recipe && `Recipe: ${prep.recipe}`, prep.equipment && `Equipment: ${prep.equipment}`, prep.note, prep.onHand && "On hand", prep.ordered && "Ordered"].filter(Boolean).join('\n');
 }
 function renderFoodshow(panel, visit) {
@@ -36,9 +36,9 @@ function renderFoodshow(panel, visit) {
       const productId = input.closest('[data-foodshow-product]').dataset.foodshowProduct;
       const field = input.dataset.foodshowField;
       const value = input.type === 'checkbox' ? input.checked : input.value;
-      const previous = current.productNotes?.[productId]?.[field] ?? (input.type === 'checkbox' ? false : '');
+      const previous = getMarketProductNote(current, productId)[field] ?? (input.type === 'checkbox' ? false : '');
       if (previous === value) return;
-      current.productNotes = {...current.productNotes, [productId]: {...current.productNotes?.[productId], [field]: value}};
+      current.productNotes = withMarketProductNote(current, productId, { [field]: value });
       current.updatedAt = new Date().toISOString();
       stampSharedRecord(current, 'Updated');
       persistMarketVisits();
@@ -123,7 +123,7 @@ function updateFoodshowRecipeLink(input) {
   if (url) link.href = url; else link.removeAttribute('href');
 }
 function renderFoodshowProductRow(visit, product) {
-  const prep = visit.productNotes?.[product.id] || {};
+  const prep = getMarketProductNote(visit, product);
   const label = title => escapeAttribute(title + ' for ' + product.description);
   const text = (key, title, placeholder) => `<textarea rows="2" data-foodshow-field="${key}" aria-label="${label(title)}" placeholder="${placeholder}">${escapeHtml(prep[key] || '')}</textarea>`;
   const choices = ['', 'Heat & serve', 'Thaw & serve', 'Fry', 'Bake', 'Stove top', 'Grill', 'Steam', 'Microwave', 'Air fry', 'Recipe / prepared dish', 'Ready to sample', 'Display only', 'Other'];

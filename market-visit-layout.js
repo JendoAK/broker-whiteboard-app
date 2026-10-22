@@ -58,7 +58,7 @@ function renderCompactMarketVisit(panel, visit) {
         <div class="compact-visit-list">${products.length ? renderVisitVendorGroups(products, renderMarketProductChip) : `<div class="empty-state">Use Add products to choose what you’re showing.</div>`}</div>
       </section>
       <section class="visit-operators-panel"><h3>Operators</h3><div class="section-label-row"><span>Click an operator for products &amp; notes</span></div>
-        <div class="compact-visit-list">${operators.length ? operators.map(operator => `<button class="compact-operator" type="button" data-open-visit-operator="${escapeAttribute(operator.id)}"><strong>${escapeHtml(getMarketOperatorDisplayName(operator))}</strong><span>${(operator.productIds || []).filter(id => products.some(product => product.id === id)).length} products${operator.notes ? " · Notes added" : ""}</span></button>`).join("") : `<div class="empty-state">Operators appear when you add sales calls. You can also add one directly.</div>`}</div>
+        <div class="compact-visit-list">${operators.length ? operators.map(operator => `<button class="compact-operator" type="button" data-open-visit-operator="${escapeAttribute(operator.id)}"><strong>${escapeHtml(getMarketOperatorDisplayName(operator))}</strong><span>${products.filter(product => marketProductIdsInclude(operator.productIds, product)).length} products${operator.notes ? " · Notes added" : ""}</span></button>`).join("") : `<div class="empty-state">Operators appear when you add sales calls. You can also add one directly.</div>`}</div>
       </section>
     </div>
     <details class="compact-visit-extra"><summary>Visit notes${visit.notes ? " · Notes added" : ""}</summary>${renderMarketNotesSection(visit)}</details>`;
@@ -78,7 +78,7 @@ function renderPersonalMarketVisit(panel, visit) {
   ${visit.archivedAt ? '<p class="market-section-help">Archived visit. Restore it to return it to active visits.</p>' : ''}
   <div class="compact-visit-actions" role="group" aria-label="Add to visit"><button class="primary-action" type="button" data-visit-add-products>Add products</button><button class="primary-action" type="button" data-visit-add-operator>Add operator</button></div>
   <div class="compact-visit-lists market-detail-tabs"><section class="visit-products-panel"><h3>Products (${products.length})</h3><div class="section-label-row"><span>Your product list for this visit</span><button class="edit-card" type="button" data-view-visit-products="${escapeAttribute(visit.id)}">View product list</button><button class="edit-card" type="button" data-market-print-products="${escapeAttribute(visit.id)}">Print products</button></div><div class="compact-visit-list">${renderVisitVendorGroups(products, renderMarketProductChip) || '<p class="empty-state">Add the products you plan to show.</p>'}</div></section>
-  <section class="visit-operators-panel"><h3>Operators (${operators.length})</h3><div class="section-label-row"><span>Click an operator to select products, write feedback, or create a lead.</span></div><div class="compact-visit-list">${operators.map(operator => `<button class="compact-operator" type="button" data-open-visit-operator="${escapeAttribute(operator.id)}"><strong>${escapeHtml(getMarketOperatorDisplayName(operator))}</strong><span>${(operator.productIds || []).filter(id=>products.some(product=>product.id===id)).length} products${operator.notes || Object.values(operator.productNotes || {}).some(note=>note.note) ? ' · Notes added' : ''} · Products, notes &amp; lead</span></button>`).join('') || '<p class="empty-state">Add an operator to record the products shown and their feedback.</p>'}</div></section></div>
+  <section class="visit-operators-panel"><h3>Operators (${operators.length})</h3><div class="section-label-row"><span>Click an operator to select products, write feedback, or create a lead.</span></div><div class="compact-visit-list">${operators.map(operator => `<button class="compact-operator" type="button" data-open-visit-operator="${escapeAttribute(operator.id)}"><strong>${escapeHtml(getMarketOperatorDisplayName(operator))}</strong><span>${products.filter(product => marketProductIdsInclude(operator.productIds, product)).length} products${operator.notes || Object.values(operator.productNotes || {}).some(note=>note.note) ? ' · Notes added' : ''} · Products, notes &amp; lead</span></button>`).join('') || '<p class="empty-state">Add an operator to record the products shown and their feedback.</p>'}</div></section></div>
   <details class="compact-visit-extra"><summary>Visit notes${visit.notes ? ' · Notes added' : ''}</summary>${renderMarketNotesSection(visit)}</details>`;
   bindMarketDetailActions(panel, visit);
   bindMarketEventActions(panel, visit);
@@ -106,7 +106,7 @@ function openVisitProductsDialog(visitId) {
   const renderChoices = () => {
     const visit = marketVisits.find(item => item.id === visitId);
     const query = normalizeProductSearchText(body.querySelector("input").value);
-    const candidates = visit ? getVisitProductPickerCandidates(visit).filter(product => !query || normalizeProductSearchText([formatMarketProductOption(product), product.brandName, product.storage].filter(Boolean).join(" ")).includes(query)) : [];
+    const candidates = visit ? getVisitProductPickerCandidates(visit).filter(product => !query || normalizeProductSearchText(window.foodBrokerProducts.searchable(product)).includes(query)) : [];
     body.querySelector(".visit-product-choices").innerHTML = candidates.map(product => `<label class="visit-product-choice"><input type="checkbox" value="${escapeAttribute(product.id)}" ${selected.has(product.id) ? "checked" : ""} /><span><strong>${escapeHtml(product.description)}</strong><small>${escapeHtml([product.isNewEventProduct ? "New · Not yet stocked" : "Stocked", formatVisitProductCodes(product), product.vendor, product.brandName && `Brand: ${product.brandName}`, product.storage && `Storage: ${product.storage}`, product.packaging].filter(Boolean).join(" · "))}</small></span></label>`).join("") || `<p>No matching products available to add. Use New product to create one.</p>`;
     body.querySelectorAll("input[type=checkbox]").forEach(input => input.onchange = () => { if (input.checked) selected.add(input.value); else selected.delete(input.value); });
   };
@@ -135,7 +135,8 @@ function openVisitProductsDialog(visitId) {
 
 function getVisitProductPickerCandidates(visit) {
   const upcoming = eventProducts.filter(product => !isEventProductLocked(product) && !visit.newProductIds.includes(product.id)).map(product => resolveEventProduct(product.id)).filter(Boolean);
-  return [...getMarketProductCandidates(visit), ...upcoming];
+  const selected = getMarketVisitProducts(visit);
+  return window.foodBrokerProducts.choices([...getMarketProductCandidates(visit), ...upcoming], stockProducts).filter(product => !selected.some(item => window.foodBrokerProducts.same(product, item)));
 }
 
 function openNewVisitProductDialog(visitId, onSave) {
@@ -172,13 +173,11 @@ function openVisitOperatorDialog(visitId, operatorId = "") {
   const operator = getMarketVisitOperators(visit).find(item => item.id === operatorId);
   if (operatorId && !operator) return;
   const dialog = createVisitDialog(operator ? getMarketOperatorDisplayName(operator) : "Add operator");
+  dialog.classList.add("operator-products-dialog");
   const body = dialog.querySelector("[data-visit-entry-body]");
   if (operator) {
     body.innerHTML = renderMarketOperator(visit, operator);
-    if (visit.type === "manufacturer") {
-      dialog.classList.add("vendor-operator-dialog");
-      body.querySelector(".market-operator-summary > span > strong")?.remove();
-    }
+    body.querySelector(".operator-products-name")?.remove();
     const details = body.querySelector("details");
     details.open = true;
     details.querySelector("summary").addEventListener("click", event => event.preventDefault());
@@ -192,7 +191,7 @@ function openVisitOperatorDialog(visitId, operatorId = "") {
       saved = true;
     });
     bindMarketDetailActions(body, visit);
-    body.querySelector("[data-save-market-operator]").addEventListener("click", () => { saved = true; dialog.close(); });
+    body.querySelector("[data-save-market-operator]").addEventListener("market-operator-saved", () => { saved = true; dialog.close(); });
     body.querySelector("[data-remove-market-operator]").addEventListener("click", () => dialog.close());
     // Closing also saves selected products, alongside the existing automatic note saves.
     dialog.addEventListener("close", () => { if (!saved) saveMarketOperatorDetails(visitId, operatorId, body); });
@@ -224,17 +223,18 @@ function openVisitProductOverview(visitId) {
   const render = () => {
     const visit = marketVisits.find(item => item.id === visitId);
     const query = body.querySelector('input').value.toLowerCase();
-    const products = visit ? getMarketVisitProducts(visit).filter(product => [product.description,product.vendor,product.brandName,product.storage,product.apn,product.supc,product.manufacturerNumber].join(' ').toLowerCase().includes(query)) : [];
+    const products = visit ? getMarketVisitProducts(visit).filter(product => window.foodBrokerProducts.searchable(product).toLowerCase().includes(query)) : [];
     body.querySelector('[data-product-overview-list]').innerHTML = renderVisitVendorGroups(products, product => (visit.type === 'testkitchen' ? '<div class="kitchen-product-with-note">' : '') + renderEventSelectedProduct(product, { visitId: visit.id, removeAttribute: 'data-overview-remove' }) + renderKitchenProductNote(visit, product) + (visit.type === 'testkitchen' ? '</div>' : ''), visit.type === 'testkitchen') || '<p>No matching products.</p>';
     body.querySelectorAll('[data-overview-remove]').forEach(button => button.onclick = () => {
       const product = products.find(item => item.id === button.dataset.overviewRemove);
       const current = marketVisits.find(item => item.id === visitId);
       if (!current || !product) return;
+      const aliases = new Set([product.id, ...(product.aliasProductIds || [])]);
       updateMarketVisit(current.id, {
-        productIds: current.productIds.filter(id => id !== product.id),
-        newProductIds: current.newProductIds.filter(id => id !== product.id),
-        operatorLinks: current.operatorLinks.map(link => ({...link, productIds:link.productIds.filter(id => id !== product.id)})),
-        calls: current.calls.map(call => ({...call, productIds:call.productIds.filter(id => id !== product.id)}))
+        productIds: current.productIds.filter(id => !aliases.has(id)),
+        newProductIds: current.newProductIds.filter(id => !aliases.has(id)),
+        operatorLinks: current.operatorLinks.map(link => ({...link, productIds:link.productIds.filter(id => !aliases.has(id))})),
+        calls: current.calls.map(call => ({...call, productIds:call.productIds.filter(id => !aliases.has(id))}))
       });
       render();
     });
@@ -285,8 +285,9 @@ function groupVisitProducts(products) {
     if (!groups.has(key)) groups.set(key, {vendor, products: []});
     groups.get(key).products.push(product);
   });
-  return [...groups.values()].sort((a,b)=>a.vendor.localeCompare(b.vendor,undefined,{sensitivity:'base'})).map(group => ({...group,products:[...group.products].sort((a,b)=>String(a.description||'').localeCompare(String(b.description||''),undefined,{sensitivity:'base',numeric:true}))}));
+  return [...groups.values()].sort((a,b)=>a.vendor.localeCompare(b.vendor,undefined,{sensitivity:'base'})).map(group => ({...group,products:[...group.products].sort(window.foodBrokerProducts.compare)}));
 }
 function renderVisitVendorGroups(products, renderProduct, showNotes = false) {
   return groupVisitProducts(products).map(group => '<div class="visit-vendor-group"><h4 class="visit-vendor-heading' + (showNotes ? ' with-notes' : '') + '"><span>' + escapeHtml(group.vendor) + '</span>' + (showNotes ? '<small>Notes</small>' : '') + '</h4>' + group.products.map(product => renderProduct({...product, vendor:'', brandName: String(product.brandName || '').trim().toLowerCase() === group.vendor.toLowerCase() ? '' : product.brandName})).join('') + '</div>').join('');
 }
+

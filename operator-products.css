@@ -1,0 +1,122 @@
+/* Focused operator product chooser. Keep its controls compact on every visit type. */
+@media screen {
+  dialog.operator-products-dialog { width: min(1000px, calc(100vw - 24px)); }
+  dialog.operator-products-dialog .note-form { padding: 12px; }
+  dialog.operator-products-dialog .form-header {
+    align-items: center;
+    flex-direction: row;
+    padding: 9px 12px;
+    gap: 12px;
+    margin-bottom: 10px;
+    border-bottom-width: 3px;
+    border-radius: 9px;
+  }
+  dialog.operator-products-dialog .form-header h2 { font-size: 1.2rem; line-height: 1.25; margin: 0; }
+  dialog.operator-products-dialog .form-header .icon-button { width: 32px; min-height: 32px; height: 32px; padding: 0; }
+  .operator-products-card { min-width: 0; border-color: #c5d6ce; }
+  .operator-products-card .market-operator-summary,
+  .operator-products-card[open] .market-operator-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 7px 12px;
+    padding: 8px 10px;
+    background: #e5eee9;
+    border-bottom: 1px solid #c5d6ce;
+  }
+  .operator-products-dialog .market-operator-summary { cursor: default; }
+  .operator-products-card .market-operator-summary > .operator-products-heading { display: grid; flex: 1 1 auto; gap: 2px; }
+  .operator-products-card .market-operator-summary strong { font-size: 1rem; color: #264b40; }
+  .operator-products-card .market-operator-summary small { font-size: .78rem; font-weight: 650; color: #49665a; }
+  .operator-products-card .market-operator-summary > .market-operator-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .operator-products-card .market-operator-actions > button,
+  .operator-products-card .operator-products-secondary-actions > button {
+    width: auto;
+    min-width: 0;
+    min-height: 34px;
+    padding: 6px 9px;
+    margin: 0;
+    font-size: .79rem;
+    line-height: 1.2;
+    border-radius: 7px;
+    white-space: nowrap;
+  }
+  .operator-products-card button.operator-products-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 34px;
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    padding: 7px;
+  }
+  .operator-products-icon svg { display: block; width: 18px; height: 18px; }
+  .operator-products-card button.remove-product { background: #fff7f3; color: #9a3c32; border: 1px solid #d3a89f; }
+  .operator-products-card .market-operator-detail { padding: 10px; gap: 10px; border-top: 0; }
+  .operator-products-options { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; }
+  .operator-products-secondary-actions { display: flex; align-items: center; gap: 6px; }
+  .operator-products-card .operator-distributor-picker { min-width: 0; margin: 0; padding: 0; border: 0; }
+  .operator-distributor-picker legend { margin: 0 0 4px; padding: 0; font-size: .75rem; font-weight: 750; color: #36584c; }
+  .operator-distributor-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+  .operator-products-card .operator-distributor-choice { position: relative; display: block; margin: 0; cursor: pointer; }
+  .operator-distributor-choice input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    margin: 0;
+    padding: 0;
+  }
+  .operator-products-card .operator-distributor-choice .operator-distributor-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 80px;
+    height: 40px;
+    padding: 6px 9px;
+    border: 1px solid #b2c6bb;
+    border-radius: 7px;
+    background: #fffefb;
+    color: #315449;
+    font-size: .8rem;
+    font-weight: 750;
+    letter-spacing: normal;
+    transition: background-color .12s, border-color .12s;
+  }
+  .operator-distributor-logo img { display: block; width: auto; max-width: 100%; height: auto; max-height: 28px; object-fit: contain; }
+  .operator-distributor-choice input:checked + .operator-distributor-logo {
+    background: #edf5e7;
+    border-color: #286858;
+    box-shadow: inset 0 0 0 2px #286858;
+  }
+  .operator-distributor-choice:hover .operator-distributor-logo { background: #edf5e7; }
+  .operator-distributor-choice input:focus-visible + .operator-distributor-logo { outline: 3px solid #33867b; outline-offset: 2px; }
+  .operator-products-card .operator-product-note-row { grid-template-columns: auto minmax(0, 1.25fr) minmax(0, 1fr); align-items: center; gap: 8px; padding: 8px; }
+  .operator-products-card .operator-product-note-row strong { font-size: 1rem; line-height: 1.25; font-weight: 800; overflow-wrap: anywhere; }
+  .operator-products-card .operator-product-note-row span { font-size: .78rem; font-weight: 500; line-height: 1.35; color: #665c54; }
+  .operator-products-card .operator-product-note-row textarea { box-sizing: border-box; min-height: 48px; width: 100%; font-size: .9rem; padding: 7px 9px; }
+  .operator-products-card .operator-general-note textarea { min-height: 60px; }
+  @media (max-width: 600px) {
+    dialog.operator-products-dialog .note-form { padding: 9px; }
+    dialog.operator-products-dialog .form-header { padding: 8px 10px; margin-bottom: 8px; }
+    dialog.operator-products-dialog .form-header h2 { font-size: 1.1rem; }
+    .operator-products-card .market-operator-summary { padding: 7px 8px; }
+    .operator-products-card .market-operator-summary > .operator-products-heading { flex-basis: 100%; }
+    .operator-products-card .market-operator-summary > .market-operator-actions { justify-content: flex-start; gap: 5px; }
+    .operator-products-card .market-operator-actions > button { font-size: .75rem; padding: 6px 7px; }
+    .operator-products-card .market-operator-detail { padding: 8px; gap: 8px; }
+    .operator-products-card .operator-distributor-choice .operator-distributor-logo { width: 70px; }
+    .operator-products-card .operator-product-note-row { grid-template-columns: auto minmax(0, 1fr); }
+    .operator-products-card .operator-product-note-row textarea { grid-column: 2; }
+  }
+}
