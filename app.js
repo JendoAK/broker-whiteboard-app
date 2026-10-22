@@ -216,6 +216,10 @@ let cloudSyncReady = false;
 let cloudSyncLoading = false;
 let cloudSyncUserId = "";
 let cloudSaveTimer = null;
+let cloudSaveRequests = 0;
+let cloudSaveConfirmed = false;
+let cloudSaveChain = Promise.resolve();
+const cloudSectionRevisions = new Map();
 let cloudAutoRefreshTimer = null;
 let cloudLastRowFingerprint = "";
 let cloudRowCache = new Map();
@@ -1768,6 +1772,7 @@ function persistStockProducts() {
     return true;
   } catch (error) {
     alert("This product could not save because the browser storage is full. I kept the product window open. Try removing a very large attachment or export a backup before adding more files.");
+    window.foodBrokerSaveStatus?.recordError(error, { operation: "Save stock product", section: stockStorageKey, localFailure: true });
     console.error(error);
     return false;
   }
@@ -1910,6 +1915,7 @@ function storePendingCloudSections() {
   try {
     localStorage.setItem(cloudPendingStorageKey, JSON.stringify(Array.from(pendingCloudSections)));
   } catch (error) {
+    window.foodBrokerSaveStatus?.recordError(error, { operation: "Keep cloud retry queue" });
     console.warn("Could not save pending FoodBrokerBase sync queue.", error);
   }
 }
@@ -2011,6 +2017,7 @@ function writeCloudSectionsToLocalStorage(sectionKeys = cloudSectionConfigs.map(
     try {
       localStorage.setItem(section.key, JSON.stringify(section.get()));
     } catch (error) {
+      window.foodBrokerSaveStatus?.recordError(error, { operation: "Refresh saved browser copy" });
       console.warn(`Could not refresh local cache for ${section.label}.`, error);
     }
   });
@@ -2036,92 +2043,125 @@ function renderAfterCloudSync() {
   restoreAppScroll(appScroll);
 }
 
+function updateSaveStatus() {
+  window.foodBrokerSaveStatus?.update({
+    pending: pendingCloudSections.size,
+    syncing: cloudSaveRequests,
+    confirmed: cloudSaveConfirmed,
+    hasUser: Boolean(getCloudUser()),
+    ready: cloudSyncReady
+  });
+}
+
 function scheduleCloudSave(sectionKey) {
-  expandCloudSectionKeys([sectionKey]).forEach((key) => pendingCloudSections.add(key));
+  expandCloudSectionKeys([sectionKey]).forEach((key) => {
+    pendingCloudSections.add(key);
+    cloudSectionRevisions.set(key, (cloudSectionRevisions.get(key) || 0) + 1);
+  });
+  cloudSaveConfirmed = false;
+  window.foodBrokerSaveStatus?.localSaved(sectionKey);
   storePendingCloudSections();
+  updateSaveStatus();
   if (!cloudSyncReady || !getCloudClient() || !getCloudUser()) return;
   window.clearTimeout(cloudSaveTimer);
-  cloudSaveTimer = window.setTimeout(() => {
-    pushPendingCloudSections();
-  }, 900);
+  cloudSaveTimer = window.setTimeout(() => { pushPendingCloudSections(); }, 900);
 }
 
 async function pushPendingCloudSections() {
-  if (!pendingCloudSections.size) return;
-  if (!cloudSyncReady || !getCloudClient() || !getCloudUser()) return;
-  const sectionKeys = Array.from(pendingCloudSections);
-  pendingCloudSections.clear();
-  storePendingCloudSections();
-  const saved = await saveCloudSections(sectionKeys);
-  if (!saved) {
-    sectionKeys.forEach((key) => pendingCloudSections.add(key));
-    storePendingCloudSections();
-  }
+  if (!pendingCloudSections.size || cloudSaveRequests) return false;
+  if (!cloudSyncReady || !getCloudClient() || !getCloudUser()) return false;
+  // Keep the retry queue durable until the cloud confirms the write.
+  return await saveCloudSections(Array.from(pendingCloudSections));
 }
 
-async function saveCloudSections(sectionKeys = cloudSectionConfigs.map((section) => section.key), options = {}) {
+function saveCloudSections(sectionKeys = cloudSectionConfigs.map((section) => section.key), options = {}) {
+  // Bootstrap, manual merges, and background saves share the same write order.
+  const request = cloudSaveChain.then(() => performCloudSaveSections(sectionKeys, options));
+  cloudSaveChain = request.catch(() => {});
+  return request;
+}
+
+async function performCloudSaveSections(sectionKeys, options) {
   const client = getCloudClient();
   const user = getCloudUser();
   if (!client || !user || (!cloudSyncReady && !options.force)) return false;
 
-  const now = new Date().toISOString();
-  const sections = expandCloudSectionKeys(sectionKeys)
-    .map((sectionKey) => getCloudConfig(sectionKey))
-    .filter(Boolean);
-  const personalPayload = sections
-    .filter((section) => section.scope !== "team")
-    .map((section) => ({
-      record_type: cloudRecordType,
-      record_key: section.key,
-      owner_id: user.id,
-      created_by: user.id,
-      updated_by: user.id,
-      data: {
-        label: section.label,
-        value: updateRecordedInitials(correctContactNames(section.get())),
-        backupVersion,
-        savedAt: now
-      }
-    }));
-  const teamPayload = sections
-    .filter((section) => section.scope === "team")
-    .map((section) => ({
-      record_type: teamCloudRecordType,
-      record_key: section.key,
-      updated_by: user.id,
-      data: {
-        ...(sharedTrackerKeys.has(section.key) ? { migratedTrackerOwners: trackerMigrationOwners.get(section.key) || [] } : {}),
-        label: section.label,
-        value: correctContactNames(section.get()),
-        backupVersion,
-        savedAt: now
-      }
-    }));
-
-  if (!personalPayload.length && !teamPayload.length) return true;
-
+  const revisions = new Map(expandCloudSectionKeys(sectionKeys).map(key => [key, cloudSectionRevisions.get(key) || 0]));
+  cloudSaveRequests += 1;
+  updateSaveStatus();
   try {
+    const now = new Date().toISOString();
+    const sections = expandCloudSectionKeys(sectionKeys)
+      .map((sectionKey) => getCloudConfig(sectionKey))
+      .filter(Boolean);
+    const personalPayload = sections
+      .filter((section) => section.scope !== "team")
+      .map((section) => ({
+        record_type: cloudRecordType,
+        record_key: section.key,
+        owner_id: user.id,
+        created_by: user.id,
+        updated_by: user.id,
+        data: {
+          label: section.label,
+          value: updateRecordedInitials(correctContactNames(section.get())),
+          backupVersion,
+          savedAt: now
+        }
+      }));
+    const teamPayload = sections
+      .filter((section) => section.scope === "team")
+      .map((section) => ({
+        record_type: teamCloudRecordType,
+        record_key: section.key,
+        updated_by: user.id,
+        data: {
+          ...(sharedTrackerKeys.has(section.key) ? { migratedTrackerOwners: trackerMigrationOwners.get(section.key) || [] } : {}),
+          label: section.label,
+          value: correctContactNames(section.get()),
+          backupVersion,
+          savedAt: now
+        }
+      }));
+  
+    if (!personalPayload.length && !teamPayload.length) return true;
+  
     if (personalPayload.length) {
-      const { error } = await client.from("app_records").upsert(personalPayload, {
+      const { error, status } = await client.from("app_records").upsert(personalPayload, {
         onConflict: "owner_id,record_type,record_key"
       });
-      if (error) throw error;
+      if (error) throw { name: error.name, message: error.message, code: error.code, status: error.status || status };
     }
     if (teamPayload.length) {
-      const { error } = await client.from("team_app_records").upsert(teamPayload, {
+      const { error, status } = await client.from("team_app_records").upsert(teamPayload, {
         onConflict: "record_type,record_key"
       });
-      if (error) throw error;
+      if (error) throw { name: error.name, message: error.message, code: error.code, status: error.status || status };
     }
     lastCloudError = "";
+    revisions.forEach((revision, key) => {
+      // Edits made during this request must still be sent in the next request.
+      if ((cloudSectionRevisions.get(key) || 0) === revision) pendingCloudSections.delete(key);
+    });
+    storePendingCloudSections();
+    cloudSaveConfirmed = true;
     // Keep downloaded versions: a later check must still fetch concurrent remote changes.
     return true;
   } catch (error) {
     lastCloudError = error?.message || "Unknown cloud save error.";
+    cloudSaveConfirmed = false;
+    window.foodBrokerSaveStatus?.recordError(error, { operation: "Save changes to cloud" });
     console.warn("FoodBrokerBase cloud save failed.", error);
-    pendingCloudSections = new Set([...sections.map((section) => section.key), ...pendingCloudSections]);
+    pendingCloudSections = new Set([...expandCloudSectionKeys(sectionKeys), ...pendingCloudSections]);
     storePendingCloudSections();
     return false;
+  } finally {
+    cloudSaveRequests -= 1;
+    updateSaveStatus();
+    if (cloudSaveConfirmed && pendingCloudSections.size && !cloudSaveRequests) {
+      window.clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = window.setTimeout(() => { pushPendingCloudSections(); }, 900);
+    }
   }
 }
 
@@ -2176,6 +2216,7 @@ async function refreshCloudSectionsIfChanged(options = {}) {
     return loaded;
   } catch (error) {
     lastCloudError = error?.message || "Unknown cloud status error.";
+    window.foodBrokerSaveStatus?.recordError(error, { operation: "Check cloud sync" });
     console.warn("FoodBrokerBase cloud refresh failed.", error);
     return false;
   } finally {
@@ -2284,11 +2325,8 @@ async function loadCloudSections(options = {}) {
       writeCloudSectionsToLocalStorage(appliedKeys);
       renderAfterCloudSync();
       if (localUploadKeys.length) {
-        const uploaded = await saveCloudSections(localUploadKeys, { force: true });
-        if (uploaded) {
-          localUploadKeys.forEach((key) => pendingCloudSections.delete(key));
-          storePendingCloudSections();
-        }
+        await saveCloudSections(localUploadKeys, { force: true });
+        // saveCloudSections acknowledges only revisions actually uploaded.
       }
     }
 
@@ -2296,11 +2334,8 @@ async function loadCloudSections(options = {}) {
     cloudLastRowFingerprint = getCloudRowFingerprint(rows);
     cloudSyncReady = true;
     if (!rows.length && hasLocalAppData()) {
-      const uploaded = await saveCloudSections(undefined, { force: true });
-      if (uploaded) {
-        pendingCloudSections.clear();
-        storePendingCloudSections();
-      }
+      await saveCloudSections(undefined, { force: true });
+      // Newer local edits stay queued if they were made during this upload.
     }
     if (pendingCloudSections.size) await pushPendingCloudSections();
     if (!rows.length && options.reportIfEmpty) {
@@ -2310,11 +2345,13 @@ async function loadCloudSections(options = {}) {
     return rows.length > 0;
   } catch (error) {
     lastCloudError = error?.message || "Unknown cloud load error.";
+    window.foodBrokerSaveStatus?.recordError(error, { operation: "Load cloud changes" });
     console.warn("FoodBrokerBase cloud load failed.", error);
     if (options.reportErrors) alert(`FoodBrokerBase could not download cloud data yet. ${lastCloudError}`);
     return false;
   } finally {
     cloudSyncLoading = false;
+    updateSaveStatus();
   }
 }
 
@@ -2324,7 +2361,9 @@ function handleCloudAuthChange(event) {
   if (!user || !["member", "admin", "super_user"].includes(profile?.role)) {
     cloudSyncReady = false;
     cloudSyncUserId = "";
+    cloudSaveConfirmed = false;
     stopCloudAutoRefresh();
+    updateSaveStatus();
     return;
   }
   startCloudAutoRefresh();
@@ -2345,6 +2384,7 @@ window.setTimeout(() => {
     loadCloudSections();
   }
 }, 0);
+updateSaveStatus();
 window.foodBrokerBaseCloud = {
   pull: loadCloudSections,
   pushAll: () => syncLocalDataToCloud({ silent: true }),
@@ -2423,8 +2463,6 @@ async function syncLocalDataToCloud(options = {}) {
     await mergeCloudDataIntoThisBrowser();
     uploaded = await saveCloudSections(undefined, { force: true });
     if (uploaded) {
-      pendingCloudSections.clear();
-      storePendingCloudSections();
       cloudRowCount = (await fetchCloudRowSummary()).length;
       if (!cloudRowCount) {
         lastCloudError = "Supabase accepted the upload request, but no cloud rows were found afterward.";
@@ -2433,6 +2471,7 @@ async function syncLocalDataToCloud(options = {}) {
   } catch (error) {
     uploaded = false;
     lastCloudError = error?.message || "The browser data could not be merged with Supabase.";
+    window.foodBrokerSaveStatus?.recordError(error, { operation: "Merge browser changes with cloud" });
     console.warn("FoodBrokerBase cloud merge failed.", error);
   }
   setCloudSyncButtonsBusy(false);

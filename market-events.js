@@ -23,8 +23,13 @@ function loadEventProducts() {
 }
 
 function persistEventProducts() {
-  localStorage.setItem(eventProductStorageKey, JSON.stringify(eventProducts));
-  scheduleCloudSave(eventProductStorageKey);
+  try {
+    localStorage.setItem(eventProductStorageKey, JSON.stringify(eventProducts));
+    scheduleCloudSave(eventProductStorageKey);
+  } catch (error) {
+    window.foodBrokerSaveStatus?.recordError(error, { operation: "Save new event product", section: eventProductStorageKey, localFailure: true });
+    throw error;
+  }
 }
 
 function resolveEventProduct(id) {
@@ -196,15 +201,19 @@ function bindMarketEventActions(panel, visit) {
   });
   panel.querySelector("[data-event-new-product-form]")?.addEventListener("submit", (event) => {
     event.preventDefault();
-    const values = Object.fromEntries(new FormData(event.currentTarget));
-    if (!values.description.trim() || !values.vendor.trim()) return;
-    const product = normalizeEventProduct(values);
-    stampSharedRecord(product, "Created");
-    eventProducts = [...eventProducts, product];
-    persistEventProducts();
-    updateMarketVisit(visit.id, { newProductIds: [...visit.newProductIds, product.id] });
+    const form = event.currentTarget;
+    productAction(form, async () => {
+      const values = Object.fromEntries(new FormData(form));
+      if (!values.description.trim() || !values.vendor.trim()) return;
+      await saveNewVisitProduct(visit.id, values);
+      renderMarketVisits();
+    });
   });
-  const productAction = (control, action) => {
+  const productAction = async (control, action) => {
+    if (control.dataset.savingProduct === 'true') return;
+    control.dataset.savingProduct = 'true';
+    const submit = control.querySelector('button[type="submit"]');
+    if (submit) submit.disabled = true;
     let message = control.querySelector('[data-stock-action-message]');
     if (!message) {
       message = document.createElement('p');
@@ -213,10 +222,14 @@ function bindMarketEventActions(panel, visit) {
       control.append(message);
     }
     message.textContent = '';
-    try { action(); }
+    try { await action(); }
     catch (error) {
+      if (error.message !== 'duplicate') window.foodBrokerSaveStatus?.recordError(error, { operation: "Save event product changes", section: eventProductStorageKey, localFailure: true });
       message.textContent = error.message === 'duplicate' ? 'This item number is already on a stock list. Use Link existing item instead.' : 'Could not save this change. Your entered details are still here. ' + (error.name === 'QuotaExceededError' ? 'Browser storage is full. Export a backup and remove a large attachment, then try again.' : 'Please try again.');
       console.error('Event product save failed', error);
+    } finally {
+      delete control.dataset.savingProduct;
+      if (submit) submit.disabled = false;
     }
   };
   panel.querySelectorAll("[data-edit-event-product]").forEach(form => form.addEventListener('submit', event => {

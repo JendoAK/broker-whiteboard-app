@@ -1,0 +1,49 @@
+.save-status-bar {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 1px solid #b5cab0;
+  border-radius: 10px;
+  background: #f2f8ee;
+  color: #244a23;
+  box-shadow: 0 3px 14px #211b1926;
+  font: 600 13px/1.45 system-ui, sans-serif;
+}
+.save-status-bar[hidden], .save-status-details[hidden] { display: none !important; }
+.auth-pending .save-status-bar { display: none !important; }
+.save-status-message { margin: 0; }
+.save-status-message::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: #477736; }
+.save-status-bar[data-state="waiting"] { background: #fff8e5; border-color: #dfc878; color: #66501b; }
+.save-status-bar[data-state="waiting"] .save-status-message::before { background: #a17b16; }
+.save-status-bar[data-state="error"] { background: #fff0ed; border-color: #dcaaa1; color: #7e2c21; }
+.save-status-bar[data-state="error"] .save-status-message::before { background: #a44131; }
+.save-status-details, .save-errors-close { border: 1px solid currentColor; border-radius: 6px; padding: 6px 9px; background: #fff; color: inherit; font: inherit; cursor: pointer; }
+.save-status-details { flex: 0 0 auto; }
+.save-status-details:hover, .save-errors-close:hover { background: #f2efe8; }
+.save-status-details:focus-visible, .save-errors-close:focus-visible { outline: 3px solid #af810d; outline-offset: 3px; }
+.save-errors-dialog { width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 48px); box-sizing: border-box; overflow: auto; border: 1px solid #c8c0b2; border-radius: 12px; padding: 22px; color: #2d2923; background: #fffdf9; font: 14px/1.5 system-ui, sans-serif; }
+.save-errors-dialog::backdrop { background: #211b1966; }
+.save-errors-dialog h2 { margin: 0 0 8px; font-size: 21px; }
+.save-errors-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.save-errors-intro { margin: 0 0 16px; color: #62594d; }
+.save-errors-list { list-style: none; margin: 0 0 18px; padding: 0; }
+.save-error-entry { padding: 13px 0; border-top: 1px solid #e2dcd1; overflow-wrap: anywhere; }
+.save-error-time { display: block; font-size: 12px; color: #62594d; }
+.save-error-operation { display: block; margin-top: 2px; }
+.save-error-codes, .save-error-message { margin: 4px 0 0; }
+.save-error-codes { color: #62594d; font-size: 12px; }
+.save-errors-close { color: #3f4c32; }
+@media (max-width: 600px) {
+  .save-status-bar { left: 10px; bottom: 10px; max-width: calc(100vw - 20px); flex-wrap: wrap; gap: 7px; padding: 9px 11px; }
+  .save-status-message { flex-basis: 100%; }
+  .save-errors-dialog { padding: 16px; }
+}
+@media print { .save-status-bar, .save-errors-dialog { display: none !important; } }

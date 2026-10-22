@@ -263,10 +263,12 @@ async function saveNewVisitProduct(visitId, values) {
       if (!cloudSyncReady || !getCloudClient() || !getCloudUser()) throw new Error('Browser storage is unavailable. Connect and finish cloud sync, then try again. Your form is still here.');
       const saved = await saveCloudSections([eventProductStorageKey,marketVisitStorageKey]);
       if (!saved) throw new Error(lastCloudError || 'Cloud save failed. Check your connection and try again.');
+      window.foodBrokerSaveStatus?.recoverSections([eventProductStorageKey,marketVisitStorageKey]);
     }
   } catch (error) {
     eventProducts = previousProducts; marketVisits = previousVisits;
     try { localStorage.setItem(eventProductStorageKey,JSON.stringify(previousProducts)); localStorage.setItem(marketVisitStorageKey,JSON.stringify(previousVisits)); } catch {}
+    window.foodBrokerSaveStatus?.recordError(error, { operation: "Save new product and visit", section: eventProductStorageKey, localFailure: true });
     throw error;
   }
   return product;
