@@ -25,7 +25,7 @@
 <script src="time-picker.js?v=20260917-time1"></script>
 <script src="copy-email.js?v=20260917-copyemail1"></script>
 <link rel="stylesheet" href="manager-overview.css?v=20260918-manager1" />
-<link rel="stylesheet" href="foodshow-layout.css?v=20260929-foodshow8" /><link rel="stylesheet" href="table-planner.css?v=20260930-planner14" /><script src="table-planner.js?v=20260930-planner14"></script><link rel="stylesheet" href="window-layout.css?v=20260930-windows1" /><link rel="stylesheet" href="event-agenda.css?v=20261022-eventease1" /><link rel="stylesheet" href="event-products.css?v=20261022-eventease1" /></head>
+<link rel="stylesheet" href="foodshow-layout.css?v=20260929-foodshow8" /><link rel="stylesheet" href="table-planner.css?v=20260930-planner14" /><script src="table-planner.js?v=20260930-planner14"></script><link rel="stylesheet" href="window-layout.css?v=20260930-windows1" /><link rel="stylesheet" href="event-agenda.css?v=20261022-compactfilters1" /><link rel="stylesheet" href="event-products.css?v=20261022-eventease1" /></head>
   <body class="auth-pending">
     <datalist id="timelineSearchSuggestions"></datalist>
     <div class="app-shell">
@@ -800,24 +800,24 @@
         </section>
 
         <section class="controls market-controls" aria-label="Event and visit filters">
-          <div class="agenda-search-row">
-            <label class="search-box"><span>Find an event or visit</span><input id="marketSearch" type="search" placeholder="Search name, vendor, location or product..." /></label>
-            <button class="ghost-action" id="clearMarketFilters" type="button">Clear filters</button>
-          </div>
-          <fieldset class="agenda-quick-filter"><legend>When</legend><div class="agenda-filter-buttons">
+          <div class="agenda-quick-filter" role="group" aria-labelledby="agendaWhenLabel"><span class="agenda-filter-label" id="agendaWhenLabel">When</span><div class="agenda-filter-buttons">
             <button type="button" data-agenda-range="upcoming" aria-pressed="true">Upcoming</button>
             <button type="button" data-agenda-range="week" aria-pressed="false">This week</button>
             <button type="button" data-agenda-range="month" aria-pressed="false">This month</button>
             <button type="button" data-agenda-range="lastmonth" aria-pressed="false">Last month</button>
             <button type="button" data-agenda-range="past" aria-pressed="false">Past events</button>
             <button type="button" data-agenda-range="all" aria-pressed="false">All dates</button>
-          </div></fieldset>
-          <fieldset class="agenda-quick-filter"><legend>Event type</legend><div class="agenda-filter-buttons">
+          </div></div>
+          <div class="agenda-search-row">
+            <label class="search-box"><span>Find an event or visit</span><input id="marketSearch" type="search" placeholder="Search events..." title="Search event name, vendor, location or product" /></label>
+            <button class="ghost-action" id="clearMarketFilters" type="button" aria-label="Clear filters">Clear</button>
+          </div>
+          <div class="agenda-quick-filter" role="group" aria-labelledby="agendaTypeLabel"><span class="agenda-filter-label" id="agendaTypeLabel">Type</span><div class="agenda-filter-buttons">
             <button type="button" data-agenda-type-filter="" aria-pressed="true">All types</button>
             <button type="button" data-agenda-type-filter="visits" aria-pressed="false">Market visits</button>
             <button type="button" data-agenda-type-filter="foodshow" aria-pressed="false">Foodshows</button>
             <button type="button" data-agenda-type-filter="testkitchen" aria-pressed="false">Testkitchens</button>
-          </div></fieldset>
+          </div></div>
           <details class="agenda-more-filters"><summary>More filters</summary><div class="agenda-advanced-grid">
             <label class="market-archive-filter"><span>Show</span><select id="marketArchiveFilter"><option value="auto">Automatic (includes past archived events)</option><option value="active">Active events &amp; visits</option><option value="archived">Archived events &amp; visits</option><option value="all">Active and archived</option></select></label>
             <label><span>Group by</span><select id="marketAgendaGroup"><option value="month">Month</option><option value="type">Event type</option><option value="date">Date order</option></select></label>
@@ -870,14 +870,14 @@
 <fieldset class="window-section"><legend>Event details</legend><div class="field-grid"><label class="market-pc-field wide"><span>Visit name</span><input id="marketVisitName" autocomplete="off" /></label>
 <label class="market-mfr-field"><span>Manufacturer / vendor</span><select id="marketVisitVendor"><option value="">Choose vendor</option></select><small class="market-vendor-lock-note">Vendor is locked after the visit is created.</small></label>
 <label><span>Regional manager name</span><input id="marketVisitorName" autocomplete="off" placeholder="Enter the regional manager's name" /></label>
-<label class="market-pc-field"><span>Status</span><select id="marketStatus"><option>Planned</option><option>In Progress</option><option>Completed</option><option>Follow Up Needed</option></select></label></div></fieldset>
+<label class="market-pc-field"><span>Status</span><select id="marketStatus"><option>Planned</option><option>In Progress</option><option>Completed</option><option>Follow Up Needed</option></select></label></div></div>
 <fieldset class="window-section"><legend>When &amp; where</legend><div class="field-grid"><label><span>Start date</span><input id="marketStartDate" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
 <label><span>End date</span><input id="marketEndDate" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
 <label class="market-pc-field"><span>Start time</span><input id="marketStartTime" type="text" placeholder="8:00 AM" autocomplete="off" /></label>
 <label class="market-pc-field"><span>End time</span><input id="marketEndTime" type="text" placeholder="5:00 PM" autocomplete="off" /></label>
-<label class="market-pc-field wide"><span>Location / area</span><input id="marketLocation" autocomplete="off" /></label></div></fieldset>
+<label class="market-pc-field wide"><span>Location / area</span><input id="marketLocation" autocomplete="off" /></label></div></div>
 <fieldset class="window-section"><legend>Team &amp; notes</legend><div class="field-grid"><label class="market-pc-field wide"><span>Sales reps involved</span><input id="marketSalesReps" list="salesRepSuggestions" placeholder="Alexa, Dudley..." autocomplete="off" /></label>
-<label class="wide"><span>Notes</span><textarea id="marketNotes" rows="4"></textarea></label></div></fieldset>
+<label class="wide"><span>Notes</span><textarea id="marketNotes" rows="4"></textarea></label></div></div>
         <div class="form-actions">
           <button class="danger-action" id="deleteMarketVisit" type="button">Delete</button>
           <span></span>
@@ -1071,7 +1071,7 @@
             <label><input type="checkbox" name="addedToPo" /> Added to PO</label>
             <label><input type="checkbox" name="fedex" /> FedEx</label>
             <label><input type="checkbox" name="usps" /> UPS</label>
-          </div></fieldset>
+          </div></div>
 <label><span>PO #</span><input name="poNumber" /></label>
 <label><span>DOT order #</span><input name="dotNumber" /></label>
           <label><span>Expected arrival date</span><input id="sampleExpected" type="text" placeholder="YYYY-MM-DD" autocomplete="off" /></label>

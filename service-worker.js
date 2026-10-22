@@ -1,5 +1,5 @@
-const CACHE_NAME = "foodbrokerbase-eventease1";
-const APP_SHELL = ["./event-products.css?v=20261022-eventease1", "./save-status.js?v=20261022-savestatus1", "./save-status.css?v=20261022-savestatus1", "./event-agenda.js?v=20261022-eventease1","./event-agenda.css?v=20261022-eventease1","./window-layout.css?v=20260930-windows1","./table-planner.js?v=20260930-planner14","./table-planner.css?v=20260930-planner14","./table-planner.html?v=20260930-planner14","./editing-stability.js?v=20260930-planner14","./foodshow-layout.js?v=20261022-eventease1", "./foodshow-layout.css?v=20260929-foodshow8",
+const CACHE_NAME = "foodbrokerbase-compactfilters1";
+const APP_SHELL = ["./event-products.css?v=20261022-eventease1", "./save-status.js?v=20261022-savestatus1", "./save-status.css?v=20261022-savestatus1", "./event-agenda.js?v=20261022-eventease1","./event-agenda.css?v=20261022-compactfilters1","./window-layout.css?v=20260930-windows1","./table-planner.js?v=20260930-planner14","./table-planner.css?v=20260930-planner14","./table-planner.html?v=20260930-planner14","./editing-stability.js?v=20260930-planner14","./foodshow-layout.js?v=20261022-eventease1", "./foodshow-layout.css?v=20260929-foodshow8",
   "./manager-overview.js?v=20260918-managersettings1",
   "./manager-overview.css?v=20260918-manager1",
   "./todo-drag.js?v=20260917-todopointer1",
