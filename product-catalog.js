@@ -86,7 +86,7 @@
   }
 
   function compare(a, b) {
-    const rank = product => code(product?.apn) ? 0 : /^us\s*foods\b/i.test(String(product?.distributor || "")) && product?.distributor !== "Not stocked" ? 1 : 2;
+    const rank = product => window.foodBrokerWorkspace?.rankProduct ? window.foodBrokerWorkspace.rankProduct(product) : code(product?.apn) ? 0 : /^us\s*foods\b/i.test(String(product?.distributor || "")) && product?.distributor !== "Not stocked" ? 1 : 2;
     return rank(a) - rank(b) || compareLabels(String(a?.description || ""), String(b?.description || "")) || compareLabels(String(a?.vendor || ""), String(b?.vendor || "")) || compareLabels(String(a?.id || ""), String(b?.id || ""));
   }
 

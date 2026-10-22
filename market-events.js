@@ -83,10 +83,20 @@ function renderEventProductFields(product = {}) {
     <label>Vendor / manufacturer<input name="vendor" data-event-vendor list="stockVendorSuggestions" autocomplete="off" required value="${escapeAttribute(product.vendor || "")}" /></label>
     <label>Manufacturer product number (MF#)<input name="manufacturerNumber" value="${escapeAttribute(product.manufacturerNumber || "")}" placeholder="Optional" /></label>
     <label>Packaging<input name="packaging" value="${escapeAttribute(product.packaging || "")}" placeholder="Case / pack size" /></label>
-    <label>US Foods APN<input name="apn" type="text" value="${escapeAttribute(product.apn || "")}" placeholder="Optional" /></label>
-    <label>Sysco SUPC<input name="supc" type="text" value="${escapeAttribute(product.supc || "")}" placeholder="Optional" /></label>
+    ${renderEventProductNumberFields(product)}
     <label>Storage<input name="storage" value="${escapeAttribute(product.storage || "")}" placeholder="Frozen, refrigerated, dry…" /></label>
     <label>Product notes<textarea name="notes">${escapeHtml(product.notes || "")}</textarea></label>`;
+}
+
+function renderEventProductNumberFields(product) {
+  const labels = { apn: "US Foods APN", supc: "Sysco SUPC" };
+  return getStockNumberKeys().map(key => `<label>${labels[key]}<input name="${key}" type="text" value="${escapeAttribute(product[key] || "")}" placeholder="Optional" /></label>`).join("");
+}
+
+function renderEventStockDistributorOptions() {
+  const preferred = window.foodBrokerWorkspace?.getDefaultDistributor?.() ?? "US Foods";
+  const selected = preferred === "US Foods" ? "US Foods Anchorage" : preferred;
+  return `${!selected ? '<option value="">Choose distributor</option>' : ''}${["US Foods Anchorage", "US Foods Southeast", "Sysco", "Linford"].map(name => `<option${name === selected ? " selected" : ""}>${name}</option>`).join("")}`;
 }
 
 function renderEventProducts(visit) {
@@ -113,7 +123,7 @@ function renderEventSelectedProduct(product, options = {}) {
   const status = locked ? "Stocked · Locked" : "New";
   return `<div class="event-product-row">
     <button class="event-product-open" type="button" data-product-stock-options="${escapeAttribute(product.id)}"${visit} aria-label="View ${escapeAttribute(product.description)} details">
-      <strong>${escapeHtml(product.description || "Product")}</strong><span>${escapeHtml([product.vendor, product.manufacturerNumber && `MF# ${product.manufacturerNumber}`, product.packaging, product.apn && `APN ${product.apn}`, product.supc && `SUPC ${product.supc}`].filter(Boolean).join(" · "))}</span>
+      <strong>${escapeHtml(product.description || "Product")}</strong><span>${escapeHtml([formatVisitProductCodes(product), product.vendor, product.packaging].filter(Boolean).join(" · "))}</span>
     </button><div class="event-product-row-actions"><span class="event-product-state${locked ? " is-stocked" : ""}">${escapeHtml(status)}</span>
       ${!locked ? `<button class="event-product-edit-button" type="button" data-edit-event-product-button="${escapeAttribute(product.id)}"${visit} aria-label="Edit ${escapeAttribute(product.description)}">Edit</button>` : ""}
       <button class="remove-product" type="button" ${removeAttribute}="${escapeAttribute(product.id)}" aria-label="Remove ${escapeAttribute(product.description)} from event">Remove</button></div></div>`;
@@ -132,8 +142,8 @@ function renderEventProductEditor(id, options = {}) {
     <dl class="event-product-details">${fields.filter(([, value]) => value).map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(String(value))}</dd></div>`).join("")}</dl>
     ${locked ? `<p class="event-product-readonly">${linked ? 'This product is on a stock list. Stock details appear in event lists.' : 'This product has already moved to a stock list.'} Its shared product details are locked.</p>` : `<div class="event-stock-actions">
       <section class="event-stock-option event-stock-add"><h4>Add to stock list</h4><p>Product is now stocked? Choose its distributor and enter the item number.</p><form data-promote-event-product="${escapeAttribute(id)}">
-        <label>Distributor<select name="distributor"><option>US Foods Anchorage</option><option>US Foods Southeast</option><option>Sysco</option><option>Linford</option></select></label>
-        <div class="event-stock-codes"><label>US Foods APN<input name="apn" type="text" value="${escapeAttribute(product.apn || "")}" placeholder="Optional" /></label><label>Sysco SUPC<input name="supc" type="text" value="${escapeAttribute(product.supc || "")}" placeholder="Optional" /></label></div>
+        <label>Distributor<select name="distributor" required>${renderEventStockDistributorOptions()}</select></label>
+        <div class="event-stock-codes">${renderEventProductNumberFields(product)}</div>
         <button class="event-stock-add-button" type="submit">+ Add to stock list</button></form></section>
       <section class="event-stock-option event-stock-link"><h4>Link an existing item</h4><p>Already on a stock list? Connect it here to avoid a duplicate.</p><form data-link-event-stock="${escapeAttribute(id)}"><label>Matching stocked item<select name="stockId" required><option value="">Choose the matching stock item</option>${window.foodBrokerProducts.choices(stockProducts, stockProducts).map(stock => `<option value="${escapeAttribute(stock.id)}">${escapeHtml(formatMarketProductOption(stock))}</option>`).join('')}</select></label><button class="event-stock-link-button" type="submit">Link existing item</button></form></section>
     </div><p class="event-product-stock-help">Adding or linking this product to stock locks its shared details.</p>`}
@@ -339,6 +349,7 @@ function bindMarketEventActions(panel, visit) {
     productAction(form, () => {
       const product = editableEventProduct(form.dataset.promoteEventProduct);
       const values = Object.fromEntries(new FormData(form));
+      if (!["US Foods Anchorage", "US Foods Southeast", "Sysco", "Linford"].includes(values.distributor)) return false;
       values.apn = values.apn.trim();
       values.supc = values.supc.trim();
       const duplicate = stockProducts.find(item => (values.apn && item.apn === values.apn) || (values.supc && item.supc === values.supc));

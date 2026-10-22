@@ -1,0 +1,26 @@
+@media screen {
+  .stock-list-all { display: grid; align-content: center; gap: 3px; }
+  .stock-list-all strong { font-size: .9rem; }
+  .stock-list-all small { font-size: .7rem; }
+  dialog.workspace-preferences-dialog { width: min(540px, calc(100vw - 24px)); }
+  .workspace-preferences-dialog .form-header { align-items: center; padding: 12px 14px; margin-bottom: 12px; }
+  .workspace-preferences-dialog .form-header h2 { font-size: 1.3rem; }
+  .workspace-preferences-dialog .note-form > p { font-size: .95rem; line-height: 1.45; }
+  .workspace-mode-options { display: grid; gap: 8px; padding: 0; border: 0; margin: 12px 0; }
+  .workspace-mode-options legend { font-size: .8rem; font-weight: 700; margin-bottom: 7px; }
+  .workspace-mode-options label { display: flex; align-items: center; gap: 10px; border: 1px solid #b5cbc0; border-radius: 8px; padding: 12px; background: #fffefb; cursor: pointer; }
+  .workspace-mode-options label:has(input:checked) { background: #e7f1e5; border-color: #286858; box-shadow: inset 0 0 0 1px #286858; }
+  .workspace-mode-options input { width: 18px; height: 18px; flex: 0 0 18px; margin: 0; accent-color: #286858; }
+  .workspace-mode-options span { display: grid; gap: 3px; min-width: 0; }
+  .workspace-mode-options strong { font-size: 1rem; color: #254b40; }
+  .workspace-mode-options small { font-size: .85rem; line-height: 1.35; font-weight: 400; text-transform: none; color: #50685e; }
+  [data-workspace-status]:empty { display: none; }
+  dialog.workspace-distributor-dialog { width: min(640px, calc(100vw - 24px)); }
+  .workspace-distributor-choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+  .workspace-distributor-choices button { min-width: 0; min-height: 72px; padding: 10px; }
+  .workspace-distributor-choices img { display: block; max-width: 100%; width: auto; max-height: 40px; margin: auto; object-fit: contain; }
+  @media (max-width: 520px) {
+    .workspace-preferences-dialog .note-form { padding: 12px; }
+    .workspace-distributor-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+}

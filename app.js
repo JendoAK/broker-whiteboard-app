@@ -29,6 +29,7 @@ const nestleMachineStatuses = ["Requested", "Approved", "Ordered", "Installed", 
 const marketVisitTypes = { personal: "Personal Market Visit", manufacturer: "Vendor Market Visit", testkitchen: "Testkitchen", foodshow: "Foodshow" };
 const marketStatuses = ["Planned", "In Progress", "Completed", "Follow Up Needed", "Canceled"];
 const stockListGroups = {
+  all: { label: "All Stocked Products", distributors: null, defaultDistributor: "Not stocked" },
   k12: {label:"K-12 School Products",distributors:[],defaultDistributor:"Not stocked"},
   usFoods: {
     label: "US Foods Stock List",
@@ -378,8 +379,9 @@ let activeNestleQuickFilter = "";
 let activeMarketType = "personal";
 let activeMarketView = "list";
 let activeMarketDetailId = "";
-let pcMarketNumberMode = "apn";
+let pcMarketNumberMode = window.foodBrokerWorkspace?.getNumberMode?.() || "apn";
 let activeStockList = "";
+let workspaceViewsPending = false;
 let calendarMonth = new Date(startOfToday().getFullYear(), startOfToday().getMonth(), 1);
 let calendarView = "month";
 let calendarRangeStart = startOfCalendarWeek(startOfToday());
@@ -1324,16 +1326,22 @@ function normalizeMarketVisit(visit) {
   };
 }
 
-function getMarketOperatorDistributor(operator) {
-  const value = String(operator?.leadDistributor || operator?.distributor || "US Foods").trim();
+function normalizeMarketDistributor(value) {
+  value = String(value || "").trim();
   if (/^us\s*foods\b/i.test(value)) return "US Foods";
-  return ["Sysco", "Linford", "Other"].find(item => item.toLowerCase() === value.toLowerCase()) || "US Foods";
+  return ["Sysco", "Linford", "Other"].find(item => item.toLowerCase() === value.toLowerCase()) || "";
 }
 
-function readMarketOperatorDistributor(panel, operatorId, fallback = "US Foods") {
+function getMarketOperatorDistributor(operator) {
+  const stored = normalizeMarketDistributor(operator?.leadDistributor || operator?.distributor);
+  if (stored) return stored;
+  return window.foodBrokerWorkspace?.hasPreference?.() ? normalizeMarketDistributor(window.foodBrokerWorkspace.getDefaultDistributor()) : "US Foods";
+}
+
+function readMarketOperatorDistributor(panel, operatorId, fallback = getMarketOperatorDistributor(null)) {
   const controls = [...panel.querySelectorAll("[data-event-lead-distributor]")].filter(input => input.dataset.eventLeadDistributor === operatorId);
   const selected = controls.find(input => input.matches("input[type=radio]:checked")) || controls.find(input => input.tagName === "SELECT");
-  return getMarketOperatorDistributor({ leadDistributor: selected?.value || fallback });
+  return normalizeMarketDistributor(selected?.value || fallback);
 }
 
 function getMarketOperatorProductNumber(product, distributor) {
@@ -1356,7 +1364,7 @@ function normalizeMarketOperatorLink(link) {
     id: link.id || crypto.randomUUID(),
     operatorId: link.operatorId || "",
     operatorName: link.operatorName || "",
-    leadDistributor: getMarketOperatorDistributor(link),
+    leadDistributor: normalizeMarketDistributor(link.leadDistributor || link.distributor),
     productIds: Array.isArray(link.productIds) ? link.productIds : [],
     notes: link.notes || "",
     productNotes: link.productNotes || {}
@@ -3825,6 +3833,11 @@ function closeAddressBookWindow() {
 }
 
 function openStockListsWindow() {
+  if (!activeStockList || workspaceViewsPending) {
+    activeStockList = window.foodBrokerWorkspace?.getStockList?.() || "usFoods";
+    resetWorkspaceStockFilters();
+    workspaceViewsPending = false;
+  }
   elements.todoDialog.hidden = true;
   elements.vendorReportDialog.hidden = true;
   elements.addressBookDialog.hidden = true;
@@ -4320,9 +4333,11 @@ function saveManualVendorReport() {
   renderVendorReport();
 }
 
-function promoteManualVendorReport(id) {
+function promoteManualVendorReport(id, distributorOverride = "") {
   const report = manualVendorReports.find((item) => item.id === id);
   if (!report) return;
+  const distributor = normalizeMarketDistributor(distributorOverride) || preferredLeadDistributor();
+  if (!distributor) { openWorkspaceDistributorChoice(choice => promoteManualVendorReport(id, choice)); return; }
   const shouldPromote = confirm("Turn this vendor report row into a real lead on the Leads board?");
   if (!shouldPromote) return;
   const productId = crypto.randomUUID();
@@ -4331,7 +4346,7 @@ function promoteManualVendorReport(id) {
     id: cardId,
     account: report.account,
     accountNumber: "",
-    distributor: "US Foods",
+    distributor,
     note: report.opportunityNote || "Vendor reporting target",
     priority: "Medium",
     due: "",
@@ -4692,7 +4707,22 @@ function getActiveStockGroup() {
 }
 
 function getActiveStockDefaultDistributor() {
+  if (activeStockList === "all") {
+    const preferred = window.foodBrokerWorkspace?.getDefaultDistributor?.() || "";
+    return preferred === "US Foods" ? "US Foods Anchorage" : preferred || "Not stocked";
+  }
   return getActiveStockGroup()?.defaultDistributor || "US Foods Anchorage";
+}
+
+function stockProductMatchesGroup(product, group = getActiveStockGroup()) {
+  if (!group) return true;
+  if (group === stockListGroups.all) return Boolean(String(product.distributor || "").trim()) && !/^not stocked$/i.test(String(product.distributor).trim());
+  return group.distributors.includes(product.distributor);
+}
+
+function resetWorkspaceStockFilters() {
+  [elements.stockSearch, elements.stockDistributorFilter, elements.stockVendorFilter, elements.stockCategoryFilter, elements.stockStorageFilter, elements.stockBrandTypeFilter].forEach(input => { if (input) input.value = ""; });
+  if (elements.stockHideSpecialOrder) elements.stockHideSpecialOrder.checked = false;
 }
 
 function setActiveStockListControls() {
@@ -4754,8 +4784,7 @@ function renderStockVendorGroups(products) {
               <th>Product Description</th>
               <th>Brand Name</th>
               <th>Brand Type</th>
-              <th>APN</th>
-              <th>SUPC</th>
+              ${getStockNumberKeys().map(key => `<th>${key === "supc" ? "SUPC" : "APN"}</th>`).join("")}
               <th>MF#</th>
               <th>GTIN</th>
               <th>Packaging</th>
@@ -4781,7 +4810,7 @@ function getVisibleStockProducts() {
   return (activeStockList === "k12" ? getK12Products() : stockProducts)
     .filter((product) => {
       if (elements.stockHideSpecialOrder.checked && isSpecialOrderOnly(product)) return false;
-      if (group && activeStockList !== "k12" && !group.distributors.includes(product.distributor)) return false;
+      if (group && activeStockList !== "k12" && !stockProductMatchesGroup(product, group)) return false;
       if (elements.stockDistributorFilter.value && product.distributor !== elements.stockDistributorFilter.value) return false;
       if (elements.stockStorageFilter.value && product.storage !== elements.stockStorageFilter.value) return false;
       if (elements.stockBrandTypeFilter.value && product.brandType !== elements.stockBrandTypeFilter.value) return false;
@@ -4835,8 +4864,7 @@ function renderStockRow(product, crossStockIndex) {
       <td><button class="table-link stock-product-link" type="button" data-stock-edit="${escapeAttribute(product.id)}">${escapeHtml(product.description)}${attachmentIcon}</button>${renderStockSpecialOrder(product)}${renderK12Stocking(product)}${renderCrossStockCheck(product, crossStockIndex)}</td>
       <td>${escapeHtml(product.brandName)}</td>
       <td>${escapeHtml(product.brandType)}</td>
-      <td>${escapeHtml(product.apn)}</td>
-      <td>${escapeHtml(product.supc)}</td>
+      ${getStockNumberKeys().map(key => `<td>${escapeHtml(product[key])}</td>`).join("")}
       <td>${escapeHtml(product.manufacturerNumber)}</td>
       <td>${escapeHtml(product.gtin)}</td>
       <td>${escapeHtml(product.packaging)}</td>
@@ -4851,6 +4879,10 @@ function renderStockRow(product, crossStockIndex) {
       </td>
     </tr>
   `;
+}
+
+function getStockNumberKeys() {
+  return window.foodBrokerWorkspace?.getNumberMode?.() === "supc" ? ["supc", "apn"] : ["apn", "supc"];
 }
 
 function bindStockActions() {
@@ -5380,7 +5412,7 @@ function updateStockFilterOptions() {
   const selectedVendor = elements.stockVendorFilter.value;
   const selectedCategory = elements.stockCategoryFilter.value;
   const group = getActiveStockGroup();
-  const groupedProducts = activeStockList === "k12" ? getK12Products() : stockProducts.filter((product) => !group || group.distributors.includes(product.distributor));
+  const groupedProducts = activeStockList === "k12" ? getK12Products() : stockProducts.filter(product => stockProductMatchesGroup(product, group));
   const vendors = [...new Set(groupedProducts.map((product) => product.vendor.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const categories = [...new Set(stockDefaultCategories.concat(groupedProducts.map((product) => product.category.trim()).filter(Boolean)))].sort((a, b) => a.localeCompare(b));
   elements.stockVendorFilter.innerHTML = `<option value="">All</option>${vendors.map((vendor) => `<option value="${escapeAttribute(vendor)}">${escapeHtml(vendor)}</option>`).join("")}`;
@@ -5646,7 +5678,7 @@ function renderMarketProductsSection(visit, products) {
 }
 
 function renderPcMarketProductsSection(visit, products) {
-  const numberLabel = pcMarketNumberMode === "supc" ? "SUPC" : "APN";
+  const numberLabel = pcMarketNumberMode === "both" ? "APN / SUPC" : pcMarketNumberMode === "supc" ? "SUPC" : "APN";
   return `
     <div class="pc-market-products">
       <div class="section-label-row">
@@ -5655,6 +5687,7 @@ function renderPcMarketProductsSection(visit, products) {
           <div class="pc-product-number-toggle" role="group" aria-label="Product number shown">
             <label><input type="radio" name="pcMarketNumberMode" value="apn" ${pcMarketNumberMode === "apn" ? "checked" : ""} /> APN</label>
             <label><input type="radio" name="pcMarketNumberMode" value="supc" ${pcMarketNumberMode === "supc" ? "checked" : ""} /> SUPC</label>
+            <label><input type="radio" name="pcMarketNumberMode" value="both" ${pcMarketNumberMode === "both" ? "checked" : ""} /> Both</label>
           </div>
           <button class="edit-card market-section-action" type="button" data-market-print-products="${escapeAttribute(visit.id)}">Print Products</button>
         </div>
@@ -5680,10 +5713,10 @@ function renderPcMarketProductsSection(visit, products) {
 }
 
 function renderPcMarketProductRow(product) {
-  const number = pcMarketNumberMode === "supc" ? product.supc || "" : product.apn || "";
+  const number = pcMarketNumberMode === "both" ? [product.apn && `APN ${product.apn}`, product.supc && `SUPC ${product.supc}`].filter(Boolean).join(" · ") : pcMarketNumberMode === "supc" ? product.supc || "" : product.apn || "";
   return `
     <div class="pc-market-product-row" data-pc-product-row="${escapeAttribute(product.id)}">
-      <input class="pc-product-number" data-pc-product-number="${escapeAttribute(product.id)}" list="marketProductSuggestions" value="${escapeAttribute(number)}" placeholder="${pcMarketNumberMode === "supc" ? "SUPC" : "APN"}" />
+      <input class="pc-product-number" data-pc-product-number="${escapeAttribute(product.id)}" list="marketProductSuggestions" value="${escapeAttribute(number)}" placeholder="${pcMarketNumberMode === "both" ? "APN / SUPC" : pcMarketNumberMode === "supc" ? "SUPC" : "APN"}" ${pcMarketNumberMode === "both" ? "readonly" : ""} />
       <input class="pc-product-vendor" value="${escapeAttribute(product.vendor || product.brandName || "")}" readonly />
       <input class="pc-product-description" value="${escapeAttribute(product.description || "")}" readonly />
       <input class="pc-product-packaging" value="${escapeAttribute(product.packaging || "")}" readonly />
@@ -5919,7 +5952,7 @@ function bindMarketDetailActions(panel, visit) {
   panel.querySelector("[data-market-share-calendar]")?.addEventListener("click", () => shareMarketVisitCalendar(visit.id));
   panel.querySelectorAll("input[name='pcMarketNumberMode']").forEach((input) => {
     input.addEventListener("change", () => {
-      pcMarketNumberMode = input.value === "supc" ? "supc" : "apn";
+      pcMarketNumberMode = ["supc", "both"].includes(input.value) ? input.value : "apn";
       renderMarketVisits();
     });
   });
@@ -6361,6 +6394,11 @@ function convertMarketOperatorToLead(visit, operatorId, panel) {
   const { visit: currentVisit, operator, products, distributor } = snapshot;
   const existingLead = cards.find(card => !card.deletedAt && marketConversionSourceMatches(card, currentVisit, operator));
   if (existingLead) { showMarketConversionDestination(panel, "lead", existingLead); return; }
+  if (!distributor) {
+    alert("Choose a lead distributor — US Foods, Sysco, Linford, or Other — before creating the lead.");
+    panel.querySelector("[data-event-lead-distributor]")?.focus();
+    return;
+  }
   if (!products.length && !confirm("No products are selected. Create the lead without products?")) return;
   saveMarketOperatorDetails(visit.id, operatorId, panel);
   const operatorName = operator.operatorName || getOperatorName(operator.operatorId) || getMarketVisitDisplayName(currentVisit);
@@ -6552,7 +6590,7 @@ function getMarketProductSearchScore(product, query) {
 }
 
 function getMarketVisitOperators(visit) {
-  const callOperators = visit.calls.map((call) => ({ id: `call-${call.id}`, operatorId: call.operatorId, operatorName: call.operatorName || getOperatorName(call.operatorId), leadDistributor: getMarketOperatorDistributor(call), productIds: call.productIds, notes: call.notes, productNotes: {} })).filter((operator) => operator.operatorId || operator.operatorName);
+  const callOperators = visit.calls.map((call) => ({ id: `call-${call.id}`, operatorId: call.operatorId, operatorName: call.operatorName || getOperatorName(call.operatorId), leadDistributor: normalizeMarketDistributor(call.leadDistributor || call.distributor), productIds: call.productIds, notes: call.notes, productNotes: {} })).filter((operator) => operator.operatorId || operator.operatorName);
   const keyed = new Map();
   [...visit.operatorLinks, ...callOperators].forEach((operator) => {
     const key = operator.operatorId || operator.operatorName;
@@ -8002,6 +8040,8 @@ function convertCurrentTodoToLead() {
 function convertTodoToLead(id, options = {}) {
   const todo = todos.find((item) => item.id === id);
   if (!todo) return;
+  const distributor = normalizeMarketDistributor(options.distributor) || preferredLeadDistributor();
+  if (!distributor) { openWorkspaceDistributorChoice(choice => convertTodoToLead(id, { ...options, distributor: choice })); return; }
   const shouldConvert = confirm(todo.title ? `Turn task "${todo.title}" into a lead?` : "Turn this task into a lead?");
   if (!shouldConvert) return;
   const now = new Date().toISOString();
@@ -8009,7 +8049,7 @@ function convertTodoToLead(id, options = {}) {
     id: crypto.randomUUID(),
     account: todo.account || todo.title || "New Lead",
     accountNumber: "",
-    distributor: "US Foods",
+    distributor,
     note: buildLeadNoteFromTodo(todo),
     priority: todo.priority || "Medium",
     due: todo.due || "",
@@ -8614,11 +8654,28 @@ function rememberLeadDistributor(value) {
   try { localStorage.setItem(leadDistributorPreferenceKey(),value); } catch {}
 }
 function preferredLeadDistributor() {
+  if (window.foodBrokerWorkspace?.hasPreference?.()) return window.foodBrokerWorkspace.getDefaultDistributor();
   try {
     const value = localStorage.getItem(leadDistributorPreferenceKey());
     if (["US Foods", "Sysco", "Linford"].includes(value)) return value;
   } catch {}
   return "US Foods";
+}
+
+function openWorkspaceDistributorChoice(onChoose) {
+  const dialog = createVisitDialog("Choose the lead distributor");
+  dialog.classList.add("workspace-distributor-dialog");
+  dialog.querySelector("[data-visit-entry-body]").innerHTML = `<p>Which distributor is this lead for?</p><div class="workspace-distributor-choices">${[["US Foods", "usFoods"], ["Sysco", "sysco"], ["Linford", "linford"], ["Other", ""]].map(([name, logoKey]) => {
+    const logo = logoKey && getEventPrintLogo(logoKey);
+    return `<button class="ghost-action" type="button" data-workspace-distributor="${escapeAttribute(name)}" aria-label="${escapeAttribute(name)}">${logo ? `<img src="${escapeAttribute(logoKey === "usFoods" ? "us-foods-logo.svg" : logo.src)}" alt="${escapeAttribute(name)}" />` : name}</button>`;
+  }).join("")}</div>`;
+  dialog.querySelectorAll("[data-workspace-distributor]").forEach(button => button.addEventListener("click", () => {
+    const distributor = normalizeMarketDistributor(button.dataset.workspaceDistributor);
+    if (!distributor) return;
+    dialog.close();
+    onChoose(distributor);
+  }));
+  dialog.showModal();
 }
 
 function openForm(card) {
@@ -8676,6 +8733,11 @@ function closeForm() {
 }
 
 function saveCard() {
+  if (!normalizeMarketDistributor(elements.leadDistributor.value)) {
+    alert("Choose a distributor for this lead before saving.");
+    elements.leadDistributor.focus();
+    return false;
+  }
   rememberLeadDistributor(elements.leadDistributor.value);
   const id = elements.cardId.value || crypto.randomUUID();
   const existing = cards.find((card) => card.id === id);
@@ -9947,13 +10009,13 @@ function updateVendorControls() {
   const vendors = getVendorNames();
   const reportVendors = getVendorReportVendorNames();
   elements.vendorSuggestions.innerHTML = vendors.map((vendor) => `<option value="${escapeAttribute(vendor)}"></option>`).join("");
-  elements.apnSuggestions.innerHTML = getProductDirectory(elements.leadDistributor?.value || "US Foods")
+  elements.apnSuggestions.innerHTML = getProductDirectory(elements.leadDistributor?.value ?? preferredLeadDistributor())
     .map((product) => {
       const label = [product.description, product.vendor].filter(Boolean).join(" - ");
       return `<option value="${escapeAttribute(product.number)}" label="${escapeAttribute(label)}"></option>`;
     })
     .join("");
-  elements.productSearchSuggestions.innerHTML = getLeadProductSearchDirectory(elements.leadDistributor?.value || "US Foods")
+  elements.productSearchSuggestions.innerHTML = getLeadProductSearchDirectory(elements.leadDistributor?.value ?? preferredLeadDistributor())
     .map((product) => `<option value="${escapeAttribute(product.label)}"></option>`)
     .join("");
   elements.vendorFilter.innerHTML = `<option value="">All</option>${vendors
@@ -9999,22 +10061,25 @@ function updateVendorReportYearOptions(selectedYear = "") {
 
 function distributorMatchesStock(product, distributor) {
   const productDistributor = String(product.distributor || "").toLowerCase();
-  const target = String(distributor || "US Foods").toLowerCase();
+  const target = String(distributor || "").toLowerCase();
+  if (!target) return Boolean(productDistributor) && productDistributor !== "not stocked";
   if (target === "us foods") return productDistributor.startsWith("us foods");
   return productDistributor === target;
 }
 
 function getProductNumberForDistributor(product, distributor) {
+  if (!distributor) return String(product.apn || product.supc || product.distributorNumber || "").trim();
   if (distributor === "Sysco") return String(product.supc || "").trim();
   if (distributor === "Linford") return String(product.distributorNumber || product.apn || product.supc || "").trim();
   return String(product.apn || product.distributorNumber || "").trim();
 }
 
-function getLeadProductSuggestionProducts(distributor = elements.leadDistributor?.value || "US Foods") {
+function getLeadProductSuggestionProducts(distributor = elements.leadDistributor?.value ?? preferredLeadDistributor()) {
   const stocks = stockProducts.filter((product) => distributorMatchesStock(product, distributor));
   const historical = cards.flatMap((card) => {
     if (!distributorMatchesStock({ distributor: card.distributor || "US Foods" }, distributor)) return [];
     return normalizeProducts(card).map((product) => {
+      const productDistributor = distributor || card.distributor || "US Foods";
       // Lead rows use the APN field for the chosen distributor's item number.
       const number = String(product.apn || "").trim();
       const description = String(product.description || "").trim();
@@ -10022,9 +10087,9 @@ function getLeadProductSuggestionProducts(distributor = elements.leadDistributor
       const label = [number, description, vendor].filter(Boolean).join(" | ");
       return {
         ...product,
-        distributor,
-        apn: distributor === "Sysco" || distributor === "Linford" ? "" : number,
-        supc: distributor === "Sysco" ? number : "",
+        distributor: productDistributor,
+        apn: productDistributor === "Sysco" || productDistributor === "Linford" ? "" : number,
+        supc: productDistributor === "Sysco" ? number : "",
         distributorNumber: number,
         searchAliases: [...(product.searchAliases || []), label]
       };
@@ -10033,17 +10098,17 @@ function getLeadProductSuggestionProducts(distributor = elements.leadDistributor
   return window.foodBrokerProducts.choices([...stocks, ...historical], stocks);
 }
 
-function getProductDirectory(distributor = elements.leadDistributor?.value || "US Foods") {
+function getProductDirectory(distributor = elements.leadDistributor?.value ?? preferredLeadDistributor()) {
   const directory = new Map();
   getLeadProductSearchDirectory(distributor).forEach((product) => {
     if (!product.number) return;
-    const key = product.number.replace(/\s+/g, "").toLowerCase();
+    const key = [!distributor && product.distributor, product.number].filter(Boolean).join("|").replace(/\s+/g, "").toLowerCase();
     if (!directory.has(key)) directory.set(key, product);
   });
   return [...directory.values()];
 }
 
-function getLeadProductSearchDirectory(distributor = elements.leadDistributor?.value || "US Foods") {
+function getLeadProductSearchDirectory(distributor = elements.leadDistributor?.value ?? preferredLeadDistributor()) {
   const directory = new Map();
   getLeadProductSuggestionProducts(distributor).forEach((product) => {
     const number = getProductNumberForDistributor(product, distributor);
@@ -10053,7 +10118,7 @@ function getLeadProductSearchDirectory(distributor = elements.leadDistributor?.v
     // Unnumbered items keep distinct variants; only exact duplicate rows collapse.
     const key = [number, description, vendor, product.manufacturerNumber, product.packaging, product.storage]
       .map((value) => String(value || "").replace(/\s+/g, " ").trim().toLowerCase()).join("|");
-    const label = [number, description, vendor].filter(Boolean).join(" | ");
+    const label = [distributor ? number : formatVisitProductCodes(product), description, vendor].filter(Boolean).join(" | ");
     const existing = directory.get(key);
     const searchAliases = [...new Set([...(existing?.searchAliases || []), ...(product.searchAliases || []), label])];
     if (existing) existing.searchAliases = searchAliases;
@@ -10085,6 +10150,11 @@ function findLeadProductSearchMatch(value) {
 }
 
 function addProductFromSearch() {
+  if (!normalizeMarketDistributor(elements.leadDistributor.value)) {
+    alert("Choose the lead distributor first so the correct product number is used.");
+    elements.leadDistributor.focus();
+    return;
+  }
   const match = findLeadProductSearchMatch(elements.productSearch.value);
   if (!match) {
     elements.productSearch.focus();
@@ -10218,7 +10288,8 @@ function fillLeadAccountDetails(match) {
   }
 }
 
-function getDistributorItemLabel(distributor = elements.leadDistributor?.value || "US Foods") {
+function getDistributorItemLabel(distributor = elements.leadDistributor?.value ?? preferredLeadDistributor()) {
+  if (!distributor) return "APN / SUPC";
   if (distributor === "Sysco") return "SUPC";
   if (distributor === "Linford") return "Item #";
   return "APN";
@@ -10789,4 +10860,24 @@ async function saveUnifiedSampleOrder(order) {
 function getEventPrintLogo(choice) {
   return ({usFoods: {src: printBrandLogos.usFoods, name: 'US Foods'}, sysco: {src: 'sysco-logo.png?v=20260917-official1', name: 'Sysco'}, linford: {src: 'linford-logo.svg', name: 'Linford'}})[choice] || null;
 }
+
+function applyPendingWorkspaceViews() {
+  if (!workspaceViewsPending) return;
+  const editing = document.activeElement?.matches("input, textarea, select, [contenteditable='true']") || document.querySelector("dialog[open]");
+  if (editing) return;
+  pcMarketNumberMode = window.foodBrokerWorkspace?.getNumberMode?.() || "apn";
+  activeStockList = window.foodBrokerWorkspace?.getStockList?.() || "usFoods";
+  resetWorkspaceStockFilters();
+  workspaceViewsPending = false;
+  updateVendorControls();
+  renderStockLists();
+  renderMarketVisits();
+}
+
+window.addEventListener("foodbrokerbase:workspace", () => {
+  workspaceViewsPending = true;
+  applyPendingWorkspaceViews();
+});
+document.addEventListener("close", () => queueMicrotask(applyPendingWorkspaceViews), true);
+document.addEventListener("focusout", () => setTimeout(applyPendingWorkspaceViews, 0));
 

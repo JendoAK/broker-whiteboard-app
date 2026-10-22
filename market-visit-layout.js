@@ -1,7 +1,10 @@
 "use strict";
 
 function formatVisitProductCodes(product) {
-  return [`MF#: ${product.manufacturerNumber || '—'}`, product.apn && `APN: ${product.apn}`, product.supc && `SUPC: ${product.supc}`].filter(Boolean).join(' · ');
+  const codes = { apn: product.apn && `APN: ${product.apn}`, supc: product.supc && `SUPC: ${product.supc}`, manufacturerNumber: `MF#: ${product.manufacturerNumber || '—'}` };
+  const mode = window.foodBrokerWorkspace?.getNumberMode?.() || 'apn';
+  const keys = mode === 'supc' ? ['supc', 'apn', 'manufacturerNumber'] : ['apn', 'supc', 'manufacturerNumber'];
+  return keys.map(key => codes[key]).filter(Boolean).join(' · ');
 }
 
 function renderVisitProductPrintTable(products, mode = 'mf', includeNotes = false) {
