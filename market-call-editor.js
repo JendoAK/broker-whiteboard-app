@@ -57,7 +57,7 @@ function openMarketCallEditor(visitId, callId, newKind = "") {
     </div>
     <p class="market-section-help">Keep the date within this visit's date range. To move to another week, edit the visit dates first.</p>
     <p data-call-edit-error role="alert" hidden></p>
-    <div class="form-actions"><button class="ghost-action" type="button" data-cancel-call-edit>Cancel</button><button class="primary-action" type="submit">${newKind ? "Add to calendar" : "Save changes"}</button></div>
+    <div class="form-actions">${newKind ? "" : `<button class="danger-action remove-product" type="button" data-delete-call-edit aria-label="Delete ${call.kind === "appointment" ? "appointment" : "sales call"}" title="Delete ${call.kind === "appointment" ? "appointment" : "sales call"}" style="width:40px;min-width:40px;padding:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg></button>`}<button class="ghost-action" type="button" data-cancel-call-edit>Cancel</button><button class="primary-action" type="submit">${newKind ? "Add to calendar" : "Save changes"}</button></div>
   </form>`;
   const form = dialog.querySelector("form");
   const operatorInput = form.elements.namedItem("operatorName");
@@ -71,10 +71,39 @@ function openMarketCallEditor(visitId, callId, newKind = "") {
   if (visit.startDate) form.elements.namedItem("date").min = minDate;
   if (visit.endDate || visit.startDate) form.elements.namedItem("date").max = maxDate;
   dialog.querySelectorAll("[data-cancel-call-edit]").forEach((button) => button.addEventListener("click", () => dialog.close()));
+  dialog.querySelector("[data-delete-call-edit]")?.addEventListener("click", deleteMarketCallEdit);
   setupDatePicker(form.elements.namedItem("date"));
   form.addEventListener("submit", saveMarketCallEdit);
   ['salesReps','manufacturerContact'].forEach(name => attachPeopleSuggestions(dialog.querySelector(`[name=${name}]`)));
   dialog.showModal();
+}
+
+function deleteMarketCallEdit(event) {
+  const dialog = event.currentTarget.closest("dialog");
+  const errorMessage = dialog.querySelector("[data-call-edit-error]");
+  const fail = message => { errorMessage.textContent = message; errorMessage.hidden = false; };
+  const context = marketCallEditContext;
+  if (!context || context.newKind) return;
+  const call = marketVisits.find(visit => visit.id === context.visitId)?.calls.find(item => item.id === context.callId);
+  if (!call) { fail("This calendar entry has already been removed."); return; }
+  if (!confirm(`Delete this ${call.kind === "appointment" ? "appointment" : "sales call"}?`)) return;
+  const current = marketVisits.find(visit => visit.id === context.visitId);
+  if (!current?.calls.some(item => item.id === context.callId)) { fail("This calendar entry has already been removed."); return; }
+  const previous = marketVisits;
+  const updated = normalizeMarketVisit({ ...current, calls: current.calls.filter(item => item.id !== context.callId), updatedAt: new Date().toISOString() });
+  if (updated.type !== "personal") stampSharedRecord(updated, "Updated");
+  marketVisits = marketVisits.map(visit => visit.id === current.id ? updated : visit);
+  try {
+    persistMarketVisits();
+  } catch (error) {
+    marketVisits = previous;
+    window.foodBrokerSaveStatus?.recordError(error, { operation: "Delete calendar entry", section: marketVisitStorageKey, localFailure: true });
+    fail("Could not delete this calendar entry. It is still on the calendar. " + (error.name === "QuotaExceededError" ? "Browser storage is full. Export a backup or remove a large attachment, then try again." : "Please try again."));
+    return;
+  }
+  marketCallEditContext = null;
+  dialog.close();
+  renderMarketVisits();
 }
 
 function saveMarketCallEdit(event) {
