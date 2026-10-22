@@ -5642,16 +5642,7 @@ function renderPcMarketProductRow(product) {
 }
 
 function renderMarketProductChip(product) {
-  const number = formatVisitProductCodes(product);
-  return `
-    <div class="market-product-chip">
-      <div>
-        <strong>${escapeHtml(product.description || "Product")}</strong>
-        <span>${escapeHtml([product.isNewEventProduct ? "New · Not yet stocked" : "", number, product.vendor, product.brandName].filter(Boolean).join(" | "))}</span>
-      </div>
-      <button class="remove-product" type="button" data-remove-market-product="${escapeAttribute(product.id)}">Remove</button>
-    </div>
-  `;
+  return renderEventSelectedProduct(product);
 }
 
 function renderMarketCalendarActions(visit) {

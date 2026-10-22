@@ -64,6 +64,7 @@ function renderCompactMarketVisit(panel, visit) {
     <details class="compact-visit-extra"><summary>Schedule list (${visit.calls.length})</summary>${visit.calls.length ? `<table class="quick-table market-call-table"><thead><tr><th>Date</th><th>Time</th><th>Operator / Appointment</th><th>Location</th><th>Reps</th><th>Notes</th><th></th></tr></thead><tbody>${visit.calls.map(call => renderMarketCallRow(visit, call)).join("")}</tbody></table>` : `<p>No calls scheduled yet.</p>`}</details>
     <details class="compact-visit-extra"><summary>Visit notes${visit.notes ? " · Notes added" : ""}</summary>${renderMarketNotesSection(visit)}</details>`;
   bindMarketDetailActions(panel, visit);
+  bindMarketEventActions(panel, visit);
   panel.querySelector("[data-visit-add-products]").onclick = () => openVisitProductsDialog(visit.id);
   panel.querySelector("[data-visit-add-call]").onclick = () => openMarketCallEditor(visit.id, "", "call");
   panel.querySelector("[data-visit-add-appointment]").onclick = () => openMarketCallEditor(visit.id, "", "appointment");
@@ -81,6 +82,7 @@ function renderPersonalMarketVisit(panel, visit) {
   <section class="visit-operators-panel"><h3>Operators (${operators.length})</h3><div class="section-label-row"><span>Click an operator to select products, write feedback, or create a lead.</span></div><div class="compact-visit-list">${operators.map(operator => `<button class="compact-operator" type="button" data-open-visit-operator="${escapeAttribute(operator.id)}"><strong>${escapeHtml(getMarketOperatorDisplayName(operator))}</strong><span>${(operator.productIds || []).filter(id=>products.some(product=>product.id===id)).length} products${operator.notes || Object.values(operator.productNotes || {}).some(note=>note.note) ? ' · Notes added' : ''} · Products, notes &amp; lead</span></button>`).join('') || '<p class="empty-state">Add an operator to record the products shown and their feedback.</p>'}</div></section></div>
   <details class="compact-visit-extra"><summary>Visit notes${visit.notes ? ' · Notes added' : ''}</summary>${renderMarketNotesSection(visit)}</details>`;
   bindMarketDetailActions(panel, visit);
+  bindMarketEventActions(panel, visit);
   panel.querySelector('[data-visit-add-products]').onclick = () => openVisitProductsDialog(visit.id);
   panel.querySelector('[data-visit-add-operator]').onclick = () => openVisitOperatorDialog(visit.id);
   panel.querySelectorAll('[data-open-visit-operator]').forEach(button => button.onclick = () => openVisitOperatorDialog(visit.id, button.dataset.openVisitOperator));
@@ -133,7 +135,7 @@ function openVisitProductsDialog(visitId) {
 }
 
 function getVisitProductPickerCandidates(visit) {
-  const upcoming = eventProducts.filter(product => !product.linkedStockId && !visit.newProductIds.includes(product.id)).map(product => resolveEventProduct(product.id)).filter(Boolean);
+  const upcoming = eventProducts.filter(product => !isEventProductLocked(product) && !visit.newProductIds.includes(product.id)).map(product => resolveEventProduct(product.id)).filter(Boolean);
   return [...getMarketProductCandidates(visit), ...upcoming];
 }
 
@@ -219,12 +221,12 @@ function openVisitProductOverview(visitId) {
   const dialog = createVisitDialog("View product list");
   dialog.style.width = "min(1100px, 94vw)";
   const body = dialog.querySelector('[data-visit-entry-body]');
-  body.innerHTML = '<p>Products selected for this event. Use the trashcan to remove an item from the list.</p><input type="search" aria-label="Search event products" placeholder="Search product, brand, storage or product code" style="width:100%;margin-bottom:12px"><div data-product-overview-list></div>';
+  body.innerHTML = '<p>Click a product for details and stock options. New products have an Edit button.</p><input type="search" aria-label="Search event products" placeholder="Search product, brand, storage or product code" style="width:100%;margin-bottom:12px"><div data-product-overview-list></div>';
   const render = () => {
     const visit = marketVisits.find(item => item.id === visitId);
     const query = body.querySelector('input').value.toLowerCase();
     const products = visit ? getMarketVisitProducts(visit).filter(product => [product.description,product.vendor,product.brandName,product.storage,product.apn,product.supc,product.manufacturerNumber].join(' ').toLowerCase().includes(query)) : [];
-    body.querySelector('[data-product-overview-list]').innerHTML = renderVisitVendorGroups(products, product => (visit.type === 'testkitchen' ? '<div class="kitchen-product-with-note">' : '') + '<div class="market-nested-card" style="display:flex;gap:16px;justify-content:space-between;align-items:center;padding:12px;margin-bottom:8px"><div><strong>' + escapeHtml(product.description) + '</strong><div>' + escapeHtml([product.vendor,product.brandName,product.storage,product.packaging,formatVisitProductCodes(product)].filter(Boolean).join(' · ')) + '</div></div><div class="event-stock-overview-actions">' + (eventProducts.some(item => item.id === product.id) ? '<button class="event-stock-add-button" type="button" data-product-stock-options="' + escapeAttribute(product.id) + '" data-visit-id="' + escapeAttribute(visit.id) + '">' + (product.isNewEventProduct ? 'Add / link to stock' : 'Stock connection') + '</button>' : '') + '<button class="edit-card" type="button" data-overview-remove="' + escapeAttribute(product.id) + '">Remove</button></div></div>' + renderKitchenProductNote(visit, product) + (visit.type === 'testkitchen' ? '</div>' : ''), visit.type === 'testkitchen') || '<p>No matching products.</p>';
+    body.querySelector('[data-product-overview-list]').innerHTML = renderVisitVendorGroups(products, product => (visit.type === 'testkitchen' ? '<div class="kitchen-product-with-note">' : '') + renderEventSelectedProduct(product, { visitId: visit.id, removeAttribute: 'data-overview-remove' }) + renderKitchenProductNote(visit, product) + (visit.type === 'testkitchen' ? '</div>' : ''), visit.type === 'testkitchen') || '<p>No matching products.</p>';
     body.querySelectorAll('[data-overview-remove]').forEach(button => button.onclick = () => {
       const product = products.find(item => item.id === button.dataset.overviewRemove);
       const current = marketVisits.find(item => item.id === visitId);
@@ -239,6 +241,8 @@ function openVisitProductOverview(visitId) {
     });
   };
   body.querySelector('input').addEventListener('input',render);
+  document.addEventListener('event-product-saved', render);
+  dialog.addEventListener('close', () => document.removeEventListener('event-product-saved', render));
   render(); dialog.showModal();
 }
 document.addEventListener('click', event => {

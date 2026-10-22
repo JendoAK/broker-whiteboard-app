@@ -1,8 +1,22 @@
 /* Event agenda and creation chooser. */
-#marketVisitsDialog .market-controls {display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:14px;padding:18px;background:#e5eee9;border:1px solid #adc9bd;border-radius:12px;box-shadow:none;margin:14px 0 22px;}
-#marketVisitsDialog .market-controls > label {display:grid;grid-column:auto;min-width:0;gap:6px;}
-#marketVisitsDialog .market-controls > .market-extra-filter {display:none;}
-#marketVisitsDialog .market-controls .search-box {grid-column:1 / -2;}
+#marketVisitsDialog .market-controls {display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding:16px;background:#e5eee9;border:1px solid #adc9bd;border-radius:12px;box-shadow:none;margin:14px 0 18px;}
+#marketVisitsDialog .market-controls label {display:grid;min-width:0;gap:5px;}
+#marketVisitsDialog .agenda-search-row {display:flex;align-items:flex-end;gap:10px;}
+#marketVisitsDialog .agenda-search-row .search-box {flex:1;}
+#marketVisitsDialog .agenda-search-row > button {min-height:39px;flex:none;box-shadow:none;background:#fffefa;}
+#marketVisitsDialog .agenda-quick-filter {padding:0;margin:0;border:0;min-width:0;}
+#marketVisitsDialog .agenda-quick-filter legend {padding:0;margin-bottom:6px;color:#335f52;font-size:12px;line-height:1.4;font-weight:800;text-transform:uppercase;letter-spacing:.04em;}
+#marketVisitsDialog .agenda-filter-buttons {display:flex;flex-wrap:wrap;gap:7px;}
+#marketVisitsDialog .agenda-filter-buttons button {border:1px solid #9eb9ac;border-radius:8px;padding:9px 14px;min-height:38px;background:#fffefa;color:#285445;font-weight:700;font-size:14px;line-height:1.2;box-shadow:none;}
+#marketVisitsDialog .agenda-filter-buttons button:hover {background:#d8e8df;border-color:#36765f;}
+#marketVisitsDialog .agenda-filter-buttons button[aria-pressed="true"] {background:#2f715b;border-color:#245843;color:#fff;box-shadow:inset 0 -2px 0 #143f2f40;}
+#marketVisitsDialog .agenda-filter-buttons button[data-agenda-type-filter="foodshow"][aria-pressed="true"] {background:#8b6618;border-color:#705112;}
+#marketVisitsDialog .agenda-filter-buttons button[data-agenda-type-filter="testkitchen"][aria-pressed="true"] {background:#70518b;border-color:#563c6d;}
+#marketVisitsDialog .agenda-filter-buttons button[data-agenda-type-filter="visits"][aria-pressed="true"] {background:#275e82;border-color:#1f4c69;}
+#marketVisitsDialog .agenda-filter-buttons button:focus-visible,#marketVisitsDialog .agenda-more-filters summary:focus-visible {outline:3px solid #e5b93e;outline-offset:3px;}
+#marketVisitsDialog .agenda-more-filters {border-top:1px solid #bfd2c7;padding-top:10px;}
+#marketVisitsDialog .agenda-more-filters > summary {width:fit-content;cursor:pointer;color:#335f52;font-weight:700;font-size:13px;}
+#marketVisitsDialog .agenda-advanced-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;padding-top:12px;}
 #marketVisitsDialog .market-controls input,#marketVisitsDialog .market-controls select {width:100%;min-width:0;font-size:15px;padding:9px;border-radius:7px;border-color:#a9beb5;}
 #marketVisitsDialog .market-controls label > span {color:#335f52;}
 #marketVisitsDialog .market-list-panel {background:#f7faf7;border:1px solid #bed2c8;border-radius:12px;padding:20px;}
@@ -29,7 +43,7 @@
 #marketVisitTypeDialog .market-type-choice:hover,#marketVisitTypeDialog .market-type-choice:focus-visible {background:#cde2d5;border-color:#37745d;}
 #marketVisitTypeDialog .market-type-actions {margin-top:24px;padding-top:16px;border-top:1px solid #c4d7cc;}
 #marketVisitTypeDialog .market-type-actions button {padding:10px 22px;box-shadow:none;}
-@media(max-width:700px){#marketVisitsDialog .market-controls{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px;}#marketVisitsDialog .market-controls .search-box{grid-column:1 / -1;}#marketVisitsDialog .market-list-panel{padding:12px;}}
+@media(max-width:700px){#marketVisitsDialog .market-controls{padding:12px;}#marketVisitsDialog .market-list-panel{padding:12px;}#marketVisitsDialog .agenda-filter-buttons button{flex:1 0 auto;padding:9px 10px;}#marketVisitsDialog .agenda-search-row{align-items:stretch;flex-wrap:wrap;}#marketVisitsDialog .agenda-search-row .search-box{flex-basis:100%;}#marketVisitsDialog .agenda-search-row>button{margin-left:auto;}}
 @media(max-width:400px){#marketVisitTypeDialog .market-type-choices{grid-template-columns:1fr;}#marketVisitsDialog .market-controls{grid-template-columns:minmax(0,1fr);}}
 .market-nav-action {background:#dcece5;border-color:#709f8c;color:#254f40;}
 .market-nav-action.active-view {background:#377b67;border-color:#275a4b;color:#fff;}
