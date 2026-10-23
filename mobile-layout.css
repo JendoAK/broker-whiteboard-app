@@ -1,0 +1,72 @@
+/* Mobile presentation only; desktop and printed documents retain their original styles. */
+.mobile-only { display: none; }
+@media screen and (max-width: 720px) {
+  .mobile-only { display: block; }
+  .app-shell { padding: 10px; }
+  .title-block, .topbar, .app-shell > *, dialog > * { min-width: 0; max-width: 100%; }
+  .topbar { gap: 8px; padding-bottom: 10px; }
+  .title-block { width: 100%; gap: 8px; }
+  .logo-crop { max-width: 180px; }
+  .mobile-nav-toggle, .mobile-filter-toggle, .mobile-summary-toggle { width: 100%; min-height: 44px; border: 1px solid #b3c8bf; border-radius: 9px; background: #fffefb; color: #254e43; padding: 10px 12px; text-align: left; font-weight: 700; }
+  .main-nav { display: none; }
+  .main-nav.mobile-nav-open { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); overflow: visible; }
+  .main-nav .nav-button { min-width: 0; white-space: normal; margin: 0; padding: 10px 6px; }
+  .global-timeline-search { grid-template-columns: minmax(0,1fr) auto; }
+  .global-timeline-search label { grid-column: auto; }
+  .global-timeline-search label > span { display: none; }
+  .utility-actions { flex-wrap: wrap; }
+  .summary-grid, .todo-summary-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; }
+  .summary-tile { min-height: 56px; padding: 8px; }
+  .summary-tile span { font-size: 1.4rem; }
+  .mobile-summary:not(.mobile-expanded) > :nth-child(n+3):not(.mobile-summary-toggle) { display: none; }
+  .mobile-summary-toggle { grid-column: 1/-1; }
+  .controls.mobile-filters { grid-template-columns: minmax(0,1fr); gap: 8px; }
+  .mobile-filters:not(.mobile-expanded) > :not(.mobile-search):not(.mobile-filter-toggle) { display: none !important; }
+  .mobile-search { grid-column: 1/-1; }
+  .mobile-filters > *, input, select, textarea { min-width: 0; max-width: 100%; }
+  input, select, textarea { font-size: 16px; }
+  button, select { min-height: 40px; }
+  .board:not(.quick-list-board), .todo-board:not(.quick-list-board) { display: grid; grid-template-columns: minmax(0,1fr); overflow: visible; }
+  .column, .todo-column { min-width: 0; min-height: 0; width: 100%; }
+  .quick-table-wrap { overflow: visible; min-width: 0; }
+  table.mobile-record-table { display: block; width: 100%; min-width: 0 !important; }
+  .mobile-record-table > thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .mobile-record-table > tbody { display: grid; gap: 10px; }
+  .mobile-record-table > tbody > tr { display: block; border: 1px solid #b9cdc3; border-radius: 12px; background: #fffefb; overflow: hidden; padding: 8px 10px; }
+  .mobile-record-table > tbody > tr > td { display: block; width: auto !important; min-width: 0 !important; max-width: 100%; border: 0; border-radius: 0; padding: 7px 2px; text-align: left; background: transparent; white-space: normal; overflow-wrap: anywhere; }
+  .mobile-record-table > tbody > tr > td[data-mobile-label]:before { content: attr(data-mobile-label); display: block; font-size: .7rem; font-weight: 700; color: #587066; margin-bottom: 4px; }
+  .mobile-record-table > tbody > tr:not(.mobile-expanded) > td.mobile-secondary { display: none; }
+  .mobile-record-table .mobile-row-toggle { width: 100%; border: 0; border-top: 1px solid #dce6e0; background: transparent; color: #245e59; font-weight: 700; text-align: left; padding: 10px 2px; }
+  .mobile-record-table td :is(input,select,textarea) { width: 100%; }
+  .mobile-record-table .note-cell { max-width: none; }
+  dialog:not(.event-table-planner-dialog) { width: calc(100vw - 16px) !important; min-width: 0 !important; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); padding: 0; }
+  dialog :is(.field-grid,#noteForm .field-grid,.product-row,.subtask-row,.manufacturer-visit-hero,.market-agenda-layout,.manufacturer-calendar-layout,.sample-order-header,.visit-new-product-form) { grid-template-columns: minmax(0,1fr); }
+  dialog .field-grid > * { min-width: 0; grid-column: auto; }
+  dialog .form-actions { display: flex; flex-wrap: wrap; position: sticky; bottom: 0; background: #f4f7f6; padding: 10px 0 max(10px,env(safe-area-inset-bottom)); z-index: 2; }
+  dialog .form-actions > button { flex: 1 1 42%; width: auto; }
+  dialog .form-actions > span { display: none; }
+  .calendar-controls { display: flex; flex-wrap: wrap; gap: 6px; }
+  #calendarGrid { grid-template-columns: minmax(0,1fr); overflow: visible; }
+  #calendarDialog .calendar-weekdays { display: none; }
+  #calendarGrid .calendar-day { min-height: 0; }
+  #calendarGrid .calendar-day:empty { display: none; }
+  .quick-list-header, .section-label-row { flex-wrap: wrap; gap: 8px; }
+  .quick-list-header > *, .view-actions > * { min-width: 0; max-width: 100%; }
+}
+@media print { .mobile-only { display: none !important; } }
+@media screen and (max-width: 720px) {
+  .summary-grid.mobile-summary, .todo-summary-grid.mobile-summary, .sample-summary-grid.mobile-summary { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); overflow: visible; width: 100%; }
+  .mobile-summary > .summary-tile { flex: initial; min-width: 0; width: auto; }
+  .mobile-summary > .mobile-summary-toggle { width: 100%; min-width: 0; }
+  #calendarGrid .calendar-day:not(:has(.calendar-item)):not(:has(.calendar-holiday)):not(.today) { display: none; }
+  #calendarGrid .calendar-date:after { content: attr(data-mobile-date); font-size: .85rem; margin-left: 8px; }
+}
+@media screen and (max-width: 720px) {
+  .controls.mobile-filters.mobile-expanded > label { display: grid !important; }
+  .board:not(.quick-list-board), .todo-board:not(.quick-list-board) { margin-right: 0; padding-right: 0; }
+  .mobile-folded > .card-list { display: none; }
+  .mobile-column-toggle { border: 0; background: transparent; color: inherit; font-weight: 700; padding: 4px; min-height: 40px; }
+  .column-header { flex-wrap: wrap; }
+  .column-header h2 { flex: 1; }
+  .mobile-record-table > thead { left: 0; }
+}
