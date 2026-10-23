@@ -77,6 +77,9 @@ function getPeopleDirectory() {
 }
 
 let activeContactFilter = 'all';
+function isSchoolContact(person) {
+  return person.category === 'School' || /\bschools?\b|\bschool[\s-]*district\b|\bk[\s-]*12\b/i.test(String(person.organization || ''));
+}
 function contactMatchesFilter(person, filter = activeContactFilter) {
   const organization = normalizeOperatorKey(person.organization).replace(/[^a-z0-9]/g, '');
   const role = normalizeOperatorKey(person.role);
@@ -84,13 +87,14 @@ function contactMatchesFilter(person, filter = activeContactFilter) {
   if (filter === 'sysco') return organization.startsWith('sysco');
   if (filter === 'regional') return /regional.*manager/.test(role);
   if (filter === 'pc') return organization === 'pc' || organization.includes('piercecartwright') || person.category === 'Our team';
+  if (filter === 'school') return isSchoolContact(person);
   return true;
 }
 function renderPeopleContacts() {
   const panel = document.querySelector('#peopleContactsPanel');
   if (!panel) return;
   const query = normalizeOperatorKey(document.querySelector('#peopleContactSearch')?.value || '');
-  const people = getPeopleDirectory().filter(person => person.category !== 'Operator / Restaurant').filter(person => contactMatchesFilter(person)).filter(person => normalizeOperatorKey([person.name, person.organization, person.role, person.contact].join(' ')).includes(query));
+  const people = getPeopleDirectory().filter(person => person.category !== 'Operator / Restaurant' || activeContactFilter === 'school' && isSchoolContact(person)).filter(person => contactMatchesFilter(person)).filter(person => normalizeOperatorKey([person.name, person.organization, person.role, person.contact].join(' ')).includes(query));
   document.querySelectorAll('[data-contact-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.contactFilter === activeContactFilter)));
   const count = document.getElementById('contactMatchCount');
   if (count) count.textContent = people.length + (people.length === 1 ? ' contact' : ' contacts');
@@ -112,10 +116,11 @@ function deletePeopleContact(key) {
 }
 function openPeopleContactForm(person = {}) {
   person = { ...person, ...contactCommunicationFields(person) };
+  const category = person.category || (activeContactFilter === 'school' ? 'School' : 'Distributor');
   const existing = peopleContacts.find(item => kitchenPersonKey(item) === kitchenPersonKey(person));
   const dialog = createVisitDialog(existing ? 'Edit shared contact' : 'Save shared contact');
   const body = dialog.querySelector('[data-visit-entry-body]');
-  body.innerHTML = `<p>Shared with your team. Available in name suggestions, attendee lists, leads, and visits.</p><form><div class="field-grid">${['name','organization','role','email','phone'].map(key => `<label><span>${({name:'Name',organization:'Company / distributor',role:'Role',email:'Email',phone:'Phone'})[key]}</span><input name="${key}" type="${key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}" value="${escapeAttribute(person[key] || '')}" ${['name','organization'].includes(key) ? 'required' : ''} /></label>`).join('')}<label><span>Contact type</span><select name="category">${['Distributor','Vendor','Our team','Operator / Restaurant','Other'].map(value=>`<option ${value===person.category?'selected':''}>${value}</option>`).join('')}</select></label></div><p role="alert" data-contact-error></p><div class="form-actions"><button class="primary-action" type="submit">Save contact</button></div></form>`;
+  body.innerHTML = `<p>Shared with your team. Available in name suggestions, attendee lists, leads, and visits.</p><form><div class="field-grid">${['name','organization','role','email','phone'].map(key => `<label><span>${({name:'Name',organization:'Company / distributor',role:'Role',email:'Email',phone:'Phone'})[key]}</span><input name="${key}" type="${key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}" value="${escapeAttribute(person[key] || '')}" ${['name','organization'].includes(key) ? 'required' : ''} /></label>`).join('')}<label><span>Contact type</span><select name="category">${['Distributor','Vendor','Our team','School','Operator / Restaurant','Other'].map(value=>`<option ${value===category?'selected':''}>${value}</option>`).join('')}</select></label></div><p role="alert" data-contact-error></p><div class="form-actions"><button class="primary-action" type="submit">Save contact</button></div></form>`;
   attachContactValueSuggestions(body.querySelector('form'));
   body.querySelector('form').onsubmit = event => {
     event.preventDefault();

@@ -1,4 +1,4 @@
-const CACHE_NAME = "foodbrokerbase-qualitysales1";
+const CACHE_NAME = "foodbrokerbase-contacts1";
 const APP_SHELL = ["./quality-sales-logo.png","./quality-sales.css?v=20261023-qualitysales1","./account-settings.css?v=20261023-account1","./settings-menu.css?v=20261023-account1","./settings-menu.js?v=20261023-account1","./product-support.html","./product-support.js?v=20261023-qualitysales1","./product-support.css?v=20261023-support1","./workspace-preferences.js?v=20261023-qualitysales1","./workspace-preferences.css?v=20261023-qualitysales1","./visit-panels.css?v=20261022-visitpanels1","./us-foods-logo.svg","./operator-products.css?v=20261022-operatorcompact1","./product-catalog.js?v=20261022-nestle1","./event-products.css?v=20261022-eventease1", "./save-status.js?v=20261022-savestatus1", "./save-status.css?v=20261022-savestatus1", "./event-agenda.js?v=20261022-eventease1","./event-agenda.css?v=20261022-compactfilters1","./window-layout.css?v=20260930-windows1","./table-planner.js?v=20260930-planner14","./table-planner.css?v=20260930-planner14","./table-planner.html?v=20260930-planner14","./editing-stability.js?v=20260930-planner14","./foodshow-layout.js?v=20261023-qualitysales1", "./foodshow-layout.css?v=20260929-foodshow8",
   "./manager-overview.js?v=20260918-managersettings1",
   "./manager-overview.css?v=20260918-manager1",
@@ -17,8 +17,8 @@ const APP_SHELL = ["./quality-sales-logo.png","./quality-sales.css?v=20261023-qu
   "./team-work-view.css?v=20260909-activity1",
   "./action-buttons.css?v=20260909-trashicons1",
   "./action-buttons.js?v=20260911-singletrash1",
-  "./contacts-layout.css?v=20260909-contacticons1",
-  "./people-contacts.js?v=20261023-qualitysales1",
+  "./contacts-layout.css?v=20261023-contacts1",
+  "./people-contacts.js?v=20261023-contacts1",
   "./",
   "./index.html",
   "./styles.css?v=20261014-stockcards2",
@@ -26,7 +26,7 @@ const APP_SHELL = ["./quality-sales-logo.png","./quality-sales.css?v=20261023-qu
   "./personal-visit-calendar.js?v=20260909-visitcolors1",
   "./calendar-holidays.js?v=20260909-5",
   "./market-call-editor.js?v=20261022-calendarcleanup1",
-  "./team-work-view.js?v=20260918-manager1", "./app.js?v=20261023-qualitysales1",
+  "./team-work-view.js?v=20260918-manager1", "./app.js?v=20261023-contacts1",
   "./market-week-calendar.js?v=20260918-callaudit1",
   "./market-operator-conversion.js?v=20261022-operatorcompact1",
   "./testkitchen-layout.js?v=20261022-productdedupe1",

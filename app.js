@@ -4556,7 +4556,7 @@ function openAddressBookForm(entry) {
   elements.addressNotes.value = existing?.notes || "";
   (existing?.contacts || []).forEach((contact) => addAddressContactRow(contact));
   elements.addressBookFormDialog.showModal();
-  setTimeout(() => elements.addressOperation.focus(), 0);
+  (existing ? elements.addressBookFormTitle : elements.addressOperation).focus({ preventScroll: true });
 }
 
 function closeAddressBookForm() {
@@ -4975,7 +4975,7 @@ function openStockForm(product) {
   elements.stockCategory.value = existing?.category || "";
   renderStockAttachmentList();
   elements.stockFormDialog.showModal();
-  setTimeout(() => elements.stockVendor.focus(), 0);
+  (existing ? elements.stockFormTitle : elements.stockVendor).focus({ preventScroll: true });
 }
 
 function closeStockForm() {

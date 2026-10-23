@@ -34,6 +34,7 @@
 .contact-filter-buttons [data-contact-filter="sysco"] { --filter-color:#006c9c; }
 .contact-filter-buttons [data-contact-filter="regional"] { --filter-color:#76528a; }
 .contact-filter-buttons [data-contact-filter="pc"] { --filter-color:#97552f; }
+.contact-filter-buttons [data-contact-filter="school"] { --filter-color:#247566; }
 .contact-filter-buttons button[aria-pressed="true"] { background:var(--filter-color); color:#fff; box-shadow:0 3px 6px #28485830; }
 .contact-filter-buttons button:hover { transform:translateY(-1px); }
 .contact-filter-buttons button:focus-visible { outline:3px solid #1c4057; outline-offset:3px; }
@@ -50,3 +51,15 @@
 .contact-icon-action.contact-delete { color:#96463f; background:#f7eeed; }
 .contact-icon-action.contact-delete:hover { background:#f0d4d0; }
 .contact-icon-action:focus-visible { outline:3px solid #32627e; outline-offset:2px; }
+
+#addressBookFormDialog .address-contact-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+#stockFormTitle:focus,
+#addressBookFormTitle:focus { outline:none; }
+#addressBookFormDialog .address-contact-row { grid-template-columns:repeat(4,minmax(0,1fr)) auto; }
+#addressBookFormDialog .address-contact-grid label,
+#addressBookFormDialog .address-contact-row label { min-width:0; }
+@media (max-width:650px) {
+  #addressBookFormDialog .address-contact-grid,
+  #addressBookFormDialog .address-contact-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #addressBookFormDialog .address-contact-row > button { grid-column:2; justify-self:end; }
+}
