@@ -5338,8 +5338,21 @@ function mapStockRow(row, headers, defaults, currentCategory, currentVendor) {
   const description = get("product description", "description", "product", "item description");
   const apn = get("apn", "usf", "us foods");
   const supc = get("supc", "sysco");
-  const genericNumber = get("distributor number", "distributornumber", "distributor item number", "item number", "item #", "quality sales item", "quality sales number", "item no");
-  const distributorNumber = ["Quality Sales", "Linford"].includes(normalizeMarketDistributor(defaults.distributor)) ? genericNumber : defaults.distributor === "Sysco" ? supc || genericNumber : apn || supc || genericNumber;
+  // Distributor-specific headers must never supply another distributor's item number.
+  const getItemCode = (...names) => {
+    const aliases = names.map(name => normalizeHeader(name).trim());
+    const index = headers.findIndex(header => aliases.includes(header));
+    return index >= 0 ? String(row[index] || "").trim() : "";
+  };
+  const genericNumber = getItemCode("distributor number", "distributornumber", "distributor item number", "item number", "item #", "item no");
+  const linfordNumber = getItemCode("linford number", "linford item number", "linford item #", "linford #", "linford item", "linford");
+  const qualitySalesNumber = getItemCode("quality sales number", "quality sales item number", "quality sales item #", "quality sales #", "quality sales item", "quality sales", "qs number", "qs item number");
+  const selectedDistributor = normalizeMarketDistributor(defaults.distributor);
+  const distributorNumber = selectedDistributor === "Quality Sales" ? qualitySalesNumber || genericNumber
+    : selectedDistributor === "Linford" ? linfordNumber || genericNumber
+    : selectedDistributor === "Sysco" ? supc || genericNumber
+    : /^US Foods/.test(defaults.distributor) ? apn || genericNumber
+    : genericNumber;
   const manufacturerNumber = get("manufacturer number", "manufacturer product number", "mf#", "mf #", "mfr", "upc");
   const gtin = get("gtin");
   const pack = get("pack");
