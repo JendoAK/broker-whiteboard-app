@@ -94,7 +94,7 @@
       if (!valid(gen, uid) || request !== state.request) return;
       if (error) throw error;
       if (!data || !Array.isArray(data.stockProducts) || !Array.isArray(data.newProducts) || !Array.isArray(data.events)) throw new Error("The workspace response was incomplete. Please refresh and try again.");
-      state.stock = data.stockProducts; state.new = data.newProducts; state.events = data.events.map(event => ({...event, type: event.type === "pc" ? "personal" : event.type === "manufacturer" ? "vendor" : event.type})); state.loaded = true;
+      state.stock = data.stockProducts.map(window.foodBrokerVendors.product); state.new = data.newProducts.map(window.foodBrokerVendors.product); state.events = data.events.map(event => ({...event, vendor:window.foodBrokerVendors.canonical(event.vendor), type: event.type === "pc" ? "personal" : event.type === "manufacturer" ? "vendor" : event.type})); state.loaded = true;
       state.selected = new Set([...state.selected].filter(value => productFromKey(value)));
       refreshFilters(); renderProducts(); renderEvents(); refreshPrintSources();
       status("Up to date · Shared products can be maintained here. Event schedules are read only.");
@@ -105,10 +105,10 @@
   }
   function refreshFilters() {
     const vendor = $("psVendor").value;
-    const vendors = uniqueValues([...state.stock, ...state.new], "vendor");
+    const vendors = window.foodBrokerVendors.options([...state.stock, ...state.new].map(p=>p.vendor));
     $("psVendor").innerHTML = '<option value="">All vendors</option>' + vendors.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
     if (vendors.includes(vendor)) $("psVendor").value = vendor;
-    $("psVendors").innerHTML = vendors.map(v => `<option value="${esc(v)}"></option>`).join("");
+    $("psVendors").innerHTML = window.foodBrokerVendors.names().map(v => `<option value="${esc(v)}"></option>`).join("");
     $("psCategories").innerHTML = uniqueValues(state.stock, "category").map(v => `<option value="${esc(v)}"></option>`).join("");
   }
   function shownProducts() {
@@ -200,7 +200,7 @@
   function productPatch(form, kind) {
     const product = {};
     fields.forEach(field => { if (field !== "notes" || kind === "new") product[field] = text(form.elements[field].value).trim(); });
-    product.vendor = /^nestl[eé]\s+professional$/i.test(product.vendor) ? "Nestle" : product.vendor;
+    Object.assign(product, window.foodBrokerVendors.product(product));
     if (form.elements.id.value) product.id = form.elements.id.value;
     if (kind === "new") { delete product.distributorNumber; delete product.distributor; }
     if (kind === "stock") { if (state.attachmentsChanged) product.attachments = state.attachments.map(a => ({...a})); if (family(product) === "usFoods") product.distributorNumber = product.apn; if (family(product) === "sysco") product.distributorNumber = product.supc; }
@@ -232,6 +232,7 @@
     }
   }
   function applySavedProduct(kind, product) {
+    product = window.foodBrokerVendors.product(product);
     const index = state[kind].findIndex(p => p.id === product.id);
     if (index < 0) state[kind].push(product); else state[kind][index] = product;
     refreshFilters(); renderProducts(); updatePrintSummary();
@@ -339,7 +340,7 @@
       if(number)p.distributorNumber=number;
       delete p.linfordNumber;delete p.qualitySalesNumber;
       if(p.so)p.so=/^(yes|y|true|1|so)$/i.test(p.so)?"Yes":"";
-      return p;
+      return window.foodBrokerVendors.product(p);
     });
   }
   async function readCsv(file) {

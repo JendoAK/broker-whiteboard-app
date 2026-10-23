@@ -1456,7 +1456,7 @@ function normalizeSample(sample) {
     shipmentConfirmation: sample.shipmentConfirmation || "",
     poNumber: sample.poNumber || "",
     dotNumber: sample.dotNumber || "",
-    vendor: sample.vendor || "",
+    vendor: normalizeVendorName(sample.vendor),
     orderedDate: sample.orderedDate || "",
     storageType: sample.storageType || "",
     orderedBy: sample.orderedBy || "",
@@ -1483,7 +1483,7 @@ function normalizeTodo(todo) {
     due: todo.due || "",
     assignedBy: todo.assignedBy || "",
     account: todo.account || "",
-    vendor: todo.vendor || "",
+    vendor: normalizeVendorName(todo.vendor),
     notes: todo.notes || "",
     subtasks: Array.isArray(todo.subtasks)
       ? todo.subtasks.map((subtask) => ({
@@ -1543,6 +1543,7 @@ function normalizeAddressBookEntry(entry) {
 }
 
 function normalizeStockProduct(product) {
+  product = window.foodBrokerVendors.product(product);
   const oldDistributorNumber = product.distributorNumber || "";
   const existingApn = String(Object.hasOwn(product, "apn") ? product.apn ?? "" : /^US Foods/i.test(product.distributor || "") ? oldDistributorNumber : "").trim();
   const existingSupc = String(Object.hasOwn(product, "supc") ? product.supc ?? "" : (product.distributor || "") === "Sysco" ? oldDistributorNumber : "").trim();
@@ -1587,7 +1588,7 @@ function normalizeManualVendorReport(report) {
     sourceMarketProductId: report.sourceMarketProductId || "",
     id: report.id || crypto.randomUUID(),
     account: report.account || "",
-    vendor: report.vendor || "",
+    vendor: normalizeVendorName(report.vendor),
     productShown: report.productShown || "",
     opportunityNote: report.opportunityNote || "",
     outcome: report.outcome || "Unsure",
@@ -1649,14 +1650,11 @@ function normalizeAttachment(file) {
 function normalizeVendorName(value) {
   const text = String(value || "").trim();
   if (!text) return "";
-  return vendorNameRenames[normalizeVendorLogoKey(text)] || text;
+  return window.foodBrokerVendors.canonical(vendorNameRenames[normalizeVendorLogoKey(text)] || text);
 }
 
 function normalizeStockBrandName(value) {
-  const text = String(value || "").trim();
-  // Vendor consolidation must preserve the product's own brand name.
-  const key = normalizeVendorLogoKey(text);
-  return key === "nestle" || key === "nestleprofessional" ? text : normalizeVendorName(text);
+  return window.foodBrokerVendors.brand(value);
 }
 
 function normalizeStockCategory(value) {
@@ -1701,7 +1699,7 @@ function normalizeDotOrder(order) {
     id: order.id || crypto.randomUUID(),
     product: products.map((product) => product.text).join("\n"),
     products,
-    vendor: order.vendor || "",
+    vendor: normalizeVendorName(order.vendor),
     dotNumber: order.dotNumber || "",
     orderedDate: order.orderedDate || "",
     poNumber: order.poNumber || "",
@@ -4783,7 +4781,7 @@ function renderStockVendorGroups(products) {
     .map(([vendor, vendorProducts]) => {
       const logo = getVendorLogo(vendor);
       return `
-      <section class="stock-vendor-group">
+      <section class="stock-vendor-group${window.foodBrokerVendors.logo(vendor) ? " stock-vendor-combined" : ""}">
         <div class="stock-vendor-header">
           <div class="stock-vendor-title">
             ${logo ? `<img class="vendor-logo" src="${escapeAttribute(logo.src)}" alt="${escapeAttribute(logo.alt)}" />` : ""}
@@ -4918,7 +4916,7 @@ function bindStockActions() {
 
 function updateStockVendorSuggestions() {
   const names = new Map();
-  [...getVendorOptions(), ...marketVisits.map((visit) => visit.vendor), ...eventProducts.map((product) => product.vendor)]
+  window.foodBrokerVendors.options([...getVendorOptions(), ...marketVisits.map((visit) => visit.vendor), ...eventProducts.map((product) => product.vendor)])
     .map(normalizeVendorName)
     .filter(Boolean)
     .forEach((name) => {
@@ -5463,7 +5461,7 @@ function updateStockFilterOptions() {
   const selectedCategory = elements.stockCategoryFilter.value;
   const group = getActiveStockGroup();
   const groupedProducts = activeStockList === "k12" ? getK12Products() : stockProducts.filter(product => stockProductMatchesGroup(product, group));
-  const vendors = [...new Set(groupedProducts.map((product) => normalizeVendorName(product.vendor)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const vendors = window.foodBrokerVendors.options(groupedProducts.map(product => product.vendor));
   const categories = [...new Set(stockDefaultCategories.concat(groupedProducts.map((product) => product.category.trim()).filter(Boolean)))].sort((a, b) => a.localeCompare(b));
   elements.stockVendorFilter.innerHTML = `<option value="">All</option>${vendors.map((vendor) => `<option value="${escapeAttribute(vendor)}">${escapeHtml(vendor)}</option>`).join("")}`;
   elements.stockCategoryFilter.innerHTML = `<option value="">All</option>${categories.map((category) => `<option value="${escapeAttribute(category)}">${escapeHtml(category)}</option>`).join("")}`;
@@ -6789,7 +6787,7 @@ function clearMarketFilters() {
 }
 
 function getVendorOptions() {
-  return [...new Set([...stockProducts.map((product) => product.vendor), ...cards.flatMap((card) => (card.products || []).map((product) => product.vendor)), ...manualVendorReports.map((report) => report.vendor)].map(normalizeVendorName).filter(Boolean))].sort();
+  return window.foodBrokerVendors.names();
 }
 
 function fillSelect(select, values, placeholder, selectedValue = "") {
@@ -7058,7 +7056,7 @@ function getTimelineLeadProducts(card) {
   return card.products
     .map((product) => ({
       id: product.id || crypto.randomUUID(),
-      vendor: String(product.vendor || card.vendor || "").trim(),
+      vendor: normalizeVendorName(product.vendor || card.vendor || ""),
       description: String(product.description || "").trim(),
       apn: String(product.apn || "").trim(),
       supc: String(product.supc || "").trim(),
@@ -8679,7 +8677,7 @@ function getCardSearchText(card) {
 }
 
 function cardHasVendor(card, vendor) {
-  const target = String(vendor || "").trim().toLowerCase();
+  const target = normalizeVendorName(vendor).toLowerCase();
   if (!target) return true;
   return normalizeProducts(card).some((product) => product.vendor.toLowerCase() === target);
 }
@@ -9688,7 +9686,7 @@ function normalizeVendorLogoKey(value) {
 }
 
 function getVendorLogo(vendor) {
-  const src = vendorLogoFiles[normalizeVendorLogoKey(vendor)];
+  const src = window.foodBrokerVendors.logo(vendor) || vendorLogoFiles[normalizeVendorLogoKey(normalizeVendorName(vendor))];
   return src ? { src, absoluteSrc: new URL(src, window.location.href).href, alt: `${vendor} logo` } : null;
 }
 
@@ -10024,35 +10022,11 @@ function updateSalesRepSuggestions() {
 }
 
 function getVendorNames() {
-  return [
-    ...new Set(
-      cards
-        .flatMap((card) => normalizeProducts(card).map((product) => product.vendor.trim()))
-        .concat(manualVendorReports.map((report) => report.vendor.trim()))
-        .concat(stockProducts.flatMap((product) => [product.vendor, product.brandName]))
-        .concat(todos.map((todo) => todo.vendor))
-        .concat(marketVisits.map((visit) => visit.vendor))
-        .filter(Boolean)
-        .map(normalizeVendorName)
-        .filter(Boolean)
-    )
-  ].sort((a, b) => a.localeCompare(b));
+  return window.foodBrokerVendors.names();
 }
 
 function getVendorReportVendorNames() {
-  return [
-    ...new Set(
-      stockProducts
-        .map((product) => product.vendor)
-        .concat(cards.flatMap((card) => normalizeProducts(card).map(getVendorReportMainVendor)))
-        .concat(manualVendorReports.map((report) => report.vendor))
-        .concat(marketVisits.map((visit) => visit.vendor))
-        .filter(Boolean)
-        .map(normalizeVendorName)
-        .map((vendor) => String(vendor || "").trim())
-        .filter(Boolean)
-    )
-  ].sort((a, b) => a.localeCompare(b));
+  return window.foodBrokerVendors.names();
 }
 
 function getMatchedVendorName(value) {
@@ -10674,7 +10648,7 @@ function normalizeProducts(card) {
     return card.products
       .map((product) => ({
         id: product.id || crypto.randomUUID(),
-        vendor: String(product.vendor || card.vendor || "").trim(),
+        vendor: normalizeVendorName(product.vendor || card.vendor || ""),
         description: String(product.description || "").trim(),
         apn: card.distributor === "Quality Sales" ? "" : String(product.apn || "").trim(),
         ...(product.distributorNumber || card.distributor === "Quality Sales" ? { distributorNumber: String(product.distributorNumber || (card.distributor === "Quality Sales" ? product.apn : "") || "").trim() } : {})
@@ -10682,7 +10656,7 @@ function normalizeProducts(card) {
       .filter((product) => product.vendor || product.description || getLeadItemNumber(product));
   }
   if (card.product || card.apn) {
-    return [{ id: crypto.randomUUID(), vendor: card.vendor || "", description: card.product || "", apn: card.distributor === "Quality Sales" ? "" : card.apn || "", ...(card.distributor === "Quality Sales" ? { distributorNumber: card.apn || "" } : {}) }];
+    return [{ id: crypto.randomUUID(), vendor: normalizeVendorName(card.vendor || ""), description: card.product || "", apn: card.distributor === "Quality Sales" ? "" : card.apn || "", ...(card.distributor === "Quality Sales" ? { distributorNumber: card.apn || "" } : {}) }];
   }
   return [];
 }

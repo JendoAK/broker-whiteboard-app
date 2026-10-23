@@ -14,7 +14,7 @@
   };
   const text = cached(value => value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " "));
   const vendorText = cached(value => {
-    const normalized = text(value);
+    const normalized = text(window.foodBrokerVendors?.canonical(value) ?? value);
     return normalized === "nestle professional" ? "nestle" : normalized;
   });
   const code = cached(value => {

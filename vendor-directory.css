@@ -1,0 +1,7 @@
+@media(max-width:650px){
+  .stock-vendor-combined .stock-vendor-header{flex-wrap:wrap;align-items:flex-start;gap:8px}
+  .stock-vendor-combined .stock-vendor-title{flex:1 1 100%;min-width:0;flex-wrap:wrap;gap:10px}
+  .stock-vendor-combined .stock-vendor-title>div{flex:1 1 180px;min-width:0}
+  .stock-vendor-combined .stock-vendor-title h3{font-size:20px;overflow-wrap:break-word}
+  .stock-vendor-combined .vendor-logo{width:180px;max-width:100%;height:auto}
+}
