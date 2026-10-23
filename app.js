@@ -132,6 +132,7 @@ const vendorNameRenames = {
   kingscommandfoods: "King's Command",
   michaelfoods: "Michael Foods",
   mountfranklin: "Mount Franklin Foods",
+  nestle: "Nestle",
   nestleprofessional: "Nestle",
   schwans: "CJ Schwan's",
   schwansfoodservice: "CJ Schwan's",
@@ -1298,7 +1299,7 @@ function normalizeMarketVisit(visit) {
     id: visit.id || crypto.randomUUID(),
     type,
     name: visit.name || (type === "manufacturer" ? `${visit.vendor || "Manufacturer"} Market Visit` : "Market Visit"),
-    vendor: visit.vendor || "",
+    vendor: normalizeVendorName(visit.vendor),
     visitorName: visit.visitorName || "",
     startDate: visit.startDate || visit.date || "",
     endDate: visit.endDate || visit.startDate || visit.date || "",
@@ -1552,7 +1553,7 @@ function normalizeStockProduct(product) {
     storage: product.storage || "",
     vendor: normalizeVendorName(product.vendor),
     brandType: normalizeBrandType(product.brandType),
-    brandName: normalizeVendorName(product.brandName),
+    brandName: normalizeStockBrandName(product.brandName),
     category: normalizeStockCategory(product.category),
     so: normalizeYes(product.so),
     attachments: Array.isArray(product.attachments) ? product.attachments.map(normalizeStockAttachment).filter((file) => file.name && (file.data || file.storageId)) : [],
@@ -1644,6 +1645,13 @@ function normalizeVendorName(value) {
   return vendorNameRenames[normalizeVendorLogoKey(text)] || text;
 }
 
+function normalizeStockBrandName(value) {
+  const text = String(value || "").trim();
+  // Vendor consolidation must preserve the product's own brand name.
+  const key = normalizeVendorLogoKey(text);
+  return key === "nestle" || key === "nestleprofessional" ? text : normalizeVendorName(text);
+}
+
 function normalizeStockCategory(value) {
   const text = String(value || "").trim();
   if (!text) return "";
@@ -1654,7 +1662,7 @@ function migrateStockProductData() {
   let changed = false;
   stockProducts = stockProducts.map((product) => {
     const vendor = normalizeVendorName(product.vendor);
-    const brandName = normalizeVendorName(product.brandName);
+    const brandName = normalizeStockBrandName(product.brandName);
     const category = normalizeStockCategory(product.category);
     const productChanged = vendor !== product.vendor || brandName !== product.brandName || category !== product.category;
     if (productChanged) changed = true;
@@ -4759,7 +4767,7 @@ function renderStockVendorGroups(products) {
   const crossStockIndex = getCrossStockIndex();
   const groups = new Map();
   products.forEach((product) => {
-    const vendor = product.vendor || "No vendor";
+    const vendor = normalizeVendorName(product.vendor) || "No vendor";
     if (!groups.has(vendor)) groups.set(vendor, []);
     groups.get(vendor).push(product);
   });
@@ -4804,7 +4812,7 @@ function renderStockVendorGroups(products) {
 
 function getVisibleStockProducts() {
   const query = elements.stockSearch.value.trim().toLowerCase();
-  const vendor = elements.stockVendorFilter.value.trim().toLowerCase();
+  const vendor = normalizeVendorName(elements.stockVendorFilter.value).toLowerCase();
   const category = elements.stockCategoryFilter.value.trim().toLowerCase();
   const group = getActiveStockGroup();
   return (activeStockList === "k12" ? getK12Products() : stockProducts)
@@ -4814,7 +4822,7 @@ function getVisibleStockProducts() {
       if (elements.stockDistributorFilter.value && product.distributor !== elements.stockDistributorFilter.value) return false;
       if (elements.stockStorageFilter.value && product.storage !== elements.stockStorageFilter.value) return false;
       if (elements.stockBrandTypeFilter.value && product.brandType !== elements.stockBrandTypeFilter.value) return false;
-      if (vendor && !product.vendor.toLowerCase().includes(vendor)) return false;
+      if (vendor && normalizeVendorName(product.vendor).toLowerCase() !== vendor) return false;
       if (category && product.category.toLowerCase() !== category) return false;
       if (query && !getStockSearchText(product).includes(query)) return false;
       return true;
@@ -4834,6 +4842,7 @@ function getStockSearchText(product) {
     product.packaging,
     product.storage,
     product.vendor,
+    normalizeVendorName(product.vendor) === "Nestle" ? "Nestle Professional Nestlé Professional" : "",
     product.brandType,
     product.brandName,
     product.category,
@@ -5409,11 +5418,11 @@ function updateStockCategorySuggestions() {
 }
 
 function updateStockFilterOptions() {
-  const selectedVendor = elements.stockVendorFilter.value;
+  const selectedVendor = normalizeVendorName(elements.stockVendorFilter.value);
   const selectedCategory = elements.stockCategoryFilter.value;
   const group = getActiveStockGroup();
   const groupedProducts = activeStockList === "k12" ? getK12Products() : stockProducts.filter(product => stockProductMatchesGroup(product, group));
-  const vendors = [...new Set(groupedProducts.map((product) => product.vendor.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const vendors = [...new Set(groupedProducts.map((product) => normalizeVendorName(product.vendor)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const categories = [...new Set(stockDefaultCategories.concat(groupedProducts.map((product) => product.category.trim()).filter(Boolean)))].sort((a, b) => a.localeCompare(b));
   elements.stockVendorFilter.innerHTML = `<option value="">All</option>${vendors.map((vendor) => `<option value="${escapeAttribute(vendor)}">${escapeHtml(vendor)}</option>`).join("")}`;
   elements.stockCategoryFilter.innerHTML = `<option value="">All</option>${categories.map((category) => `<option value="${escapeAttribute(category)}">${escapeHtml(category)}</option>`).join("")}`;
@@ -6535,7 +6544,8 @@ function getMarketVisitProducts(visit) {
 }
 
 function getProductsByVendor(vendor) {
-  return vendor ? stockProducts.filter((product) => product.vendor === vendor) : [];
+  const name = normalizeVendorName(vendor);
+  return name ? stockProducts.filter((product) => normalizeVendorName(product.vendor) === name) : [];
 }
 
 function getMarketProductCandidates(visit) {
@@ -6734,7 +6744,7 @@ function clearMarketFilters() {
 }
 
 function getVendorOptions() {
-  return [...new Set([...stockProducts.map((product) => product.vendor), ...cards.flatMap((card) => (card.products || []).map((product) => product.vendor)), ...manualVendorReports.map((report) => report.vendor)].filter(Boolean))].sort();
+  return [...new Set([...stockProducts.map((product) => product.vendor), ...cards.flatMap((card) => (card.products || []).map((product) => product.vendor)), ...manualVendorReports.map((report) => report.vendor)].map(normalizeVendorName).filter(Boolean))].sort();
 }
 
 function fillSelect(select, values, placeholder, selectedValue = "") {
@@ -9624,6 +9634,8 @@ function shortenText(value, maxLength) {
 
 function normalizeVendorLogoKey(value) {
   return String(value || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/&/g, "and")
     .replace(/[^a-z0-9]/g, "");
@@ -9673,7 +9685,7 @@ function renderStockPrintDocument(products, selectedColumnKeys, selectedVendor =
   const isVendorPageLayout = printLayout === "vendor-page" && !selectedVendor;
   const groups = new Map();
   products.forEach((product) => {
-    const vendor = product.vendor || "No vendor";
+    const vendor = normalizeVendorName(product.vendor) || "No vendor";
     if (!groups.has(vendor)) groups.set(vendor, []);
     groups.get(vendor).push(product);
   });
@@ -9974,7 +9986,7 @@ function getVendorNames() {
         .concat(todos.map((todo) => todo.vendor))
         .concat(marketVisits.map((visit) => visit.vendor))
         .filter(Boolean)
-        .map((vendor) => String(vendor || "").trim())
+        .map(normalizeVendorName)
         .filter(Boolean)
     )
   ].sort((a, b) => a.localeCompare(b));
@@ -9997,7 +10009,7 @@ function getVendorReportVendorNames() {
 }
 
 function getMatchedVendorName(value) {
-  const typed = String(value || "").trim().toLowerCase();
+  const typed = normalizeVendorName(value).toLowerCase();
   if (!typed) return "";
   return getVendorNames().find((vendor) => vendor.toLowerCase() === typed) || "";
 }

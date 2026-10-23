@@ -13,6 +13,10 @@
     };
   };
   const text = cached(value => value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " "));
+  const vendorText = cached(value => {
+    const normalized = text(value);
+    return normalized === "nestle professional" ? "nestle" : normalized;
+  });
   const code = cached(value => {
     const normalized = value.toLowerCase().replace(/[^a-z0-9]/g, "");
     return ["na", "none", "unknown", "optional", "tbd", "notavailable"].includes(normalized) ? "" : normalized;
@@ -34,7 +38,7 @@
     const result = ids(product).map(id => `id|${id}`);
     for (const property of ["apn", "supc", "gtin"]) if (code(product[property])) result.push(`${property}|${code(product[property])}`);
     if (text(product.distributor) && code(product.distributorNumber)) result.push(`distributor|${text(product.distributor)}|${code(product.distributorNumber)}`);
-    const vendor = text(product.vendor);
+    const vendor = vendorText(product.vendor);
     if (vendor && code(product.manufacturerNumber)) result.push(`mf|${vendor}|${code(product.manufacturerNumber)}`);
     if (vendor && text(product.description) && pack(product.packaging)) result.push(`name|${vendor}|${text(product.description)}|${pack(product.packaging)}`);
     return result;
@@ -79,7 +83,7 @@
     if (!compatible(a, b)) return false;
     if (["apn", "supc", "gtin"].some(property => code(a[property]) && code(a[property]) === code(b[property]))) return true;
     if (text(a.distributor) && text(a.distributor) === text(b.distributor) && code(a.distributorNumber) && code(a.distributorNumber) === code(b.distributorNumber)) return true;
-    if (!text(a.vendor) || text(a.vendor) !== text(b.vendor)) return false;
+    if (!vendorText(a.vendor) || vendorText(a.vendor) !== vendorText(b.vendor)) return false;
     if (code(a.manufacturerNumber) && code(a.manufacturerNumber) === code(b.manufacturerNumber)) return true;
     // Name alone cannot distinguish pack sizes. Require a stated, identical pack.
     return Boolean(text(a.description) && text(a.description) === text(b.description) && pack(a.packaging) && pack(a.packaging) === pack(b.packaging));
@@ -109,7 +113,7 @@
   function key(product) {
     if (!product) return "";
     const manufacturer = code(product.manufacturerNumber);
-    const vendor = text(product.vendor);
+    const vendor = vendorText(product.vendor);
     const variant = [pack(product.packaging), storage(product.storage)].join("|");
     if (vendor && manufacturer) return `mf|${vendor}|${manufacturer}|${variant}`;
     for (const property of ["apn", "supc", "gtin"]) if (code(product[property])) return `${property}|${code(product[property])}|${variant}`;
