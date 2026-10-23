@@ -27,9 +27,9 @@
         <div class="ps-section-heading"><div><h2 id="psProductsTitle">Product lists</h2><p>Add and maintain the team’s shared products.</p></div><div class="ps-actions"><button type="button" id="psImport">Import CSV</button><button type="button" id="psAdd" class="primary-action">+ Add product</button></div></div>
         <div class="ps-toolbar">
           <div class="ps-segment" role="group" aria-label="Product collection"><button type="button" data-collection="stock" aria-pressed="true">Stocked products</button><button type="button" data-collection="new" aria-pressed="false">New products</button></div>
-          <label class="ps-search"><span class="sr-only">Search products</span><input id="psSearch" type="search" placeholder="Product, vendor, MF#, APN or SUPC…" /></label>
+          <label class="ps-search"><span class="sr-only">Search products</span><input id="psSearch" type="search" placeholder="Product, vendor, MF#, APN, SUPC or item number…" /></label>
           <label><span class="sr-only">Vendor</span><select id="psVendor"><option value="">All vendors</option></select></label>
-          <label><span class="sr-only">Distributor</span><select id="psDistributor"><option value="">All distributors</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="other">Other</option></select></label>
+          <label><span class="sr-only">Distributor</span><select id="psDistributor"><option value="">All distributors</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales">Quality Sales</option><option value="other">Other</option></select></label>
         </div>
         <div class="ps-list-meta"><span id="psCount"></span><button id="psSelectVisible" type="button" class="ps-text">Select shown for printing</button><span id="psSelectionCount"></span></div>
         <div id="psProductList" class="ps-product-list"></div>
@@ -44,7 +44,7 @@
         <div class="ps-print-options">
           <label><span>Products to print</span><select id="psPrintSource"><option value="selected">Selected products</option><option value="shown">Current product search</option></select></label>
           <label><span>Format</span><select id="psPrintFormat"><option value="list">Product list</option><option value="labels">2 × 4 inch labels · 10 per Letter sheet</option><option value="cards">4 × 6 inch presentation cards</option></select></label>
-          <label><span>Distributor logo</span><select id="psPrintLogo"><option value="none">No distributor logo</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option></select></label>
+          <label><span>Distributor logo</span><select id="psPrintLogo"><option value="none">No distributor logo</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales">Quality Sales</option></select></label>
           <label><span>Heading</span><input id="psPrintHeading" value="Product presentation" maxlength="120" /></label>
           <label><span>Copies of each label</span><input id="psPrintCopies" type="number" min="1" max="20" value="1" /></label>
           <button type="button" id="psPreparePrint" class="primary-action">Preview &amp; print</button>
@@ -59,12 +59,12 @@
   <dialog id="psProductDialog" aria-labelledby="psProductDialogTitle"><form id="psProductForm"><div class="form-header"><div><p class="eyebrow">Shared product</p><h2 id="psProductDialogTitle">Product</h2></div><button type="button" data-close-dialog class="icon-button" aria-label="Close product">×</button></div><p class="ps-hint" id="psProductHelp"></p><input type="hidden" name="id" /><div class="ps-form-grid">
     <label class="ps-span-two"><span>Product description</span><input name="description" required maxlength="500" /></label>
     <label><span>Vendor / manufacturer</span><input name="vendor" required maxlength="160" list="psVendors" /></label><datalist id="psVendors"></datalist>
-    <label data-stock-field><span>Distributor</span><select name="distributor"><option>US Foods Anchorage</option><option>US Foods Fairbanks</option><option>Sysco</option><option>Linford</option><option>Other</option><option>Not stocked</option></select></label>
+    <label data-stock-field><span>Distributor</span><select name="distributor"><option>US Foods Anchorage</option><option>US Foods Fairbanks</option><option>Sysco</option><option>Linford</option><option>Quality Sales</option><option>Other</option><option>Not stocked</option></select></label>
     <label><span>Manufacturer product number (MF#)</span><input name="manufacturerNumber" maxlength="100" /></label>
     <label><span>Packaging</span><input name="packaging" maxlength="160" /></label>
     <label><span>US Foods APN</span><input name="apn" maxlength="80" inputmode="text" /></label>
     <label><span>Sysco SUPC</span><input name="supc" maxlength="80" inputmode="text" /></label>
-    <label data-stock-field><span>Other distributor item number</span><input name="distributorNumber" maxlength="100" /></label>
+    <label data-stock-field><span>Distributor item number</span><input name="distributorNumber" maxlength="100" /></label>
     <label><span>GTIN</span><input name="gtin" maxlength="100" /></label>
     <label><span>Storage</span><input name="storage" maxlength="100" list="psStorage" /></label><datalist id="psStorage"><option>Frozen</option><option>Chill</option><option>Dry</option></datalist>
     <label><span>Brand name</span><input name="brandName" maxlength="160" /></label>
@@ -77,7 +77,7 @@
   <dialog id="psImportDialog" aria-labelledby="psImportTitle"><div class="form-header"><h2 id="psImportTitle">Import stocked products</h2><button type="button" data-close-dialog class="icon-button" aria-label="Close import">×</button></div><p>Use the CSV template to add products. Each row needs a description, vendor and distributor. An existing product ID updates that item; a blank ID adds a new item.</p><button id="psCsvTemplate" type="button">Download CSV template</button><label class="ps-import-file"><span>CSV file · up to 500 rows</span><input type="file" id="psCsvInput" accept=".csv,text/csv" /></label><p id="psImportStatus" class="ps-status" role="status"></p><div id="psImportPreview"></div><div class="ps-dialog-actions"><button type="button" data-close-dialog>Close</button><button id="psRunImport" type="button" class="primary-action" disabled>Import products</button></div></dialog>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
   <script src="supabase-config.js"></script>
-  <script src="supabase-auth.js?v=20261023-account1"></script>
-  <script src="product-support.js?v=20261023-support1"></script>
+  <script src="supabase-auth.js?v=20261023-qualitysales1"></script>
+  <script src="product-support.js?v=20261023-qualitysales1"></script>
 </body>
 </html>

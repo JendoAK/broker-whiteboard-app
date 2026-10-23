@@ -1,0 +1,9 @@
+.stock-logo-quality-sales-img {
+  width: 105px;
+  max-height: 64px;
+  object-fit: contain;
+}
+
+.operator-distributor-choice input[value="Quality Sales"] + .operator-distributor-logo img {
+  max-height: 34px;
+}

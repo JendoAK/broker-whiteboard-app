@@ -9,16 +9,18 @@ function printMarketOperatorProducts(visitId, operatorId, panel) {
   }
   const dialog = createVisitDialog("Print product list");
   const body = dialog.querySelector("[data-visit-entry-body]");
+  const qualitySales = selection.distributor === "Quality Sales" || window.foodBrokerWorkspace?.getNumberMode?.() === "item";
   body.innerHTML = `<form data-operator-print-options>
     <p>${escapeHtml(getMarketOperatorDisplayName(selection.operator))} · ${selection.products.length} ${selection.products.length === 1 ? "product" : "products"} selected</p>
     <fieldset><legend>Logos</legend>
       <label><input type="checkbox" name="companyLogo" checked> Include Pierce Cartwright logo</label>
-      <label>Distributor logo<select name="logo"><option value="none">No distributor logo</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option></select></label>
+      <label>Distributor logo<select name="logo"><option value="none">No distributor logo</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales"${qualitySales ? ' selected' : ''}>Quality Sales</option></select></label>
     </fieldset>
     <fieldset><legend>Item numbers to print</legend>
       <label><input type="checkbox" name="codes" value="manufacturerNumber" checked> MF number</label>
-      <label><input type="checkbox" name="codes" value="supc" checked> Sysco SUPC</label>
-      <label><input type="checkbox" name="codes" value="apn" checked> US Foods APN</label>
+      <label><input type="checkbox" name="codes" value="supc"${qualitySales ? '' : ' checked'}> Sysco SUPC</label>
+      <label><input type="checkbox" name="codes" value="apn"${qualitySales ? '' : ' checked'}> US Foods APN</label>
+      <label><input type="checkbox" name="codes" value="distributorNumber"${qualitySales ? ' checked' : ''}> Item #</label>
     </fieldset>
     <div class="form-actions"><button class="ghost-action" type="button" data-cancel-print>Cancel</button><button class="primary-action" type="submit">Print Product List</button></div>
   </form>`;
@@ -32,7 +34,7 @@ function printMarketOperatorProducts(visitId, operatorId, panel) {
   dialog.showModal();
 }
 
-function renderOperatorProductPrint({ visit, operator, products }, options = {}) {
+function renderOperatorProductPrint({ visit, operator, products, distributor }, options = {}) {
   const operatorName = getMarketOperatorDisplayName(operator);
   const logo = getEventPrintLogo(options.logo);
   const logos = `${options.companyLogo !== false ? `<img src="${escapeAttribute(getPrintAssetUrl(printBrandLogos.pierceCartwright))}" alt="Pierce Cartwright">` : ""}${logo ? `<img src="${escapeAttribute(getPrintAssetUrl(logo.src))}" alt="${escapeAttribute(logo.name)}">` : ""}`;
@@ -48,7 +50,7 @@ function renderOperatorProductPrint({ visit, operator, products }, options = {})
     th { background: #f5e4c7; } th:first-child, td:first-child { width: 34%; }
     thead { display: table-header-group; } tr { break-inside: avoid; }
     @media screen { body { max-width: 1100px; margin: 24px auto; padding: 16px; } }
-  </style></head><body><header>${logos}<div><h1>${escapeHtml(operatorName)}</h1><p>Product list · ${products.length} selected</p><p>${escapeHtml(getMarketVisitDisplayName(visit))} · ${escapeHtml(formatDateRange(visit.startDate, visit.endDate))}</p></div></header>${renderVisitProductPrintTable(products, options.codes || 'all')}</body></html>`;
+  </style></head><body><header>${logos}<div><h1>${escapeHtml(operatorName)}</h1><p>Product list · ${products.length} selected</p><p>${escapeHtml(getMarketVisitDisplayName(visit))} · ${escapeHtml(formatDateRange(visit.startDate, visit.endDate))}</p></div></header>${renderVisitProductPrintTable(products, options.codes || (distributor === 'Quality Sales' ? ['manufacturerNumber', 'distributorNumber'] : 'all'))}</body></html>`;
 }
 
 function renderVendorVisitCalendarPrint(visit, sections) {

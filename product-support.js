@@ -10,7 +10,7 @@
   const fields = ["description", "vendor", "distributor", "distributorNumber", "manufacturerNumber", "apn", "supc", "gtin", "packaging", "storage", "brandName", "brandType", "category", "notes"];
   const csvFields = ["id", "description", "vendor", "distributor", "manufacturerNumber", "apn", "supc", "distributorNumber", "gtin", "packaging", "storage", "brandName", "brandType", "category"];
   const typeNames = { personal: "Market visit", vendor: "Vendor visit", foodshow: "Foodshow", testkitchen: "Test kitchen" };
-  const logos = { usFoods: ["us-foods-logo.svg", "US Foods"], sysco: ["sysco-logo.png?v=20260917-official1", "Sysco"], linford: ["linford-logo.svg", "Linford"] };
+  const logos = { usFoods: ["us-foods-logo.svg", "US Foods"], sysco: ["sysco-logo.png?v=20260917-official1", "Sysco"], linford: ["linford-logo.svg", "Linford"], qualitySales: ["quality-sales-logo.png", "Quality Sales"] };
   const state = { userId: "", generation: 0, request: 0, stock: [], new: [], events: [], selected: new Set(), collection: "stock", date: "upcoming", view: "products", editing: null, attachments: [], attachmentsChanged: false, importRows: [], importRunning: false, saving: false, readingFiles: false, frames: new Set(), eventId: "", loaded: false };
 
   function auth() { return window.foodBrokerBaseAuth; }
@@ -34,9 +34,11 @@
     if (/^us\s*foods/.test(d)) return "usFoods";
     if (d.includes("sysco")) return "sysco";
     if (d.includes("linford")) return "linford";
+    if (/^quality\s*sales$/.test(d)) return "qualitySales";
     return "other";
   }
-  function codes(p) { return [["MF#", p.manufacturerNumber], ["APN", p.apn], ["SUPC", p.supc], ["Item", !p.apn && !p.supc ? p.distributorNumber : ""]].filter(([, v]) => v).map(([label, v]) => label + " " + v).join(" · "); }
+  function genericItemNumber(p) { return !["usFoods", "sysco"].includes(family(p)) ? p.distributorNumber : ""; }
+  function codes(p) { return [["MF#", p.manufacturerNumber], ["APN", p.apn], ["SUPC", p.supc], ["Item", genericItemNumber(p)]].filter(([, v]) => v).map(([label, v]) => label + " " + v).join(" · "); }
   function description(p) { return p.description || "Untitled product"; }
   function metadata(p) { return [p.vendor, p.brandName, p.distributor, codes(p), p.packaging, p.storage].filter(Boolean).join(" · "); }
   function uniqueValues(items, field) { return [...new Set(items.map(p => text(p[field]).trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)); }
@@ -289,7 +291,8 @@
   function asset(value) { return new URL(value, window.location.href).href; }
   function logoMarkup(choice) { return `<div class="ps-preview-logos"><img src="${esc(asset("vendor-logos/pierce-cartwright.png"))}" alt="Pierce Cartwright" />${logos[choice] ? `<img src="${esc(asset(logos[choice][0]))}" alt="${esc(logos[choice][1])}" />` : ""}</div>`; }
   function printMarkup(products, format, logo, heading, copies) {
-    if (format === "list") return `<section class="ps-sheet-preview">${logoMarkup(logo)}<h2>${esc(heading)}</h2><p>${products.length} products · ${esc(new Date().toLocaleDateString())}</p><table class="ps-preview-table"><thead><tr><th>Product</th><th>Vendor / brand</th><th>MF#</th><th>APN</th><th>SUPC</th><th>Pack / storage</th></tr></thead><tbody>${products.map(p => `<tr><td>${esc(description(p))}</td><td>${esc([p.vendor,p.brandName].filter(Boolean).join(" · "))}</td><td>${esc(p.manufacturerNumber)}</td><td>${esc(p.apn)}</td><td>${esc(p.supc)}</td><td>${esc([p.packaging,p.storage].filter(Boolean).join(" · "))}</td></tr>`).join("")}</tbody></table></section>`;
+    const hasGenericItems = products.some(p => genericItemNumber(p));
+    if (format === "list") return `<section class="ps-sheet-preview">${logoMarkup(logo)}<h2>${esc(heading)}</h2><p>${products.length} products · ${esc(new Date().toLocaleDateString())}</p><table class="ps-preview-table"><thead><tr><th>Product</th><th>Vendor / brand</th><th>MF#</th><th>APN</th><th>SUPC</th>${hasGenericItems ? "<th>Item #</th>" : ""}<th>Pack / storage</th></tr></thead><tbody>${products.map(p => `<tr><td>${esc(description(p))}</td><td>${esc([p.vendor,p.brandName].filter(Boolean).join(" · "))}</td><td>${esc(p.manufacturerNumber)}</td><td>${esc(p.apn)}</td><td>${esc(p.supc)}</td>${hasGenericItems ? `<td>${esc(genericItemNumber(p))}</td>` : ""}<td>${esc([p.packaging,p.storage].filter(Boolean).join(" · "))}</td></tr>`).join("")}</tbody></table></section>`;
     const labels = products.flatMap(p => Array.from({length: copies}, () => `<article class="ps-preview-label">${logoMarkup(logo)}<div><p>${esc([p.vendor,p.brandName].filter(Boolean).join(" · "))}</p><h3>${esc(description(p))}</h3><p>${esc(codes(p))}</p><p>${esc([p.packaging,p.storage].filter(Boolean).join(" · "))}</p></div></article>`));
     if (format === "cards") return labels.map(label => `<section class="ps-sheet-preview ps-preview-cards">${label}</section>`).join("");
     const pages = []; for (let i = 0; i < labels.length; i += 10) pages.push(`<section class="ps-sheet-preview"><div class="ps-preview-label-grid">${labels.slice(i,i+10).join("")}</div></section>`); return pages.join("");

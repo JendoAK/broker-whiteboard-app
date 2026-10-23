@@ -1,16 +1,19 @@
 "use strict";
 
 function formatVisitProductCodes(product) {
-  const codes = { apn: product.apn && `APN: ${product.apn}`, supc: product.supc && `SUPC: ${product.supc}`, manufacturerNumber: `MF#: ${product.manufacturerNumber || '—'}` };
+  const itemNumber = String(product.distributorNumber || '').trim();
+  const mirroredNumber = product.distributor !== 'Quality Sales' && [product.apn, product.supc].some(code => itemNumber === String(code || '').trim());
+  const genericItem = !/^(us\s*foods\b|sysco$)/i.test(String(product.distributor || '').trim()) && !mirroredNumber && itemNumber;
+  const codes = { apn: product.apn && `APN: ${product.apn}`, supc: product.supc && `SUPC: ${product.supc}`, distributorNumber: genericItem && `Item #: ${genericItem}`, manufacturerNumber: `MF#: ${product.manufacturerNumber || '—'}` };
   const mode = window.foodBrokerWorkspace?.getNumberMode?.() || 'apn';
-  const keys = mode === 'supc' ? ['supc', 'apn', 'manufacturerNumber'] : ['apn', 'supc', 'manufacturerNumber'];
+  const keys = mode === 'item' ? ['distributorNumber', 'apn', 'supc', 'manufacturerNumber'] : mode === 'supc' ? ['supc', 'apn', 'distributorNumber', 'manufacturerNumber'] : ['apn', 'supc', 'distributorNumber', 'manufacturerNumber'];
   return keys.map(key => codes[key]).filter(Boolean).join(' · ');
 }
 
 function renderVisitProductPrintTable(products, mode = 'mf', includeNotes = false) {
-  const choices = { mf: ['manufacturerNumber'], apn: ['apn'], supc: ['supc'], 'mf-apn': ['manufacturerNumber', 'apn'], 'mf-supc': ['manufacturerNumber', 'supc'], all: ['manufacturerNumber', 'apn', 'supc'] };
+  const choices = { mf: ['manufacturerNumber'], apn: ['apn'], supc: ['supc'], item: ['distributorNumber'], 'mf-apn': ['manufacturerNumber', 'apn'], 'mf-supc': ['manufacturerNumber', 'supc'], 'mf-item': ['manufacturerNumber', 'distributorNumber'], all: ['manufacturerNumber', 'apn', 'supc', 'distributorNumber'] };
   const keys = Array.isArray(mode) ? choices.all.filter(key => mode.includes(key)) : choices[mode] || choices.mf;
-  const labels = { manufacturerNumber: 'MF#', apn: 'US Foods APN', supc: 'Sysco SUPC' };
+  const labels = { manufacturerNumber: 'MF#', apn: 'US Foods APN', supc: 'Sysco SUPC', distributorNumber: 'Item #' };
   const columns = ['description', ...keys, 'packaging', 'storage', ...(includeNotes ? ['notes'] : [])];
   const headers = ['Product', ...keys.map(key => labels[key]), 'Packaging', 'Storage', ...(includeNotes ? ['Notes'] : [])];
   return `<table><thead><tr>${headers.map(label => `<th>${escapeHtml(label)}</th>`).join('')}</tr></thead><tbody>${groupVisitProducts(products).map(group => `<tr class="print-vendor-heading"><th colspan="${columns.length}" style="font-size:16px;background:#e8d4ae;text-align:left;break-after:avoid">${escapeHtml(group.vendor)}</th></tr>${group.products.map(product => `<tr>${columns.map(key => `<td>${escapeHtml(product[key] || '')}${key === 'description' && product.isNewEventProduct ? '<br><small>New · Not yet stocked</small>' : ''}</td>`).join('')}</tr>`).join('')}`).join('') || `<tr><td colspan="${columns.length}">No products selected.</td></tr>`}</tbody></table>`;

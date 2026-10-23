@@ -371,7 +371,8 @@
           <fieldset id="authWorkspaceChoices" class="account-workspace-options"><legend class="account-settings-sr-only">Preferred workspace</legend>
             <label><input type="radio" name="accountWorkspaceMode" value="usFoods" /><span><strong>US Foods</strong><small>APNs and US Foods stocked items first</small></span></label>
             <label><input type="radio" name="accountWorkspaceMode" value="sysco" /><span><strong>Sysco</strong><small>SUPCs and Sysco stocked items first</small></span></label>
-            <label><input type="radio" name="accountWorkspaceMode" value="mixed" /><span><strong>Mixed distributors</strong><small>All distributors, with both product codes</small></span></label>
+            <label><input type="radio" name="accountWorkspaceMode" value="qualitySales" /><span><strong>Quality Sales</strong><small>Quality Sales stocked items and item numbers first</small></span></label>
+            <label><input type="radio" name="accountWorkspaceMode" value="mixed" /><span><strong>Mixed distributors</strong><small>All distributors, including Quality Sales, with all product codes</small></span></label>
           </fieldset><div class="account-workspace-actions"><button type="button" class="primary-action" id="authSaveWorkspace">Save workspace</button></div>
         </section>
         <p class="auth-status" id="authStatus" role="status" aria-live="polite"></p>
@@ -505,7 +506,7 @@
     const button = dialog?.querySelector("#authSaveWorkspace");
     if (!dialog?.open || !workspaceSettingsAvailable() || button.disabled) return;
     const mode = dialog.querySelector('[name="accountWorkspaceMode"]:checked')?.value;
-    if (!["usFoods", "sysco", "mixed"].includes(mode)) { setStatus("Choose your preferred workspace.", "error"); return; }
+    if (!["usFoods", "sysco", "qualitySales", "mixed"].includes(mode)) { setStatus("Choose your preferred workspace.", "error"); return; }
     const uid = currentUser.id, version = accountDialogVersion;
     const stillCurrent = () => dialog.open && accountDialogVersion === version && currentUser?.id === uid && workspaceSettingsAvailable();
     button.disabled = true; dialog.querySelector("#authWorkspaceChoices").disabled = true;

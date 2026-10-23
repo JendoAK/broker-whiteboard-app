@@ -1,4 +1,4 @@
-const marketCallDistributors = ["Sysco", "US Foods", "Linford", "Other"];
+const marketCallDistributors = ["Sysco", "US Foods", "Linford", "Quality Sales", "Other"];
 const peopleContactsStorageKey = "broker-whiteboard-people-contacts";
 const columns = [
   "New Lead",
@@ -45,6 +45,11 @@ const stockListGroups = {
     label: "Linford Stock List",
     distributors: ["Linford"],
     defaultDistributor: "Linford"
+  },
+  qualitySales: {
+    label: "Quality Sales Stock List",
+    distributors: ["Quality Sales"],
+    defaultDistributor: "Quality Sales"
   }
 };
 const stockPrintColumns = [
@@ -53,6 +58,7 @@ const stockPrintColumns = [
   { key: "brandType", label: "Brand Type" },
   { key: "apn", label: "US Foods #" },
   { key: "supc", label: "SUPC" },
+  { key: "distributorNumber", label: "Item #" },
   { key: "manufacturerNumber", label: "MF#" },
   { key: "gtin", label: "GTIN" },
   { key: "packaging", label: "Packaging" },
@@ -1330,6 +1336,7 @@ function normalizeMarketVisit(visit) {
 function normalizeMarketDistributor(value) {
   value = String(value || "").trim();
   if (/^us\s*foods\b/i.test(value)) return "US Foods";
+  if (/^quality[\s-]*sales(?:\s+food\s*service)?$/i.test(value)) return "Quality Sales";
   return ["Sysco", "Linford", "Other"].find(item => item.toLowerCase() === value.toLowerCase()) || "";
 }
 
@@ -1349,13 +1356,13 @@ function getMarketOperatorProductNumber(product, distributor) {
   const manufacturerNumber = String(product.manufacturerNumber || "").trim();
   if (distributor === "Sysco") return String(product.supc || manufacturerNumber).trim();
   if (distributor === "Other") return manufacturerNumber;
-  if (distributor === "Linford") {
-    const linford = stockProducts.filter(item => distributorMatchesStock(item, "Linford"));
-    const aliases = linford.filter(item => marketProductIdsInclude([item.id], product));
+  if (["Linford", "Quality Sales"].includes(distributor)) {
+    const distributorStocks = stockProducts.filter(item => distributorMatchesStock(item, distributor));
+    const aliases = distributorStocks.filter(item => marketProductIdsInclude([item.id], product));
     const numbers = [...new Set(aliases.map(item => String(item.distributorNumber || "").trim()).filter(Boolean))];
-    if (numbers.length) return numbers.length === 1 ? numbers[0] : manufacturerNumber;
-    const match = window.foodBrokerProducts.stockMatch({ ...product, linkedStockId: "", canonicalStockId: "", explicitLinkedStockId: "", aliasProductIds: [] }, linford);
-    return String(match?.distributorNumber || (distributorMatchesStock(product, "Linford") ? product.distributorNumber : "") || manufacturerNumber).trim();
+    if (numbers.length) return numbers.length === 1 ? numbers[0] : distributor === "Quality Sales" ? "" : manufacturerNumber;
+    const match = window.foodBrokerProducts.stockMatch({ ...product, linkedStockId: "", canonicalStockId: "", explicitLinkedStockId: "", aliasProductIds: [] }, distributorStocks);
+    return String(match?.distributorNumber || (distributorMatchesStock(product, distributor) ? product.distributorNumber : "") || (distributor === "Quality Sales" ? "" : manufacturerNumber)).trim();
   }
   return String(product.apn || (distributorMatchesStock(product, "US Foods") ? product.distributorNumber : "") || manufacturerNumber).trim();
 }
@@ -1541,8 +1548,8 @@ function normalizeStockProduct(product) {
   const existingSupc = String(Object.hasOwn(product, "supc") ? product.supc ?? "" : (product.distributor || "") === "Sysco" ? oldDistributorNumber : "").trim();
   return {
     id: product.id || crypto.randomUUID(),
-    distributor: product.distributor || "US Foods Anchorage",
-    distributorNumber: product.distributorNumber || existingApn || existingSupc || "",
+    distributor: normalizeMarketDistributor(product.distributor) === "Quality Sales" ? "Quality Sales" : product.distributor || "US Foods Anchorage",
+    distributorNumber: normalizeMarketDistributor(product.distributor) === "Quality Sales" ? String(product.distributorNumber || "").trim() : product.distributorNumber || existingApn || existingSupc || "",
     apn: existingApn,
     supc: existingSupc,
     k12: Boolean(product.k12),
@@ -2849,7 +2856,7 @@ function renderLeadTableRow(card) {
     ? products
         .map((product) => {
           const vendor = product.vendor ? `${escapeHtml(product.vendor)}: ` : "";
-          const apn = product.apn ? ` (${escapeHtml(product.apn)})` : "";
+          const apn = getLeadItemNumber(product) ? ` (${escapeHtml(getLeadItemNumber(product))})` : "";
           return `${vendor}${escapeHtml(product.description || "Product")}${apn}`;
         })
         .join("<br>")
@@ -2912,7 +2919,7 @@ function createCard(card) {
       `<span class="product-stack">${products
         .map((product) => {
           const vendor = product.vendor ? `<span class="product-vendor">${escapeHtml(product.vendor)}</span> ` : "";
-          const apn = product.apn ? ` <small>${escapeHtml(productNumberLabel)}: ${escapeHtml(product.apn)}</small>` : "";
+          const apn = getLeadItemNumber(product) ? ` <small>${escapeHtml(productNumberLabel)}: ${escapeHtml(getLeadItemNumber(product))}</small>` : "";
           return `<span class="product-line">${vendor}${escapeHtml(product.description)}${apn}</span>`;
         })
         .join("")}</span>`
@@ -4725,7 +4732,7 @@ function getActiveStockDefaultDistributor() {
 function stockProductMatchesGroup(product, group = getActiveStockGroup()) {
   if (!group) return true;
   if (group === stockListGroups.all) return Boolean(String(product.distributor || "").trim()) && !/^not stocked$/i.test(String(product.distributor).trim());
-  return group.distributors.includes(product.distributor);
+  return group.distributors.some(distributor => distributorMatchesStock(product, distributor));
 }
 
 function resetWorkspaceStockFilters() {
@@ -4750,7 +4757,7 @@ function renderStockLists() {
   setActiveStockListControls();
   if (!getActiveStockGroup()) {
     elements.stockCount.textContent = "0";
-    elements.stockTable.innerHTML = `<div class="empty-state stock-choice-empty">Choose US Foods, Sysco, Linford, or K-12 to view that stock list.</div>`;
+    elements.stockTable.innerHTML = `<div class="empty-state stock-choice-empty">Choose US Foods, Sysco, Linford, Quality Sales, or K-12 to view that stock list.</div>`;
     return;
   }
   const products = getVisibleStockProducts();
@@ -4792,7 +4799,7 @@ function renderStockVendorGroups(products) {
               <th>Product Description</th>
               <th>Brand Name</th>
               <th>Brand Type</th>
-              ${getStockNumberKeys().map(key => `<th>${key === "supc" ? "SUPC" : "APN"}</th>`).join("")}
+              ${getStockNumberKeys().map(key => `<th>${key === "k12QualitySalesNumber" ? "Quality Sales Item #" : key === "distributorNumber" ? "Item #" : key === "supc" ? "SUPC" : "APN"}</th>`).join("")}
               <th>MF#</th>
               <th>GTIN</th>
               <th>Packaging</th>
@@ -4834,6 +4841,7 @@ function getStockSearchText(product) {
   return [
     product.distributor,
     product.distributorNumber,
+    product.k12QualitySalesNumber,
     product.apn,
     product.supc,
     product.manufacturerNumber,
@@ -4891,7 +4899,11 @@ function renderStockRow(product, crossStockIndex) {
 }
 
 function getStockNumberKeys() {
-  return window.foodBrokerWorkspace?.getNumberMode?.() === "supc" ? ["supc", "apn"] : ["apn", "supc"];
+  if (activeStockList === "qualitySales") return ["distributorNumber", "apn", "supc"];
+  const keys = window.foodBrokerWorkspace?.getNumberMode?.() === "supc" ? ["supc", "apn"] : ["apn", "supc"];
+  if (activeStockList === "k12") keys.push("k12QualitySalesNumber");
+  else if (activeStockList === "all" || activeStockList === "linford") keys.push("distributorNumber");
+  return keys;
 }
 
 function bindStockActions() {
@@ -4948,6 +4960,8 @@ function openStockForm(product) {
   elements.stockDistributor.value = existing?.distributor || elements.stockDistributorFilter.value || getActiveStockDefaultDistributor();
   elements.stockApn.value = existing?.apn || "";
   elements.stockSupc.value = existing?.supc || "";
+  document.getElementById("stockDistributorNumber").value = existing?.distributorNumber || "";
+  updateStockDistributorNumberControl();
   elements.stockManufacturerNumber.value = existing?.manufacturerNumber || "";
   elements.stockGtin.value = existing?.gtin || "";
   elements.stockDescription.value = existing?.description || "";
@@ -4967,6 +4981,13 @@ function openStockForm(product) {
 function closeStockForm() {
   elements.stockFormDialog.close();
 }
+
+function updateStockDistributorNumberControl() {
+  const generic = ["Quality Sales", "Linford"].includes(normalizeMarketDistributor(elements.stockDistributor.value));
+  const input = document.getElementById("stockDistributorNumber");
+  if (input) input.closest("label").hidden = !generic;
+}
+elements.stockDistributor.addEventListener("change", updateStockDistributorNumberControl);
 
 function handleStockAttachmentFiles(event) {
   const files = [...(event.target.files || [])];
@@ -5096,7 +5117,7 @@ async function saveStockProduct() {
     id,
     k12: document.getElementById("stockK12").checked,
     distributor: elements.stockDistributor.value,
-    distributorNumber: elements.stockApn.value.trim() || elements.stockSupc.value.trim(),
+    distributorNumber: ["Quality Sales", "Linford"].includes(normalizeMarketDistributor(elements.stockDistributor.value)) ? document.getElementById("stockDistributorNumber").value.trim() : elements.stockDistributor.value === "Sysco" ? elements.stockSupc.value.trim() : elements.stockApn.value.trim() || elements.stockSupc.value.trim(),
     apn: elements.stockApn.value.trim(),
     supc: elements.stockSupc.value.trim(),
     manufacturerNumber: elements.stockManufacturerNumber.value.trim(),
@@ -5165,7 +5186,7 @@ function openStockPrintDialog() {
       (column) => `
         <label class="stock-print-column">
           <input type="checkbox" value="${escapeAttribute(column.key)}" checked />
-          <span>${escapeHtml(column.label)}</span>
+          <span>${escapeHtml(getStockPrintColumnLabel(column))}</span>
         </label>
       `
     )
@@ -5175,6 +5196,10 @@ function openStockPrintDialog() {
 
 function closeStockPrintDialog() {
   elements.stockPrintDialog.close();
+}
+
+function getStockPrintColumnLabel(column) {
+  return activeStockList === "k12" && column.key === "distributorNumber" ? "Quality Sales Item #" : column.label;
 }
 
 function printSelectedStockList() {
@@ -5247,7 +5272,7 @@ function stockProductsMatch(existing, incoming) {
   const current = normalizeStockProduct(existing);
   const next = normalizeStockProduct(incoming);
   if (current.distributor !== next.distributor) return false;
-  const exactFields = ["apn", "supc", "manufacturerNumber", "gtin"];
+  const exactFields = ["apn", "supc", "distributorNumber", "manufacturerNumber", "gtin"];
   if (exactFields.some((field) => current[field] && next[field] && current[field].toLowerCase() === next[field].toLowerCase())) return true;
   return Boolean(
     current.description &&
@@ -5305,15 +5330,17 @@ function parseStockText(text) {
 
 function mapStockRow(row, headers, defaults, currentCategory, currentVendor) {
   const get = (...names) => {
+    names = names.map(name => normalizeHeader(name).trim());
     let index = headers.findIndex((header) => names.some((name) => header === name));
     if (index < 0) index = headers.findIndex((header) => names.some((name) => header.includes(name)));
     return index >= 0 ? String(row[index] || "").trim() : "";
   };
-  const description = get("product", "description", "item");
+  const description = get("product description", "description", "product", "item description");
   const apn = get("apn", "usf", "us foods");
   const supc = get("supc", "sysco");
-  const distributorNumber = apn || supc || get("distributor");
-  const manufacturerNumber = get("manufacturer number", "mfr", "upc");
+  const genericNumber = get("distributor number", "distributornumber", "distributor item number", "item number", "item #", "quality sales item", "quality sales number", "item no");
+  const distributorNumber = ["Quality Sales", "Linford"].includes(normalizeMarketDistributor(defaults.distributor)) ? genericNumber : defaults.distributor === "Sysco" ? supc || genericNumber : apn || supc || genericNumber;
+  const manufacturerNumber = get("manufacturer number", "manufacturer product number", "mf#", "mf #", "mfr", "upc");
   const gtin = get("gtin");
   const pack = get("pack");
   const size = get("size");
@@ -5385,7 +5412,7 @@ function normalizeHeader(value) {
     .trim()
     .toLowerCase()
     .replace(/[#_/.-]/g, " ")
-    .replace(/\s+/g, " ");
+    .replace(/\s+/g, " ").trim();
 }
 
 function normalizeStorage(value) {
@@ -5643,7 +5670,7 @@ function renderOperatorActionIcon(action) {
 
 function renderOperatorDistributorChoices(operator) {
   const selected = getMarketOperatorDistributor(operator);
-  const choices = [["US Foods", "usFoods"], ["Sysco", "sysco"], ["Linford", "linford"], ["Other", ""]];
+  const choices = [["US Foods", "usFoods"], ["Sysco", "sysco"], ["Linford", "linford"], ["Quality Sales", "qualitySales"], ["Other", ""]];
   return `<fieldset class="operator-distributor-picker"><legend>Lead distributor</legend><div class="operator-distributor-choices">${choices.map(([name, logoKey]) => {
     const logo = logoKey && getEventPrintLogo(logoKey);
     return `<label class="operator-distributor-choice"><input type="radio" name="operator-distributor-${escapeAttribute(operator.id)}" value="${escapeAttribute(name)}" data-event-lead-distributor="${escapeAttribute(operator.id)}" ${selected === name ? "checked" : ""} /><span class="operator-distributor-logo">${logo ? `<img src="${escapeAttribute(logoKey === "usFoods" ? "us-foods-logo.svg" : logo.src)}" alt="${escapeAttribute(name)}" />` : name}</span></label>`;
@@ -5687,7 +5714,7 @@ function renderMarketProductsSection(visit, products) {
 }
 
 function renderPcMarketProductsSection(visit, products) {
-  const numberLabel = pcMarketNumberMode === "both" ? "APN / SUPC" : pcMarketNumberMode === "supc" ? "SUPC" : "APN";
+  const numberLabel = pcMarketNumberMode === "both" ? "APN / SUPC" : pcMarketNumberMode === "item" ? "Quality Sales item #" : pcMarketNumberMode === "supc" ? "SUPC" : "APN";
   return `
     <div class="pc-market-products">
       <div class="section-label-row">
@@ -5696,6 +5723,7 @@ function renderPcMarketProductsSection(visit, products) {
           <div class="pc-product-number-toggle" role="group" aria-label="Product number shown">
             <label><input type="radio" name="pcMarketNumberMode" value="apn" ${pcMarketNumberMode === "apn" ? "checked" : ""} /> APN</label>
             <label><input type="radio" name="pcMarketNumberMode" value="supc" ${pcMarketNumberMode === "supc" ? "checked" : ""} /> SUPC</label>
+            <label><input type="radio" name="pcMarketNumberMode" value="item" ${pcMarketNumberMode === "item" ? "checked" : ""} /> Quality Sales item #</label>
             <label><input type="radio" name="pcMarketNumberMode" value="both" ${pcMarketNumberMode === "both" ? "checked" : ""} /> Both</label>
           </div>
           <button class="edit-card market-section-action" type="button" data-market-print-products="${escapeAttribute(visit.id)}">Print Products</button>
@@ -5722,10 +5750,10 @@ function renderPcMarketProductsSection(visit, products) {
 }
 
 function renderPcMarketProductRow(product) {
-  const number = pcMarketNumberMode === "both" ? [product.apn && `APN ${product.apn}`, product.supc && `SUPC ${product.supc}`].filter(Boolean).join(" · ") : pcMarketNumberMode === "supc" ? product.supc || "" : product.apn || "";
+  const number = pcMarketNumberMode === "item" ? getMarketOperatorProductNumber(product, "Quality Sales") : pcMarketNumberMode === "both" ? [product.apn && `APN ${product.apn}`, product.supc && `SUPC ${product.supc}`].filter(Boolean).join(" · ") : pcMarketNumberMode === "supc" ? product.supc || "" : product.apn || "";
   return `
     <div class="pc-market-product-row" data-pc-product-row="${escapeAttribute(product.id)}">
-      <input class="pc-product-number" data-pc-product-number="${escapeAttribute(product.id)}" list="marketProductSuggestions" value="${escapeAttribute(number)}" placeholder="${pcMarketNumberMode === "both" ? "APN / SUPC" : pcMarketNumberMode === "supc" ? "SUPC" : "APN"}" ${pcMarketNumberMode === "both" ? "readonly" : ""} />
+      <input class="pc-product-number" data-pc-product-number="${escapeAttribute(product.id)}" list="marketProductSuggestions" value="${escapeAttribute(number)}" placeholder="${pcMarketNumberMode === "both" ? "APN / SUPC" : pcMarketNumberMode === "item" ? "Quality Sales item #" : pcMarketNumberMode === "supc" ? "SUPC" : "APN"}" ${pcMarketNumberMode === "both" ? "readonly" : ""} />
       <input class="pc-product-vendor" value="${escapeAttribute(product.vendor || product.brandName || "")}" readonly />
       <input class="pc-product-description" value="${escapeAttribute(product.description || "")}" readonly />
       <input class="pc-product-packaging" value="${escapeAttribute(product.packaging || "")}" readonly />
@@ -5961,7 +5989,7 @@ function bindMarketDetailActions(panel, visit) {
   panel.querySelector("[data-market-share-calendar]")?.addEventListener("click", () => shareMarketVisitCalendar(visit.id));
   panel.querySelectorAll("input[name='pcMarketNumberMode']").forEach((input) => {
     input.addEventListener("change", () => {
-      pcMarketNumberMode = ["supc", "both"].includes(input.value) ? input.value : "apn";
+      pcMarketNumberMode = ["supc", "both", "item"].includes(input.value) ? input.value : "apn";
       renderMarketVisits();
     });
   });
@@ -6404,7 +6432,7 @@ function convertMarketOperatorToLead(visit, operatorId, panel) {
   const existingLead = cards.find(card => !card.deletedAt && marketConversionSourceMatches(card, currentVisit, operator));
   if (existingLead) { showMarketConversionDestination(panel, "lead", existingLead); return; }
   if (!distributor) {
-    alert("Choose a lead distributor — US Foods, Sysco, Linford, or Other — before creating the lead.");
+    alert("Choose a lead distributor — US Foods, Sysco, Linford, Quality Sales, or Other — before creating the lead.");
     panel.querySelector("[data-event-lead-distributor]")?.focus();
     return;
   }
@@ -6439,7 +6467,8 @@ function convertMarketOperatorToLead(visit, operatorId, panel) {
     syscoSalesRep: distributor === "Sysco" ? currentVisit.salesReps.join(", ") : "",
     products: products.map((product) => ({
       id: crypto.randomUUID(),
-      apn: getMarketOperatorProductNumber(product, distributor),
+      apn: distributor === "Quality Sales" ? "" : getMarketOperatorProductNumber(product, distributor),
+      ...(distributor === "Quality Sales" ? { distributorNumber: getMarketOperatorProductNumber(product, distributor) } : {}),
       description: product.description || "",
       vendor: product.vendor || product.brandName || ""
     })),
@@ -6564,7 +6593,7 @@ function findMarketProductFromSearch(value, visit) {
   if (!query) return null;
   const candidates = getMarketProductCandidates(visit);
   const exactMatch = candidates.find((product) =>
-    [product.apn, product.supc, product.manufacturerNumber, product.gtin]
+    [product.apn, product.supc, product.distributorNumber, product.manufacturerNumber, product.gtin]
       .filter(Boolean)
       .some((number) => normalizeProductSearchText(number) === query)
   );
@@ -6585,7 +6614,7 @@ function getMarketProductSearchScore(product, query) {
   const description = normalizeProductSearchText(product.description);
   const vendor = normalizeProductSearchText(product.vendor);
   const brand = normalizeProductSearchText(product.brandName);
-  const numbers = [product.apn, product.supc, product.manufacturerNumber, product.gtin].filter(Boolean).map(normalizeProductSearchText);
+  const numbers = [product.apn, product.supc, product.distributorNumber, product.manufacturerNumber, product.gtin].filter(Boolean).map(normalizeProductSearchText);
   if (option === query) return 100;
   if (numbers.some((number) => number === query)) return 95;
   if (description === query) return 90;
@@ -6629,6 +6658,8 @@ const distributorOnlyOperatorNames = new Set([
   "dot foods",
   "linford",
   "linford of alaska",
+  "quality sales",
+  "quality sales food service",
   "sysco",
   "us foods",
   "us foods anchorage",
@@ -7017,17 +7048,18 @@ function getTimelineLeadProducts(card) {
       description: String(product.description || "").trim(),
       apn: String(product.apn || "").trim(),
       supc: String(product.supc || "").trim(),
+      distributorNumber: String(product.distributorNumber || "").trim(),
       packaging: String(product.packaging || "").trim(),
       storage: String(product.storage || "").trim()
     }))
-    .filter((product) => product.vendor || product.description || product.apn || product.supc);
+    .filter((product) => product.vendor || product.description || getLeadItemNumber(product));
 }
 
 function getLeadTimelineItems(terms) {
   const items = [];
   cards.filter((card) => !card.deletedAt).forEach((card) => {
     const products = getTimelineLeadProducts(card);
-    const productText = products.map((product) => [product.vendor, product.description, product.apn, product.supc].filter(Boolean).join(" ")).join(" ");
+    const productText = products.map((product) => [product.vendor, product.description, getLeadItemNumber(product), product.supc].filter(Boolean).join(" ")).join(" ");
     pushTimelineItem(
       items,
       {
@@ -7037,7 +7069,7 @@ function getLeadTimelineItems(terms) {
         body: card.note || productText,
         date: card.due || card.createdAt || "",
         createdAt: card.createdAt,
-        meta: products.map((product) => [product.vendor, product.description, product.apn && `APN: ${product.apn}`, product.supc && `SUPC: ${product.supc}`].filter(Boolean).join(" ")).filter(Boolean),
+        meta: products.map((product) => [product.vendor, product.description, getLeadItemNumber(product) && `${getDistributorItemLabel(card.distributor)}: ${getLeadItemNumber(product)}`, product.supc && `SUPC: ${product.supc}`].filter(Boolean).join(" ")).filter(Boolean),
         actionLabel: "Open Lead",
         actionType: "lead",
         actionId: card.id
@@ -7195,7 +7227,7 @@ function getMarketVisitTimelineItems(terms) {
   marketVisits.forEach((visit) => {
     const products = getMarketVisitProducts(visit);
     const operators = getMarketVisitOperators(visit);
-    const productText = products.map((product) => [product.vendor, product.description, product.apn, product.supc, product.packaging, product.storage].filter(Boolean).join(" ")).join(" ");
+    const productText = products.map((product) => [product.vendor, product.description, product.apn, product.supc, product.distributorNumber, product.packaging, product.storage].filter(Boolean).join(" ")).join(" ");
     const operatorText = operators.map((operator) => [operator.operatorName || getOperatorName(operator.operatorId), operator.notes].filter(Boolean).join(" ")).join(" ");
     pushTimelineItem(
       items,
@@ -7216,7 +7248,7 @@ function getMarketVisitTimelineItems(terms) {
     );
     visit.calls.forEach((call) => {
       const callProducts = products.filter((product) => marketProductIdsInclude(call.productIds, product));
-      const callProductText = callProducts.map((product) => [product.vendor, product.description, product.apn, product.supc].filter(Boolean).join(" ")).join(" ");
+      const callProductText = callProducts.map((product) => [product.vendor, product.description, product.apn, product.supc, product.distributorNumber].filter(Boolean).join(" ")).join(" ");
       const operatorName = getMarketCallTitle(call);
       pushTimelineItem(
         items,
@@ -7249,7 +7281,7 @@ function getStockTimelineItems(terms) {
         type: "Stock Product",
         title: product.description || "Untitled product",
         subtitle: [product.vendor, product.brandName, product.category, product.storage].filter(Boolean).join(" | "),
-        body: [product.apn && `APN: ${product.apn}`, product.supc && `SUPC: ${product.supc}`, product.manufacturerNumber && `MF#: ${product.manufacturerNumber}`, product.packaging].filter(Boolean).join(" | "),
+        body: [product.apn && `APN: ${product.apn}`, product.supc && `SUPC: ${product.supc}`, product.distributorNumber && `Item #: ${product.distributorNumber}`, product.manufacturerNumber && `MF#: ${product.manufacturerNumber}`, product.packaging].filter(Boolean).join(" | "),
         date: product.updatedAt || product.createdAt || "",
         createdAt: product.createdAt,
         meta: product.attachments?.length ? [`${product.attachments.length} file${product.attachments.length === 1 ? "" : "s"}`] : [],
@@ -7258,7 +7290,7 @@ function getStockTimelineItems(terms) {
         actionId: product.id
       },
       terms,
-      [product.description, product.vendor, product.brandName, product.brandType, product.apn, product.supc, product.manufacturerNumber, product.gtin, product.packaging, product.storage, product.category]
+      [product.description, product.vendor, product.brandName, product.brandType, product.apn, product.supc, product.distributorNumber, product.manufacturerNumber, product.gtin, product.packaging, product.storage, product.category]
     );
   });
   return items;
@@ -8573,7 +8605,7 @@ function renderAccountNote(card, options = {}) {
     ? `<div class="meta-row">${products
         .map((product) => {
           const vendor = product.vendor ? `${escapeHtml(product.vendor)}: ` : "";
-          const apn = product.apn ? ` ${escapeHtml(productNumberLabel)}: ${escapeHtml(product.apn)}` : "";
+          const apn = getLeadItemNumber(product) ? ` ${escapeHtml(productNumberLabel)}: ${escapeHtml(getLeadItemNumber(product))}` : "";
           return `<span class="meta">${vendor}${escapeHtml(product.description)}${apn}</span>`;
         })
         .join("")}</div>`
@@ -8624,7 +8656,7 @@ function getVisibleCards() {
 
 function getCardSearchText(card) {
   const productText = normalizeProducts(card)
-    .map((product) => `${product.vendor} ${product.description} ${product.apn}`)
+    .map((product) => `${product.vendor} ${product.description} ${getLeadItemNumber(product)}`)
     .join(" ");
   const attachmentText = (card.attachments || []).map((file) => file.name).join(" ");
   return [card.account, card.distributor, card.accountNumber, card.syscoAccountNumber, card.salesRep, card.syscoSalesRep, card.vendor, card.archiveOutcome, productText, attachmentText, card.note]
@@ -8660,14 +8692,14 @@ function leadDistributorPreferenceKey() {
   return user?.id ? "lead-distributor:" + user.id : "lead-distributor:local";
 }
 function rememberLeadDistributor(value) {
-  if (!["US Foods", "Sysco", "Linford"].includes(value)) return;
+  if (!["US Foods", "Sysco", "Linford", "Quality Sales"].includes(value)) return;
   try { localStorage.setItem(leadDistributorPreferenceKey(),value); } catch {}
 }
 function preferredLeadDistributor() {
   if (window.foodBrokerWorkspace?.hasPreference?.()) return window.foodBrokerWorkspace.getDefaultDistributor();
   try {
     const value = localStorage.getItem(leadDistributorPreferenceKey());
-    if (["US Foods", "Sysco", "Linford"].includes(value)) return value;
+    if (["US Foods", "Sysco", "Linford", "Quality Sales"].includes(value)) return value;
   } catch {}
   return "US Foods";
 }
@@ -8675,7 +8707,7 @@ function preferredLeadDistributor() {
 function openWorkspaceDistributorChoice(onChoose) {
   const dialog = createVisitDialog("Choose the lead distributor");
   dialog.classList.add("workspace-distributor-dialog");
-  dialog.querySelector("[data-visit-entry-body]").innerHTML = `<p>Which distributor is this lead for?</p><div class="workspace-distributor-choices">${[["US Foods", "usFoods"], ["Sysco", "sysco"], ["Linford", "linford"], ["Other", ""]].map(([name, logoKey]) => {
+  dialog.querySelector("[data-visit-entry-body]").innerHTML = `<p>Which distributor is this lead for?</p><div class="workspace-distributor-choices">${[["US Foods", "usFoods"], ["Sysco", "sysco"], ["Linford", "linford"], ["Quality Sales", "qualitySales"], ["Other", ""]].map(([name, logoKey]) => {
     const logo = logoKey && getEventPrintLogo(logoKey);
     return `<button class="ghost-action" type="button" data-workspace-distributor="${escapeAttribute(name)}" aria-label="${escapeAttribute(name)}">${logo ? `<img src="${escapeAttribute(logoKey === "usFoods" ? "us-foods-logo.svg" : logo.src)}" alt="${escapeAttribute(name)}" />` : name}</button>`;
   }).join("")}</div>`;
@@ -9438,7 +9470,7 @@ function renderProductPrintTable(products, distributor = "US Foods") {
     <tbody>${products
       .map(
         (product) =>
-          `<tr><td>${escapeHtml(product.apn || "")}</td><td>${escapeHtml(product.description || "")}</td><td>${escapeHtml(product.vendor || "")}</td></tr>`
+          `<tr><td>${escapeHtml(getLeadItemNumber(product) || "")}</td><td>${escapeHtml(product.description || "")}</td><td>${escapeHtml(product.vendor || "")}</td></tr>`
       )
       .join("")}</tbody>
   </table>`;
@@ -9609,7 +9641,7 @@ function getLeadRecapProductText(card) {
   return normalizeProducts(card)
     .map((product) => {
       const vendor = product.vendor ? `${escapeHtml(product.vendor)}: ` : "";
-      const number = product.apn ? ` (${escapeHtml(product.apn)})` : product.supc ? ` (${escapeHtml(product.supc)})` : "";
+      const number = getLeadItemNumber(product) ? ` (${escapeHtml(getLeadItemNumber(product))})` : product.supc ? ` (${escapeHtml(product.supc)})` : "";
       return `${vendor}${escapeHtml(product.description || "Product")}${number}`;
     })
     .join("; ");
@@ -9679,7 +9711,7 @@ function renderPrintBrandStyles() {
 }
 
 function renderStockPrintDocument(products, selectedColumnKeys, selectedVendor = "", printLayout = "continuous") {
-  const columns = stockPrintColumns.filter((column) => selectedColumnKeys.includes(column.key));
+  const columns = stockPrintColumns.filter((column) => selectedColumnKeys.includes(column.key)).map(column => ({ ...column, label: getStockPrintColumnLabel(column) }));
   const selectedVendorLogo = selectedVendor ? getVendorLogo(selectedVendor) : null;
   const title = `${getActiveStockGroup()?.label || "Stock List"}${selectedVendor && !selectedVendorLogo ? ` - ${selectedVendor}` : ""}`;
   const isVendorPageLayout = printLayout === "vendor-page" && !selectedVendor;
@@ -9735,7 +9767,7 @@ function renderStockPrintDocument(products, selectedColumnKeys, selectedVendor =
                 <table>
                   <thead><tr>${columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}</tr></thead>
                   <tbody>${vendorProducts
-                    .map((product) => `<tr>${columns.map((column) => `<td>${escapeHtml(product[column.key] || "")}</td>`).join("")}</tr>`)
+                    .map((product) => `<tr>${columns.map((column) => `<td>${escapeHtml((column.key === "distributorNumber" && activeStockList === "k12" ? product.k12QualitySalesNumber : product[column.key]) || "")}</td>`).join("")}</tr>`)
                     .join("")}</tbody>
                 </table>
               </section>
@@ -9800,7 +9832,7 @@ function renderLeadListPrintRow(card) {
     ? products
         .map((product) => {
           const vendor = product.vendor ? `${escapeHtml(product.vendor)}: ` : "";
-          const apn = product.apn ? ` (${escapeHtml(product.apn)})` : "";
+          const apn = getLeadItemNumber(product) ? ` (${escapeHtml(getLeadItemNumber(product))})` : "";
           return `${vendor}${escapeHtml(product.description || "Product")}${apn}`;
         })
         .join("<br>")
@@ -9823,7 +9855,7 @@ function openPrintLogoOptions(html) {
   dialog.id = "printLogoDialog";
   dialog.innerHTML = `<form class="note-form">
     <div class="form-header"><div><p class="eyebrow">Print options</p><h2>Print list</h2></div><button class="icon-button" type="button" data-close-print aria-label="Close">&times;</button></div>
-    <label><span>Distributor logo</span><select name="logo"><option value="none">No distributor logo</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option></select></label>
+    <label><span>Distributor logo</span><select name="logo"><option value="none">No distributor logo</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales">Quality Sales</option></select></label>
     <div class="form-actions"><button class="ghost-action" type="button" data-cancel-print>Cancel</button><button class="primary-action" type="submit">Print</button></div>
   </form>`;
   document.body.append(dialog);
@@ -9935,7 +9967,7 @@ function updateTimelineSearchSuggestions() {
     ...[...new Set(cards.map((card) => card.distributor || "US Foods"))].flatMap(getLeadProductSuggestionProducts),
     ...marketVisits.flatMap(getMarketVisitProducts)
   ], stockProducts);
-  const productSuggestions = products.flatMap((product) => [product.description, product.vendor, product.brandName, product.apn, product.supc]);
+  const productSuggestions = products.flatMap((product) => [product.description, product.vendor, product.brandName, product.apn, product.supc, product.distributorNumber]);
   const suggestions = [
     ...getAccountDirectory().map((account) => account.name),
     ...addressBook.map((entry) => entry.operation),
@@ -10072,8 +10104,8 @@ function updateVendorReportYearOptions(selectedYear = "") {
 }
 
 function distributorMatchesStock(product, distributor) {
-  const productDistributor = String(product.distributor || "").toLowerCase();
-  const target = String(distributor || "").toLowerCase();
+  const productDistributor = (normalizeMarketDistributor(product.distributor) || String(product.distributor || "").trim()).toLowerCase();
+  const target = (normalizeMarketDistributor(distributor) || String(distributor || "").trim()).toLowerCase();
   if (!target) return Boolean(productDistributor) && productDistributor !== "not stocked";
   if (target === "us foods") return productDistributor.startsWith("us foods");
   return productDistributor === target;
@@ -10082,6 +10114,7 @@ function distributorMatchesStock(product, distributor) {
 function getProductNumberForDistributor(product, distributor) {
   if (!distributor) return String(product.apn || product.supc || product.distributorNumber || "").trim();
   if (distributor === "Sysco") return String(product.supc || "").trim();
+  if (distributor === "Quality Sales") return distributorMatchesStock(product, distributor) ? String(product.distributorNumber || "").trim() : "";
   if (distributor === "Linford") return String(product.distributorNumber || product.apn || product.supc || "").trim();
   return String(product.apn || product.distributorNumber || "").trim();
 }
@@ -10093,14 +10126,14 @@ function getLeadProductSuggestionProducts(distributor = elements.leadDistributor
     return normalizeProducts(card).map((product) => {
       const productDistributor = distributor || card.distributor || "US Foods";
       // Lead rows use the APN field for the chosen distributor's item number.
-      const number = String(product.apn || "").trim();
+      const number = getLeadItemNumber(product);
       const description = String(product.description || "").trim();
       const vendor = String(product.vendor || "").trim();
       const label = [number, description, vendor].filter(Boolean).join(" | ");
       return {
         ...product,
         distributor: productDistributor,
-        apn: productDistributor === "Sysco" || productDistributor === "Linford" ? "" : number,
+        apn: ["Sysco", "Linford", "Quality Sales"].includes(productDistributor) ? "" : number,
         supc: productDistributor === "Sysco" ? number : "",
         distributorNumber: number,
         searchAliases: [...(product.searchAliases || []), label]
@@ -10193,11 +10226,12 @@ function addProductFromSearch() {
 
 function getStockDistributorForLead(distributor) {
   if (distributor === "Sysco") return "Sysco";
+  if (["Linford", "Quality Sales"].includes(distributor)) return distributor;
   return "US Foods Anchorage";
 }
 
 function getLeadProductStockFields(product, distributor) {
-  const number = String(product.apn || "").trim();
+  const number = getLeadItemNumber(product);
   const stockDistributor = getStockDistributorForLead(distributor);
   return normalizeStockProduct({
     distributor: stockDistributor,
@@ -10303,7 +10337,7 @@ function fillLeadAccountDetails(match) {
 function getDistributorItemLabel(distributor = elements.leadDistributor?.value ?? preferredLeadDistributor()) {
   if (!distributor) return "APN / SUPC";
   if (distributor === "Sysco") return "SUPC";
-  if (distributor === "Linford") return "Item #";
+  if (["Linford", "Quality Sales", "Other"].includes(distributor)) return "Item #";
   return "APN";
 }
 
@@ -10322,7 +10356,7 @@ function addProductRow(product = { vendor: "", description: "", apn: "" }) {
   row.innerHTML = `
     <label>
       <span class="product-number-label">${escapeHtml(getDistributorItemLabel())}</span>
-      <input class="product-apn" data-suggestions-typing list="apnSuggestions" autocomplete="off" value="${escapeAttribute(product.apn)}" />
+      <input class="product-apn" data-suggestions-typing list="apnSuggestions" autocomplete="off" value="${escapeAttribute(getLeadItemNumber(product))}" />
     </label>
     <label>
       <span>Description</span>
@@ -10363,9 +10397,9 @@ function readProducts() {
       id: row.dataset.productId || crypto.randomUUID(),
       vendor: row.querySelector(".product-vendor-input").value.trim(),
       description: row.querySelector(".product-description").value.trim(),
-      apn: row.querySelector(".product-apn").value.trim()
+      ...(elements.leadDistributor.value === "Quality Sales" ? { apn: "", distributorNumber: row.querySelector(".product-apn").value.trim() } : { apn: row.querySelector(".product-apn").value.trim() })
     }))
-    .filter((product) => product.vendor || product.description || product.apn);
+    .filter((product) => product.vendor || product.description || getLeadItemNumber(product));
 }
 
 function handleAttachmentFiles(event) {
@@ -10627,14 +10661,19 @@ function normalizeProducts(card) {
         id: product.id || crypto.randomUUID(),
         vendor: String(product.vendor || card.vendor || "").trim(),
         description: String(product.description || "").trim(),
-        apn: String(product.apn || "").trim()
+        apn: card.distributor === "Quality Sales" ? "" : String(product.apn || "").trim(),
+        ...(product.distributorNumber || card.distributor === "Quality Sales" ? { distributorNumber: String(product.distributorNumber || (card.distributor === "Quality Sales" ? product.apn : "") || "").trim() } : {})
       }))
-      .filter((product) => product.vendor || product.description || product.apn);
+      .filter((product) => product.vendor || product.description || getLeadItemNumber(product));
   }
   if (card.product || card.apn) {
-    return [{ id: crypto.randomUUID(), vendor: card.vendor || "", description: card.product || "", apn: card.apn || "" }];
+    return [{ id: crypto.randomUUID(), vendor: card.vendor || "", description: card.product || "", apn: card.distributor === "Quality Sales" ? "" : card.apn || "", ...(card.distributor === "Quality Sales" ? { distributorNumber: card.apn || "" } : {}) }];
   }
   return [];
+}
+
+function getLeadItemNumber(product = {}) {
+  return String(product.distributorNumber || product.apn || product.supc || "").trim();
 }
 
 function onDragOver(event) {
@@ -10870,7 +10909,7 @@ async function saveUnifiedSampleOrder(order) {
 }
 
 function getEventPrintLogo(choice) {
-  return ({usFoods: {src: printBrandLogos.usFoods, name: 'US Foods'}, sysco: {src: 'sysco-logo.png?v=20260917-official1', name: 'Sysco'}, linford: {src: 'linford-logo.svg', name: 'Linford'}})[choice] || null;
+  return ({usFoods: {src: printBrandLogos.usFoods, name: 'US Foods'}, sysco: {src: 'sysco-logo.png?v=20260917-official1', name: 'Sysco'}, linford: {src: 'linford-logo.svg', name: 'Linford'}, qualitySales: {src: 'quality-sales-logo.png', name: 'Quality Sales'}})[choice] || null;
 }
 
 function applyPendingWorkspaceViews() {

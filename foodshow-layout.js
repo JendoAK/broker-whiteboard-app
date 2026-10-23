@@ -2,7 +2,7 @@
 
 function normalizeFoodshowConversation(value) {
   const item = value || {};
-  return { contactId: String(item.contactId || ''), contactOperatorId: String(item.contactOperatorId || ''), contactSlot: String(item.contactSlot || ''), operatorId: String(item.operatorId || ''), category: String(item.category || 'Other'), id: String(item.id || crypto.randomUUID()), name: String(item.name || ''), organization: String(item.organization || ''), role: String(item.role || ''), contact: String(item.contact || ''), notes: String(item.notes || ''), followUp: String(item.followUp || ''), interests: Array.isArray(item.interests) ? item.interests.map(product => ({ id: String(product.id || ''), description: String(product.description || ''), vendor: String(product.vendor || ''), apn: String(product.apn || ''), supc: String(product.supc || ''), manufacturerNumber: String(product.manufacturerNumber || '') })) : [] };
+  return { contactId: String(item.contactId || ''), contactOperatorId: String(item.contactOperatorId || ''), contactSlot: String(item.contactSlot || ''), operatorId: String(item.operatorId || ''), category: String(item.category || 'Other'), id: String(item.id || crypto.randomUUID()), name: String(item.name || ''), organization: String(item.organization || ''), role: String(item.role || ''), contact: String(item.contact || ''), notes: String(item.notes || ''), followUp: String(item.followUp || ''), interests: Array.isArray(item.interests) ? item.interests.map(product => ({ id: String(product.id || ''), description: String(product.description || ''), vendor: String(product.vendor || ''), distributor: String(product.distributor || ''), distributorNumber: String(product.distributorNumber || ''), apn: String(product.apn || ''), supc: String(product.supc || ''), manufacturerNumber: String(product.manufacturerNumber || '') })) : [] };
 }
 function foodshowPrepText(visit, product) {
   const prep = getMarketProductNote(visit, product);
@@ -186,19 +186,20 @@ function openFoodshowLead(visitId, conversationId) {
   if (existing) { showLeadsWorkflow(); openForm(existing); return; }
   const person = resolveFoodshowPerson(item);
   const operator = addressBook.find(entry => entry.id === item.operatorId);
-  foodshowForm('Create lead', `<label><span>Distributor</span><select name="distributor"><option>US Foods</option><option ${/sysco/i.test(person.organization) ? 'selected' : ''}>Sysco</option><option>Linford</option></select></label>${foodshowInput('account','Operator / account',operator?.operation || person.organization || person.name,false,true)}<p>${item.interests.length} selected products · Conversation notes and follow-up included.</p>`, data => {
+  const suggestedDistributor = /quality[\s-]*sales/i.test(person.organization) ? 'Quality Sales' : /sysco/i.test(person.organization) ? 'Sysco' : /linford/i.test(person.organization) ? 'Linford' : window.foodBrokerWorkspace?.getDefaultDistributor?.() || 'US Foods';
+  foodshowForm('Create lead', `<label><span>Distributor</span><select name="distributor">${['US Foods', 'Sysco', 'Linford', 'Quality Sales'].map(distributor => `<option${distributor === suggestedDistributor ? ' selected' : ''}>${distributor}</option>`).join('')}</select></label>${foodshowInput('account','Operator / account',operator?.operation || person.organization || person.name,false,true)}<p>${item.interests.length} selected products · Conversation notes and follow-up included.</p>`, data => {
     const duplicate = cards.find(card => !card.deletedAt && card.sourceMarketVisitId === visitId && card.sourceFoodshowConversationId === conversationId);
     if (duplicate) { showLeadsWorkflow(); openForm(duplicate); return; }
     const distributor = data.get('distributor');
     const account = data.get('account').trim(); if (!account) return false;
     const currentProducts = getMarketVisitProducts(visit);
-    const lead = normalizeCard({id:crypto.randomUUID(),account,accountNumber:operator?.operation === account ? operator.accountNumber : '',syscoAccountNumber:operator?.operation === account ? operator.syscoAccountNumber : '',distributor,
+    const lead = normalizeCard({id:crypto.randomUUID(),account,accountNumber:distributor !== 'Quality Sales' && operator?.operation === account ? operator.accountNumber : '',syscoAccountNumber:distributor !== 'Quality Sales' && operator?.operation === account ? operator.syscoAccountNumber : '',distributor,
       note:[`From Foodshow: ${visit.name}`,[person.name,person.organization,person.role,person.contact].filter(Boolean).join(' · '),item.notes,item.followUp && `Follow-up: ${item.followUp}`].filter(Boolean).join('\n\n'),
       sourceMarketVisitId:visit.id,sourceFoodshowConversationId:item.id,sourceContactId:item.contactId,sourceOperatorId:item.operatorId,
       priority:'Medium',status:'New Lead',source:'Market Visit',due:'',
-      salesRep: distributor !== 'Sysco' && /sales rep/i.test(person.role) ? person.name : operator?.usfSalesRep || '',
-      syscoSalesRep: distributor === 'Sysco' && /sales rep/i.test(person.role) ? person.name : operator?.syscoSalesRep || '',
-      products:item.interests.map(snapshot => {const product = currentProducts.find(product => product.id === snapshot.id) || snapshot;return {id:crypto.randomUUID(),apn:(distributor === 'Sysco' ? product.supc : product.apn) || product.manufacturerNumber || '',description:product.description,vendor:product.vendor};}),
+      salesRep: distributor !== 'Sysco' && /sales rep/i.test(person.role) ? person.name : distributor === 'Quality Sales' ? '' : operator?.usfSalesRep || '',
+      syscoSalesRep: distributor === 'Quality Sales' ? '' : distributor === 'Sysco' && /sales rep/i.test(person.role) ? person.name : operator?.syscoSalesRep || '',
+      products:item.interests.map(snapshot => {const product = currentProducts.find(product => product.id === snapshot.id) || snapshot;const number = getMarketOperatorProductNumber(product, distributor);return {id:crypto.randomUUID(),apn:distributor === 'Quality Sales' ? '' : number,distributorNumber:distributor === 'Quality Sales' ? number : '',description:product.description,vendor:product.vendor};}),
       attachments:[],vendorReports:{},createdAt:new Date().toISOString(),archivedAt:'',deletedAt:''});
     const previous = cards;cards=[lead,...cards];if(!persist()){cards=previous;return false;}
     showLeadsWorkflow();openForm(lead);

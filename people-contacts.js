@@ -11,7 +11,7 @@ function contactCommunicationFields(person) {
   return {email, phone, contact:legacy};
 }
 function attachContactValueSuggestions(form) {
-  const defaults = {organization:['US Foods','Sysco','Pierce Cartwright'],role:['Sales rep','Regional Manager','Category Manager','District Manager','Chef','Owner','Buyer']};
+  const defaults = {organization:['US Foods','Sysco','Quality Sales','Pierce Cartwright'],role:['Sales rep','Regional Manager','Category Manager','District Manager','Chef','Owner','Buyer']};
   for (const key of ['organization','role']) {
     const input = form.querySelector('[name="' + key + '"]');
     if (!input) continue;

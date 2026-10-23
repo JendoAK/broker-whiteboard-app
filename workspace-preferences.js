@@ -3,7 +3,7 @@
   "use strict";
   const recordType = "workspace-preferences";
   const recordKey = "distributor-workspace";
-  const modes = new Set(["usFoods", "sysco", "mixed"]);
+  const modes = new Set(["usFoods", "sysco", "qualitySales", "mixed"]);
   const cache = new Map();
   let activeId = null;
   let current = { mode: "usFoods", configured: false };
@@ -67,15 +67,21 @@
 
   function getMode() { syncIdentity(); return current.mode; }
   function hasPreference() { syncIdentity(); return current.configured; }
-  function getDefaultDistributor() { return ({ usFoods: "US Foods", sysco: "Sysco", mixed: "" })[getMode()]; }
-  function getStockList() { return ({ usFoods: "usFoods", sysco: "sysco", mixed: "all" })[getMode()]; }
-  function getNumberMode() { return ({ usFoods: "apn", sysco: "supc", mixed: "both" })[getMode()]; }
+  function getDefaultDistributor() { return ({ usFoods: "US Foods", sysco: "Sysco", qualitySales: "Quality Sales", mixed: "" })[getMode()]; }
+  function getStockList() { return ({ usFoods: "usFoods", sysco: "sysco", qualitySales: "qualitySales", mixed: "all" })[getMode()]; }
+  function getNumberMode() { return ({ usFoods: "apn", sysco: "supc", qualitySales: "item", mixed: "both" })[getMode()]; }
 
   function rankProduct(product) {
     const mode = getMode();
     const distributor = String(product?.distributor || "");
     const stocked = product?.isNewEventProduct !== true && distributor !== "Not stocked" && Boolean(product?.canonicalStockId || product?.linkedStockId || distributor);
     if (mode === "mixed") return stocked ? 0 : 1;
+    if (mode === "qualitySales") {
+      const isPreferred = /^quality\s*sales$/i.test(distributor.trim());
+      const itemNumber = String(product?.distributorNumber || "").trim();
+      const hasItemNumber = itemNumber && !/^(n\/?a|none|unknown|optional|tbd)$/i.test(itemNumber);
+      return isPreferred && stocked ? (hasItemNumber ? 0 : 1) : stocked ? 2 : 3;
+    }
     const isPreferred = mode === "sysco" ? /^sysco$/i.test(distributor) : /^us\s*foods\b/i.test(distributor);
     const value = String(product?.[mode === "sysco" ? "supc" : "apn"] || "").trim();
     const hasCode = value && !/^(n\/?a|none|unknown|optional|tbd)$/i.test(value);
@@ -105,7 +111,7 @@
   }
 
   function setMode(mode) {
-    if (!modes.has(mode)) return Promise.reject(new Error("Choose US Foods, Sysco, or mixed distributors."));
+    if (!modes.has(mode)) return Promise.reject(new Error("Choose US Foods, Sysco, Quality Sales, or mixed distributors."));
     const id = syncIdentity();
     if (!id || !client() || !approved()) return Promise.reject(new Error("Sign in to save your workspace."));
     const accountGeneration = generation;
@@ -164,7 +170,8 @@
     const choices = [
       ["usFoods", "US Foods", "APNs and US Foods stocked items first"],
       ["sysco", "Sysco", "SUPCs and Sysco stocked items first"],
-      ["mixed", "Mixed distributors", "US Foods, Sysco, Linford, and other products together"]
+      ["qualitySales", "Quality Sales", "Quality Sales stocked items and item numbers first"],
+      ["mixed", "Mixed distributors", "US Foods, Sysco, Linford, Quality Sales, and other products together"]
     ];
     dialog.innerHTML = `<form class="note-form" data-workspace-form><header class="form-header"><h2 id="workspacePreferencesTitle">My workspace</h2><button type="button" class="icon-button" data-workspace-close aria-label="Close">&times;</button></header><p>Choose your starting view and product code order. You can still use any distributor.</p><fieldset class="workspace-mode-options"><legend>Preferred workspace</legend>${choices.map(([mode, name, description]) => `<label><input type="radio" name="workspaceMode" data-workspace-mode value="${mode}" ${getMode() === mode ? "checked" : ""}><span><strong>${name}</strong><small>${description}</small></span></label>`).join("")}</fieldset><p data-workspace-status role="status"></p><div class="form-actions"><button type="button" class="ghost-action" data-workspace-cancel>Cancel</button><button type="submit" class="primary-action" data-save-workspace>Save workspace</button></div></form>`;
     document.body.append(dialog);

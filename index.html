@@ -23,9 +23,9 @@
   <link rel="stylesheet" href="todo-archive.css?v=20260909-todoarchive1" />
 <link rel="stylesheet" href="time-picker.css?v=20260917-time1" />
 <script type="application/x-foodbroker-module" data-main-src="time-picker.js?v=20260917-time1"></script>
-<script type="application/x-foodbroker-module" data-main-src="copy-email.js?v=20260917-copyemail1"></script>
+<script type="application/x-foodbroker-module" data-main-src="copy-email.js?v=20261023-qualitysales1"></script>
 <link rel="stylesheet" href="manager-overview.css?v=20260918-manager1" />
-<link rel="stylesheet" href="foodshow-layout.css?v=20260929-foodshow8" /><link rel="stylesheet" href="table-planner.css?v=20260930-planner14" /><script type="application/x-foodbroker-module" data-main-src="table-planner.js?v=20260930-planner14"></script><link rel="stylesheet" href="window-layout.css?v=20260930-windows1" /><link rel="stylesheet" href="event-agenda.css?v=20261022-compactfilters1" /><link rel="stylesheet" href="event-products.css?v=20261022-eventease1" /><link rel="stylesheet" href="operator-products.css?v=20261022-operatorcompact1" /><link rel="stylesheet" href="visit-panels.css?v=20261022-visitpanels1" /><link rel="stylesheet" href="workspace-preferences.css?v=20261022-workspace1" /><link rel="stylesheet" href="settings-menu.css?v=20261023-account1" /><link rel="stylesheet" href="account-settings.css?v=20261023-account1" /></head>
+<link rel="stylesheet" href="foodshow-layout.css?v=20260929-foodshow8" /><link rel="stylesheet" href="table-planner.css?v=20260930-planner14" /><script type="application/x-foodbroker-module" data-main-src="table-planner.js?v=20260930-planner14"></script><link rel="stylesheet" href="window-layout.css?v=20260930-windows1" /><link rel="stylesheet" href="event-agenda.css?v=20261022-compactfilters1" /><link rel="stylesheet" href="event-products.css?v=20261022-eventease1" /><link rel="stylesheet" href="operator-products.css?v=20261022-operatorcompact1" /><link rel="stylesheet" href="visit-panels.css?v=20261022-visitpanels1" /><link rel="stylesheet" href="workspace-preferences.css?v=20261023-qualitysales1" /><link rel="stylesheet" href="settings-menu.css?v=20261023-account1" /><link rel="stylesheet" href="account-settings.css?v=20261023-account1" /><link rel="stylesheet" href="quality-sales.css?v=20261023-qualitysales1" /></head>
   <body class="auth-pending">
     <datalist id="timelineSearchSuggestions"></datalist>
     <div class="app-shell">
@@ -233,6 +233,7 @@
                 <option selected>US Foods</option>
                 <option>Sysco</option>
                 <option>Linford</option>
+                <option>Quality Sales</option>
                 <option>Other</option>
               </select>
             </label>
@@ -909,8 +910,8 @@
           <button class="icon-button" id="closeMarketPrint" type="button" aria-label="Close">&times;</button>
         </div>
         <input id="marketPrintVisitId" type="hidden" />
-        <label><span>Top-right logo</span><select id="marketPrintLogo"><option value="none">No logo</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option></select></label>
-        <label><span>Product codes to print</span><select id="marketPrintCodeMode"><option value="mf">MF# only</option><option value="apn">US Foods APN only</option><option value="supc">Sysco SUPC only</option><option value="mf-apn">MF# + US Foods APN</option><option value="mf-supc">MF# + Sysco SUPC</option><option value="all">MF# + APN + SUPC</option></select></label>
+        <label><span>Top-right logo</span><select id="marketPrintLogo"><option value="none">No logo</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales">Quality Sales</option></select></label>
+        <label><span>Product codes to print</span><select id="marketPrintCodeMode"><option value="mf">MF# only</option><option value="apn">US Foods APN only</option><option value="supc">Sysco SUPC only</option><option value="item">Quality Sales item # only</option><option value="mf-apn">MF# + US Foods APN</option><option value="mf-supc">MF# + Sysco SUPC</option><option value="mf-item">MF# + Quality Sales item #</option><option value="all">MF# + APN + SUPC + item #</option></select></label>
         <div class="print-option-list">
           <label><input id="marketPrintSchedule" type="checkbox" checked /> <span id="marketPrintScheduleLabel">Schedule</span></label>
           <label><input id="marketPrintProducts" type="checkbox" checked /> <span>Product list</span></label>
@@ -1214,6 +1215,9 @@
               <button class="primary-action stock-list-choice stock-list-linford" type="button" data-stock-list="linford" aria-label="Linford Stock List">
                 <img class="stock-logo-img stock-logo-linford-img" src="linford-logo.svg" alt="Linford of Alaska" />
               </button>
+              <button class="primary-action stock-list-choice stock-list-quality-sales" type="button" data-stock-list="qualitySales" aria-label="Quality Sales Stock List">
+                <img class="stock-logo-img stock-logo-quality-sales-img" src="quality-sales-logo.png" alt="Quality Sales Food Service" />
+              </button>
             </div>
             </div>
           </div>
@@ -1232,7 +1236,7 @@
         </header>
 
         <section class="controls stock-controls" aria-label="Stock list filters">
-          <select id="stockDistributorFilter" hidden><option value="">All</option><option>US Foods Anchorage</option><option>US Foods Southeast</option><option>Sysco</option><option>Linford</option></select>
+          <select id="stockDistributorFilter" hidden><option value="">All</option><option>US Foods Anchorage</option><option>US Foods Southeast</option><option>Sysco</option><option>Linford</option><option>Quality Sales</option></select>
           <label class="search-box"><span>Search</span><input id="stockSearch" type="search" placeholder="Product, vendor, brand, APN/SUPC, GTIN..." /></label>
           <label><span>Vendor</span><select id="stockVendorFilter"><option value="">All</option></select></label>
           <label><span>Category</span><select id="stockCategoryFilter"><option value="">All</option></select></label>
@@ -1270,6 +1274,7 @@
           <label><span>Brand type</span><select id="stockBrandType"><option value=""></option><option value="EB">EB</option><option value="MB">MB</option></select></label>
           <label><span>APN</span><input id="stockApn" autocomplete="off" /></label>
           <label><span>SUPC</span><input id="stockSupc" autocomplete="off" /></label>
+          <label hidden><span>Distributor item #</span><input id="stockDistributorNumber" autocomplete="off" /></label>
           <label><span>MF#</span><input id="stockManufacturerNumber" autocomplete="off" /></label>
           <div class="stock-gtin-so-field">
             <label><span>GTIN</span><input id="stockGtin" autocomplete="off" /></label>
@@ -1279,7 +1284,7 @@
           <label><span>Packaging</span><input id="stockPackaging" autocomplete="off" placeholder="4/5lb bags" /></label>
           <label><span>Storage</span><select id="stockStorage"><option value=""></option><option>Chill</option><option>Frozen</option><option>Dry</option></select></label>
           <label><span>Category</span><input id="stockCategory" list="stockCategorySuggestions" autocomplete="off" placeholder="Seafood, Meat, Desserts..." /></label>
-          <label><span>Distributor</span><select id="stockDistributor" required><option>Not stocked</option><option>US Foods Anchorage</option><option>US Foods Southeast</option><option>Sysco</option><option>Linford</option></select></label>
+          <label><span>Distributor</span><select id="stockDistributor" required><option>Not stocked</option><option>US Foods Anchorage</option><option>US Foods Southeast</option><option>Sysco</option><option>Linford</option><option>Quality Sales</option></select></label>
           <div class="attachments-section wide">
             <div class="section-label-row">
               <span>Product files</span>
@@ -1316,7 +1321,7 @@
           <button class="icon-button" id="closeStockImport" type="button" aria-label="Close">&times;</button>
         </div>
         <div class="field-grid">
-          <label><span>Distributor / list</span><select id="stockImportDistributor" required><option>K-12</option><option>Not stocked</option><option>US Foods Anchorage</option><option>US Foods Southeast</option><option>Sysco</option><option>Linford</option></select></label>
+          <label><span>Distributor / list</span><select id="stockImportDistributor" required><option>K-12</option><option>Not stocked</option><option>US Foods Anchorage</option><option>US Foods Southeast</option><option>Sysco</option><option>Linford</option><option>Quality Sales</option></select></label>
           <label><span>Default vendor</span><input id="stockImportVendor" list="vendorSuggestions" autocomplete="off" /></label>
           <label><span>Default category</span><input id="stockImportCategory" list="stockCategorySuggestions" autocomplete="off" /></label>
           <label><span>Default storage</span><select id="stockImportStorage"><option value=""></option><option>Chill</option><option>Frozen</option><option>Dry</option></select></label>
@@ -1428,13 +1433,13 @@
     <script type="application/x-foodbroker-module" data-main-src="save-status.js?v=20261022-savestatus1"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
     <script src="supabase-config.js"></script>
-    <script src="supabase-auth.js?v=20261023-account1"></script>
-    <script type="application/x-foodbroker-module" data-main-src="workspace-preferences.js?v=20261023-account1"></script>
-  <script type="application/x-foodbroker-module" data-main-src="editing-stability.js?v=20260930-planner14"></script><script type="application/x-foodbroker-module" data-main-src="product-catalog.js?v=20261022-nestle1"></script><script type="application/x-foodbroker-module" data-main-src="foodshow-layout.js?v=20261022-productdedupe1"></script><script type="application/x-foodbroker-module" data-main-src="market-events.js?v=20261022-workspace1"></script>
+    <script src="supabase-auth.js?v=20261023-qualitysales1"></script>
+    <script type="application/x-foodbroker-module" data-main-src="workspace-preferences.js?v=20261023-qualitysales1"></script>
+  <script type="application/x-foodbroker-module" data-main-src="editing-stability.js?v=20260930-planner14"></script><script type="application/x-foodbroker-module" data-main-src="product-catalog.js?v=20261022-nestle1"></script><script type="application/x-foodbroker-module" data-main-src="foodshow-layout.js?v=20261023-qualitysales1"></script><script type="application/x-foodbroker-module" data-main-src="market-events.js?v=20261023-qualitysales1"></script>
   <script type="application/x-foodbroker-module" data-main-src="personal-visit-calendar.js?v=20260909-visitcolors1"></script>
   <script type="application/x-foodbroker-module" data-main-src="calendar-holidays.js?v=20260909-5"></script>
   <script type="application/x-foodbroker-module" data-main-src="market-call-editor.js?v=20261022-calendarcleanup1"></script>
-  <script type="application/x-foodbroker-module" data-main-src="team-work-view.js?v=20260918-manager1"></script><script type="application/x-foodbroker-module" data-main-src="market-week-calendar.js?v=20260918-callaudit1"></script><script type="application/x-foodbroker-module" data-main-src="market-operator-conversion.js?v=20261022-operatorcompact1"></script><script type="application/x-foodbroker-module" data-main-src="testkitchen-layout.js?v=20261022-productdedupe1"></script><script type="application/x-foodbroker-module" data-main-src="vendor-visit-print.js?v=20261013-printlogos1"></script><script type="application/x-foodbroker-module" data-main-src="market-visit-layout.js?v=20261022-workspace1"></script><script type="application/x-foodbroker-module" data-main-src="people-contacts.js?v=20260915-contactrevert1"></script><script type="application/x-foodbroker-module" data-main-src="team-initials.js?v=20260909-initials1"></script><script type="application/x-foodbroker-module" data-main-src="k12-stock.js?v=20260918-specialorder1"></script><script type="application/x-foodbroker-module" data-main-src="app.js?v=20261022-nestle1"></script>
+  <script type="application/x-foodbroker-module" data-main-src="team-work-view.js?v=20260918-manager1"></script><script type="application/x-foodbroker-module" data-main-src="market-week-calendar.js?v=20260918-callaudit1"></script><script type="application/x-foodbroker-module" data-main-src="market-operator-conversion.js?v=20261022-operatorcompact1"></script><script type="application/x-foodbroker-module" data-main-src="testkitchen-layout.js?v=20261022-productdedupe1"></script><script type="application/x-foodbroker-module" data-main-src="vendor-visit-print.js?v=20261023-qualitysales1"></script><script type="application/x-foodbroker-module" data-main-src="market-visit-layout.js?v=20261023-qualitysales1"></script><script type="application/x-foodbroker-module" data-main-src="people-contacts.js?v=20261023-qualitysales1"></script><script type="application/x-foodbroker-module" data-main-src="team-initials.js?v=20260909-initials1"></script><script type="application/x-foodbroker-module" data-main-src="k12-stock.js?v=20261023-qualitysales1"></script><script type="application/x-foodbroker-module" data-main-src="app.js?v=20261023-qualitysales1"></script>
     <script type="application/x-foodbroker-module" data-main-inline>
       if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
         window.addEventListener("load", () => {

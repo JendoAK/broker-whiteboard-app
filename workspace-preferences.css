@@ -15,8 +15,8 @@
   .workspace-mode-options strong { font-size: 1rem; color: #254b40; }
   .workspace-mode-options small { font-size: .85rem; line-height: 1.35; font-weight: 400; text-transform: none; color: #50685e; }
   [data-workspace-status]:empty { display: none; }
-  dialog.workspace-distributor-dialog { width: min(640px, calc(100vw - 24px)); }
-  .workspace-distributor-choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+  dialog.workspace-distributor-dialog { width: min(740px, calc(100vw - 24px)); }
+  .workspace-distributor-choices { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
   .workspace-distributor-choices button { min-width: 0; min-height: 72px; padding: 10px; }
   .workspace-distributor-choices img { display: block; max-width: 100%; width: auto; max-height: 40px; margin: auto; object-fit: contain; }
   @media (max-width: 520px) {

@@ -1,8 +1,8 @@
 "use strict";
-const emailProductCodeChoices = {apn:'US Foods APNs',supc:'Sysco SUPCs',mf:'Manufacturer numbers (MF#)','mf-apn':'MF# + US Foods APN','mf-supc':'MF# + Sysco SUPC',all:'All codes'};
+const emailProductCodeChoices = {apn:'US Foods APNs',supc:'Sysco SUPCs',item:'Distributor item numbers',mf:'Manufacturer numbers (MF#)','mf-apn':'MF# + US Foods APN','mf-supc':'MF# + Sysco SUPC','mf-item':'MF# + distributor item number',all:'All codes'};
 function buildProductEmail(visit, mode, includeNotes) {
   const products = getMarketVisitProducts(visit).map(product => ({...product,
-    manufacturerNumber: product.manufacturerNumber || 'Not assigned', apn: product.apn || 'Not assigned', supc: product.supc || 'Not assigned',
+    manufacturerNumber: product.manufacturerNumber || 'Not assigned', apn: product.apn || 'Not assigned', supc: product.supc || 'Not assigned', distributorNumber: product.distributorNumber || 'Not assigned',
     notes: visit.type === 'testkitchen' ? visit.productNotes?.[product.id]?.note || '' : product.notes || ''}));
   const doc = new DOMParser().parseFromString(renderVisitProductPrintTable(products, mode, includeNotes), 'text/html');
   const table = doc.querySelector('table');
@@ -24,7 +24,9 @@ function openProductEmailCopy(visitId) {
   let preferences = {};try {preferences=JSON.parse(localStorage.getItem('foodbrokerbase-email-product-options') || '{}');}catch{}
   body.innerHTML = '<div class="field-grid"><label><span>Product codes</span><select data-email-codes>'+Object.entries(emailProductCodeChoices).map(([value,label])=>'<option value="'+value+'">'+label+'</option>').join('')+'</select></label><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" data-email-notes style="width:auto" /><span>Include product notes</span></label></div><p>Copy this editable table, then paste it into your email with Ctrl+V. Missing product codes show “Not assigned”.</p><div data-email-preview style="max-height:340px;overflow:auto;border:1px solid #c5b6a5;padding:10px;background:white;margin:12px 0"></div><p data-email-status role="status"></p><div class="form-actions"><button type="button" class="ghost-action" data-email-close>Close</button><button type="button" class="primary-action" data-email-copy>Copy</button></div>';
   const codes=body.querySelector('[data-email-codes]'),notes=body.querySelector('[data-email-notes]'),preview=body.querySelector('[data-email-preview]'),status=body.querySelector('[data-email-status]'),button=body.querySelector('[data-email-copy]');
-  codes.value=Object.hasOwn(emailProductCodeChoices,preferences.mode)?preferences.mode:'apn';notes.checked=preferences.notes!==false;
+  const workspaceMode=window.foodBrokerWorkspace?.getNumberMode?.()||'apn';
+  const defaultMode=workspaceMode==='both'?'all':workspaceMode;
+  codes.value=Object.hasOwn(emailProductCodeChoices,preferences.mode)?preferences.mode:Object.hasOwn(emailProductCodeChoices,defaultMode)?defaultMode:'apn';notes.checked=preferences.notes!==false;
   const refresh=()=>{preview.innerHTML=buildProductEmail(visit,codes.value,notes.checked).html;status.textContent='';};
   codes.onchange=refresh;notes.onchange=refresh;body.querySelector('[data-email-close]').onclick=()=>dialog.close();
   const selectPreview=()=>{const range=document.createRange();range.selectNodeContents(preview);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);};
