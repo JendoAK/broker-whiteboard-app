@@ -133,6 +133,10 @@
   }
 
   function mountSettingsButton() {
+    if (auth()?.hasAccountSettings) {
+      document.querySelectorAll(".settings-panel [data-open-workspace]").forEach(button => button.remove());
+      return;
+    }
     const visible = Boolean(syncIdentity() && approved());
     document.querySelectorAll(".settings-panel").forEach(panel => {
       let button = panel.querySelector("[data-open-workspace]");

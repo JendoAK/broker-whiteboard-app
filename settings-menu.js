@@ -6,7 +6,7 @@
 
   function kind(button) {
     if (button.matches('[data-open-workspace]')) return 'workspace';
-    if (button.matches('[data-my-initials]')) return 'initials';
+    if (button.matches('[data-my-initials]')) return 'account';
     if (button.matches('.manager-overview-action')) return 'overview';
     if (button.matches('.manage-team-action')) return 'team';
     if (/^openArchive/.test(button.id)) return 'archive';
@@ -17,8 +17,8 @@
     if (button.matches('[data-cloud-sync-action]')) return 'merge';
     return 'other';
   }
-  const order = ['workspace','initials','overview','team','archive','trash','export','import','merge','download','other'];
-  const groups = {workspace:'personal',initials:'personal',overview:'team',team:'team',archive:'records',trash:'records',export:'tools',import:'tools',merge:'tools',download:'tools',other:'other'};
+  const order = ['account','workspace','overview','team','archive','trash','export','import','merge','download','other'];
+  const groups = {account:'personal',workspace:'personal',overview:'team',team:'team',archive:'records',trash:'records',export:'tools',import:'tools',merge:'tools',download:'tools',other:'other'};
 
   function group(panel, label, name) {
     const section = document.createElement('section');
@@ -35,6 +35,7 @@
   function mount(panel, index) {
     const title = document.createElement('h2'); title.className = 'settings-panel-title'; title.textContent = 'Settings'; panel.prepend(title);
     const personal = group(panel,'My settings','personal');
+    personal.section.querySelector('h3').remove();
     const team = group(panel,'Team management','team');
     const records = group(panel,'Archive & trash','records');
     const other = group(panel,'More options','other');

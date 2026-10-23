@@ -41,6 +41,7 @@
     client,
     getCurrentUser: () => currentUser,
     getCurrentProfile: () => currentProfile,
+    hasAccountSettings: true,
     isPasswordRecovery: () => passwordRecoveryActive,
     isAdmin: () => isAdmin(),
     isSuperUser: () => isSuperUser(),
@@ -98,10 +99,11 @@
         button.type = "button";
         button.className = "ghost-action";
         button.dataset.myInitials = "true";
-        button.textContent = "My initials";
+        button.textContent = "Account settings";
         button.addEventListener("click", openAuthDialog);
         panel.prepend(button);
       }
+      button.textContent = "Account settings";
       button.hidden = !currentUser;
     });
     const adminOnlyLabels = new Set([
@@ -286,6 +288,10 @@
   }
 
   let passwordRecoveryActive = initialRecoveryRequest;
+  let accountSettingsTab = "account";
+  let accountDialogVersion = 0;
+  let workspaceDraftOwner = "";
+  let workspaceDraftDirty = false;
 
   function authRedirectUrl() {
     const url = new URL(window.location.href);
@@ -311,12 +317,6 @@
           <button class="icon-button" id="closeAuthDialog" type="button" aria-label="Close">&times;</button>
         </div>
         <p class="auth-help">Use your @piercecartwright.com email. New accounts stay pending until an administrator approves them.</p>
-        <div class="auth-current-user" id="authCurrentUser"></div>
-        <section id="authInitialsSection" hidden>
-          <label><span>My initials</span><input id="authInitials" maxlength="4" placeholder="JD" autocomplete="off" /></label>
-          <p>Used on new updates you make to shared records.</p>
-          <button class="primary-action" id="authSaveInitials" type="button">Save initials</button>
-        </section>
         <div class="auth-fields">
           <label>
             <span>Email</span>
@@ -331,6 +331,20 @@
           <button class="auth-text-action" id="authMagicLink" type="button">Email Magic Link</button>
           <button class="auth-text-action" id="authForgotPassword" type="button">Forgot Password</button>
         </div>
+        <div id="authAccountTabs" class="account-settings-tabs" role="tablist" aria-label="Account settings" hidden>
+          <button type="button" id="authAccountTab" role="tab" data-account-tab="account" aria-controls="authAccountPanel" aria-selected="true" tabindex="0">Account</button>
+          <button type="button" id="authPasswordTab" role="tab" data-account-tab="password" aria-controls="authPasswordPanel" aria-selected="false" tabindex="-1">Password</button>
+          <button type="button" id="authWorkspaceTab" role="tab" data-account-tab="workspace" aria-controls="authWorkspacePanel" aria-selected="false" tabindex="-1" hidden>Workspace</button>
+        </div>
+        <section id="authAccountPanel" class="account-settings-panel" role="tabpanel" aria-labelledby="authAccountTab" tabindex="0" hidden>
+          <div class="auth-current-user" id="authCurrentUser"></div>
+          <section id="authInitialsSection" hidden>
+            <label><span>My initials</span><input id="authInitials" maxlength="4" placeholder="JD" autocomplete="off" /></label>
+            <p>Shown on your updates to shared records.</p>
+            <button class="primary-action" id="authSaveInitials" type="button">Save initials</button>
+          </section>
+        </section>
+        <section id="authPasswordPanel" class="account-settings-panel" role="tabpanel" aria-labelledby="authPasswordTab" tabindex="0" hidden>
         <section class="auth-security" id="authSecurity" hidden>
           <div>
             <p class="eyebrow">Account Security</p>
@@ -351,7 +365,16 @@
             <button class="primary-action" id="authChangePassword" type="button">Change Password</button>
           </div>
         </section>
-        <p class="auth-status" id="authStatus"></p>
+        </section>
+        <section id="authWorkspacePanel" class="account-settings-panel" role="tabpanel" aria-labelledby="authWorkspaceTab" tabindex="0" hidden>
+          <h3>Your starting workspace</h3><p class="account-settings-help">Choose which distributor and product numbers appear first. You can still use every distributor.</p>
+          <fieldset id="authWorkspaceChoices" class="account-workspace-options"><legend class="account-settings-sr-only">Preferred workspace</legend>
+            <label><input type="radio" name="accountWorkspaceMode" value="usFoods" /><span><strong>US Foods</strong><small>APNs and US Foods stocked items first</small></span></label>
+            <label><input type="radio" name="accountWorkspaceMode" value="sysco" /><span><strong>Sysco</strong><small>SUPCs and Sysco stocked items first</small></span></label>
+            <label><input type="radio" name="accountWorkspaceMode" value="mixed" /><span><strong>Mixed distributors</strong><small>All distributors, with both product codes</small></span></label>
+          </fieldset><div class="account-workspace-actions"><button type="button" class="primary-action" id="authSaveWorkspace">Save workspace</button></div>
+        </section>
+        <p class="auth-status" id="authStatus" role="status" aria-live="polite"></p>
         <div class="auth-actions">
           <button class="ghost-action" id="authSignOut" type="button" data-auth-action="signout">Sign Out</button>
           <span></span>
@@ -362,6 +385,25 @@
     `;
     document.body.appendChild(dialog);
     closeDialogOnBackdropClick(dialog);
+    dialog.setAttribute("aria-labelledby", "authDialogTitle");
+    dialog.querySelector("h2").id = "authDialogTitle";
+    dialog.addEventListener("close", () => {
+      accountDialogVersion += 1;
+      workspaceDraftOwner = "";
+      workspaceDraftDirty = false;
+      ["authPassword", "authNewPassword", "authConfirmPassword"].forEach(id => { dialog.querySelector("#" + id).value = ""; });
+    });
+    dialog.querySelectorAll("[data-account-tab]").forEach(tab => tab.addEventListener("click", () => selectAccountTab(tab.dataset.accountTab)));
+    dialog.querySelector("#authAccountTabs").addEventListener("keydown", event => {
+      const tabs = [...dialog.querySelectorAll("[data-account-tab]")].filter(tab => !tab.hidden);
+      const index = tabs.indexOf(document.activeElement);
+      if (index < 0 || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+      selectAccountTab(tabs[next].dataset.accountTab, true);
+    });
+    dialog.querySelector("#authSaveWorkspace").addEventListener("click", saveAccountWorkspace);
+    dialog.querySelectorAll('[name="accountWorkspaceMode"]').forEach(input => input.addEventListener("change", () => { workspaceDraftDirty = true; }));
 
     dialog.querySelector("#closeAuthDialog").addEventListener("click", () => dialog.close());
     dialog.querySelector("#authSignIn").addEventListener("click", signIn);
@@ -399,7 +441,8 @@
   function refreshDialogState() {
     const dialog = document.querySelector("#supabaseAuthDialog");
     if (dialog) {
-      dialog.querySelector("h2").textContent = currentUser ? "My Account" : "FoodBrokerBase Login";
+      dialog.querySelector("h2").textContent = currentUser ? "Account settings" : "FoodBrokerBase Login";
+      dialog.querySelector(".form-header .eyebrow").textContent = currentUser ? "Your account" : "Team Login";
       dialog.querySelector(".auth-help").hidden = Boolean(currentUser);
       dialog.querySelector(".auth-fields").hidden = Boolean(currentUser);
       dialog.querySelector("#authSignIn").hidden = Boolean(currentUser);
@@ -424,10 +467,67 @@
     if (signOutButton) signOutButton.hidden = !currentUser;
     if (security) security.hidden = !currentUser;
     if (helpActions) helpActions.hidden = Boolean(currentUser);
+    if (dialog) syncAccountSettings(dialog);
+  }
+
+  function workspaceSettingsAvailable() {
+    return Boolean(currentUser && !passwordRecoveryActive && approvedRoles.has(currentProfile?.role)
+      && typeof window.foodBrokerWorkspace?.getMode === "function" && typeof window.foodBrokerWorkspace?.setMode === "function");
+  }
+
+  function selectAccountTab(name, focus = false) {
+    const dialog = document.querySelector("#supabaseAuthDialog");
+    if (!dialog) return;
+    const available = currentUser ? passwordRecoveryActive ? ["password"] : ["account", "password", ...(workspaceSettingsAvailable() ? ["workspace"] : [])] : [];
+    accountSettingsTab = passwordRecoveryActive && currentUser ? "password" : available.includes(name) ? name : "account";
+    dialog.querySelectorAll("[data-account-tab]").forEach(tab => {
+      const selected = tab.dataset.accountTab === accountSettingsTab && available.includes(tab.dataset.accountTab);
+      tab.hidden = !available.includes(tab.dataset.accountTab);
+      tab.setAttribute("aria-selected", String(selected)); tab.tabIndex = selected ? 0 : -1;
+      dialog.querySelector("#" + tab.getAttribute("aria-controls")).hidden = !selected;
+    });
+    if (focus) dialog.querySelector(`[data-account-tab="${accountSettingsTab}"]`)?.focus();
+  }
+
+  function syncAccountSettings(dialog) {
+    dialog.classList.toggle("is-account-settings", Boolean(currentUser));
+    dialog.querySelector("#authAccountTabs").hidden = !currentUser || passwordRecoveryActive;
+    if (workspaceSettingsAvailable() && (workspaceDraftOwner !== currentUser.id || !workspaceDraftDirty)) {
+      workspaceDraftOwner = currentUser.id;
+      const mode = window.foodBrokerWorkspace.getMode();
+      dialog.querySelectorAll('[name="accountWorkspaceMode"]').forEach(input => { input.checked = input.value === mode; });
+    }
+    selectAccountTab(accountSettingsTab);
+  }
+
+  async function saveAccountWorkspace() {
+    const dialog = document.querySelector("#supabaseAuthDialog");
+    const button = dialog?.querySelector("#authSaveWorkspace");
+    if (!dialog?.open || !workspaceSettingsAvailable() || button.disabled) return;
+    const mode = dialog.querySelector('[name="accountWorkspaceMode"]:checked')?.value;
+    if (!["usFoods", "sysco", "mixed"].includes(mode)) { setStatus("Choose your preferred workspace.", "error"); return; }
+    const uid = currentUser.id, version = accountDialogVersion;
+    const stillCurrent = () => dialog.open && accountDialogVersion === version && currentUser?.id === uid && workspaceSettingsAvailable();
+    button.disabled = true; dialog.querySelector("#authWorkspaceChoices").disabled = true;
+    setStatus("Saving workspace…", "pending");
+    try {
+      await window.foodBrokerWorkspace.setMode(mode);
+      if (stillCurrent()) setStatus("Your workspace has been saved.", "success");
+    } catch (error) {
+      if (stillCurrent()) setStatus(error.message || "Could not save your workspace. Your choice is still here; please retry.", "error");
+    } finally {
+      if (stillCurrent()) { button.disabled = false; dialog.querySelector("#authWorkspaceChoices").disabled = false; }
+    }
   }
 
   function openAuthDialog() {
     const dialog = ensureDialog();
+    accountDialogVersion += 1;
+    workspaceDraftOwner = "";
+    workspaceDraftDirty = false;
+    accountSettingsTab = passwordRecoveryActive ? "password" : "account";
+    dialog.querySelector("#authSaveWorkspace").disabled = false;
+    dialog.querySelector("#authWorkspaceChoices").disabled = false;
     closeOpenSettingsMenus();
     refreshDialogState();
 
@@ -945,12 +1045,20 @@
 
   function showPasswordRecoveryDialog() {
     const dialog = ensureDialog();
+    accountSettingsTab = "password";
     refreshDialogState();
     setStatus("Choose and confirm a new password.", "pending");
     if (!dialog.open && typeof dialog.showModal === "function") dialog.showModal();
     else if (!dialog.open) dialog.setAttribute("open", "open");
     document.querySelector("#authNewPassword")?.focus();
   }
+
+  function syncOpenAccountSettings() {
+    const dialog = document.querySelector("#supabaseAuthDialog[open]");
+    if (dialog) syncAccountSettings(dialog);
+  }
+  window.addEventListener("foodbrokerbase:workspace", syncOpenAccountSettings);
+  window.addEventListener("foodbrokerbase:workspace-ready", syncOpenAccountSettings);
 
   ready(init);
   window.addEventListener("online", () => { if (currentUser && !isApproved()) refreshAccess(); });

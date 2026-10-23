@@ -1,5 +1,5 @@
-const CACHE_NAME = "foodbrokerbase-settings1";
-const APP_SHELL = ["./settings-menu.css?v=20261023-settings1","./settings-menu.js?v=20261023-settings1","./product-support.html","./product-support.js?v=20261023-support1","./product-support.css?v=20261023-support1","./workspace-preferences.js?v=20261022-workspace1","./workspace-preferences.css?v=20261022-workspace1","./visit-panels.css?v=20261022-visitpanels1","./us-foods-logo.svg","./operator-products.css?v=20261022-operatorcompact1","./product-catalog.js?v=20261022-nestle1","./event-products.css?v=20261022-eventease1", "./save-status.js?v=20261022-savestatus1", "./save-status.css?v=20261022-savestatus1", "./event-agenda.js?v=20261022-eventease1","./event-agenda.css?v=20261022-compactfilters1","./window-layout.css?v=20260930-windows1","./table-planner.js?v=20260930-planner14","./table-planner.css?v=20260930-planner14","./table-planner.html?v=20260930-planner14","./editing-stability.js?v=20260930-planner14","./foodshow-layout.js?v=20261022-productdedupe1", "./foodshow-layout.css?v=20260929-foodshow8",
+const CACHE_NAME = "foodbrokerbase-account1";
+const APP_SHELL = ["./account-settings.css?v=20261023-account1","./settings-menu.css?v=20261023-account1","./settings-menu.js?v=20261023-account1","./product-support.html","./product-support.js?v=20261023-support1","./product-support.css?v=20261023-support1","./workspace-preferences.js?v=20261023-account1","./workspace-preferences.css?v=20261022-workspace1","./visit-panels.css?v=20261022-visitpanels1","./us-foods-logo.svg","./operator-products.css?v=20261022-operatorcompact1","./product-catalog.js?v=20261022-nestle1","./event-products.css?v=20261022-eventease1", "./save-status.js?v=20261022-savestatus1", "./save-status.css?v=20261022-savestatus1", "./event-agenda.js?v=20261022-eventease1","./event-agenda.css?v=20261022-compactfilters1","./window-layout.css?v=20260930-windows1","./table-planner.js?v=20260930-planner14","./table-planner.css?v=20260930-planner14","./table-planner.html?v=20260930-planner14","./editing-stability.js?v=20260930-planner14","./foodshow-layout.js?v=20261022-productdedupe1", "./foodshow-layout.css?v=20260929-foodshow8",
   "./manager-overview.js?v=20260918-managersettings1",
   "./manager-overview.css?v=20260918-manager1",
   "./todo-drag.js?v=20260917-todopointer1",
@@ -34,7 +34,7 @@ const APP_SHELL = ["./settings-menu.css?v=20261023-settings1","./settings-menu.j
   "./market-visit-layout.js?v=20261022-workspace1",
   "./supabase-config.js",
   "./main-workspace-loader.js?v=20261023-support1",
-  "./supabase-auth.js?v=20261023-support1",
+  "./supabase-auth.js?v=20261023-account1",
   "./manifest.webmanifest",
   "./broker-whiteboard-logo.png",
   "./pwa-icon-192.png",
