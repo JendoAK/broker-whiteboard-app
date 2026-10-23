@@ -8,7 +8,7 @@
   const esc = value => text(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
   const normal = value => text(value).normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
   const fields = ["description", "vendor", "distributor", "distributorNumber", "manufacturerNumber", "apn", "supc", "gtin", "packaging", "storage", "brandName", "brandType", "category", "notes"];
-  const csvFields = ["id", "description", "vendor", "distributor", "manufacturerNumber", "apn", "supc", "distributorNumber", "gtin", "packaging", "storage", "brandName", "brandType", "category"];
+  const csvFields = ["id", "description", "vendor", "distributor", "manufacturerNumber", "apn", "supc", "distributorNumber", "gtin", "packaging", "storage", "brandName", "brandType", "category", "so"];
   const typeNames = { personal: "Market visit", vendor: "Vendor visit", foodshow: "Foodshow", testkitchen: "Test kitchen" };
   const logos = { usFoods: ["us-foods-logo.svg", "US Foods"], sysco: ["sysco-logo.png?v=20260917-official1", "Sysco"], linford: ["linford-logo.svg", "Linford"], qualitySales: ["quality-sales-logo.png", "Quality Sales"] };
   const state = { userId: "", generation: 0, request: 0, stock: [], new: [], events: [], selected: new Set(), collection: "stock", date: "upcoming", view: "products", editing: null, attachments: [], attachmentsChanged: false, importRows: [], importRunning: false, saving: false, readingFiles: false, frames: new Set(), eventId: "", loaded: false };
@@ -114,7 +114,7 @@
   function shownProducts() {
     const words = normal($("psSearch").value).split(/\s+/).filter(Boolean), vendor = $("psVendor").value, distributor = $("psDistributor").value;
     return collection().filter(p => (!vendor || p.vendor === vendor) && (!distributor || family(p) === distributor) && words.every(word => normal([description(p), metadata(p), p.gtin, p.category].join(" ")).includes(word)))
-      .sort((a, b) => text(a.vendor).localeCompare(text(b.vendor)) || description(a).localeCompare(description(b)));
+      .sort((a, b) => text(a.vendor).trim().localeCompare(text(b.vendor).trim(), undefined, {sensitivity:"base",numeric:true}) || description(a).localeCompare(description(b)));
   }
   function renderProducts() {
     const products = shownProducts(), limit = 600;
@@ -327,9 +327,20 @@
     for (let i=0; i<source.length; i++) { const c=source[i]; if(c==='"'){if(quoted&&source[i+1]==='"'){cell+='"';i++;}else quoted=!quoted;}else if(c===","&&!quoted){row.push(cell);cell="";}else if((c==="\n"||c==="\r")&&!quoted){if(c==="\r"&&source[i+1]==="\n")i++;row.push(cell);if(row.some(v=>v.trim()))rows.push(row.splice(0));else row.length=0;cell="";}else cell+=c; }
     if(quoted)throw new Error("A quoted CSV field is missing its closing quote.");row.push(cell);if(row.some(v=>v.trim()))rows.push(row);
     if(rows.length<2)throw new Error("The CSV needs a header and at least one product row.");
-    const headers=rows.shift().map(h=>h.replace(/^\uFEFF/,"").trim()); if(!["description","vendor","distributor"].every(h=>headers.includes(h)))throw new Error("Use the template headers: description, vendor and distributor are required.");
+    const aliases={description:"description",productdescription:"description",vendor:"vendor",manufacturer:"vendor",distributor:"distributor",id:"id",apn:"apn",usf:"apn",usfoods:"apn",supc:"supc",sysco:"supc",linfordnumber:"linfordNumber",linforditemnumber:"linfordNumber",linforditem:"linfordNumber",linford:"linfordNumber",qualitysalesnumber:"qualitySalesNumber",qualitysalesitemnumber:"qualitySalesNumber",qualitysalesitem:"qualitySalesNumber",qsnumber:"qualitySalesNumber",distributornumber:"distributorNumber",distributoritemnumber:"distributorNumber",itemnumber:"distributorNumber",item:"distributorNumber",manufacturernumber:"manufacturerNumber",manufacturerproductnumber:"manufacturerNumber",mfr:"manufacturerNumber",mf:"manufacturerNumber",upc:"manufacturerNumber",gtin:"gtin",packaging:"packaging",storage:"storage",brandname:"brandName",brandtype:"brandType",category:"category",specialorder:"so",so:"so"};
+    const headers=rows.shift().map(h=>aliases[h.replace(/^\uFEFF/,"").trim().toLowerCase().replace(/[^a-z0-9]/g,"")]||""); if(!["description","vendor"].every(h=>headers.includes(h)))throw new Error("Use the template headers: Description and Vendor are required.");
     if(rows.length>500)throw new Error("Import up to 500 products at a time.");
-    return rows.map((values,i)=>{const p={};headers.forEach((h,n)=>{if(csvFields.includes(h))p[h]=text(values[n]).trim();});if(!p.description||!p.vendor||!p.distributor)throw new Error("Row "+(i+2)+" needs a description, vendor and distributor.");return p;});
+    return rows.map((values,i)=>{
+      const p={};headers.forEach((h,n)=>{if(csvFields.includes(h)||h==="linfordNumber"||h==="qualitySalesNumber")p[h]=text(values[n]).trim();});
+      p.distributor=p.distributor||$("psImportDistributor").value;
+      if(!p.description||!p.vendor||!p.distributor)throw new Error("Row "+(i+2)+" needs a description, vendor and distributor.");
+      const group=family(p);
+      const number=group==="linford"?p.linfordNumber:group==="qualitySales"?p.qualitySalesNumber:group==="usFoods"?p.apn:group==="sysco"?p.supc:"";
+      if(number)p.distributorNumber=number;
+      delete p.linfordNumber;delete p.qualitySalesNumber;
+      if(p.so)p.so=/^(yes|y|true|1|so)$/i.test(p.so)?"Yes":"";
+      return p;
+    });
   }
   async function readCsv(file) {
     const gen=state.generation,uid=state.userId;state.importRows=[];$("psRunImport").disabled=true;
@@ -368,6 +379,7 @@
     $("psImport").addEventListener("click",()=>{if(!allowed())return;$("psImportDialog").showModal();});
     $("psCsvTemplate").addEventListener("click",()=>download("stock-product-template.csv",csvFields.join(",")+"\r\n", "text/csv;charset=utf-8"));
     $("psCsvInput").addEventListener("change",event=>readCsv(event.target.files[0]));$("psRunImport").addEventListener("click",runImport);
+    $("psImportDistributor").addEventListener("change",()=>{if(!state.importRunning)readCsv($("psCsvInput").files[0]);});
     window.addEventListener("foodbrokerbase:auth-checking",clearSensitive);
     window.addEventListener("foodbrokerbase:auth",applyAuth);applyAuth();
   }

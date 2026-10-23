@@ -4779,6 +4779,7 @@ function renderStockVendorGroups(products) {
     groups.get(vendor).push(product);
   });
   return [...groups.entries()]
+    .sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }))
     .map(([vendor, vendorProducts]) => {
       const logo = getVendorLogo(vendor);
       return `
@@ -9766,6 +9767,7 @@ function renderStockPrintDocument(products, selectedColumnKeys, selectedVendor =
         <h1>${escapeHtml(title)}</h1>
         <div class="muted">Printed ${escapeHtml(new Date().toLocaleDateString())}</div>
         ${[...groups.entries()]
+          .sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }))
           .map(
             ([vendor, vendorProducts], index) => {
               const logo = getVendorLogo(vendor);
