@@ -11,7 +11,8 @@
   const csvFields = ["id", "description", "vendor", "distributor", "manufacturerNumber", "apn", "supc", "distributorNumber", "gtin", "packaging", "storage", "brandName", "brandType", "category", "so"];
   const typeNames = { personal: "Market visit", vendor: "Vendor visit", foodshow: "Foodshow", testkitchen: "Test kitchen" };
   const logos = { usFoods: ["us-foods-logo.svg", "US Foods"], sysco: ["sysco-logo.png?v=20260917-official1", "Sysco"], linford: ["linford-logo.svg", "Linford"], qualitySales: ["quality-sales-logo.png", "Quality Sales"] };
-  const state = { userId: "", generation: 0, request: 0, stock: [], new: [], events: [], selected: new Set(), collection: "stock", date: "upcoming", view: "products", editing: null, attachments: [], attachmentsChanged: false, importRows: [], importRunning: false, saving: false, readingFiles: false, frames: new Set(), eventId: "", loaded: false };
+  const pageSize = 100;
+  const state = { userId: "", generation: 0, request: 0, stock: [], new: [], events: [], selected: new Set(), collection: "stock", schoolOnly: false, visibleLimit: pageSize, date: "upcoming", view: "products", editing: null, attachments: [], attachmentsChanged: false, importRows: [], importRunning: false, saving: false, readingFiles: false, frames: new Set(), eventId: "", loaded: false };
 
   function auth() { return window.foodBrokerBaseAuth; }
   function allowed() { return Boolean(auth()?.getCurrentUser()?.id && auth()?.getCurrentProfile()?.role === "product_support" && !auth()?.isPasswordRecovery?.()); }
@@ -42,6 +43,21 @@
   function description(p) { return p.description || "Untitled product"; }
   function metadata(p) { return [p.vendor, p.brandName, p.distributor, codes(p), p.packaging, p.storage].filter(Boolean).join(" · "); }
   function uniqueValues(items, field) { return [...new Set(items.map(p => text(p[field]).trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)); }
+  function schoolFamily(p) {
+    const vendor = normal(p.vendor), number = normal(p.manufacturerNumber);
+    return vendor && number && !["n/a", "na", "none", "tbd", "seasonal only", "not assigned"].includes(number) && !/^[-\u2013\u2014]+$/.test(number) ? JSON.stringify([vendor, number]) : "id:" + text(p.id);
+  }
+  function syncDistributorButtons() {
+    const current = $("psDistributor").value;
+    document.querySelectorAll("[data-ps-distributor]").forEach(button => button.setAttribute("aria-pressed", button.dataset.psDistributor === current ? "true" : "false"));
+  }
+  function updateSelectionActions() {
+    const count = state.selected.size;
+    $("psSelectionCount").textContent = count + " product" + (count === 1 ? "" : "s") + " selected for printing";
+    $("psSelectionActions").hidden = !count;
+    $("psPrepareSelection").disabled = !count;
+    $("psClearSelection").disabled = !count;
+  }
   function showView(view) {
     if (!allowed()) return;
     state.view = view;
@@ -51,13 +67,14 @@
     if (view === "printing") updatePrintSummary();
   }
   function clearSensitive() {
-    state.generation++; state.request++; state.userId = ""; state.stock = []; state.new = []; state.events = []; state.selected.clear(); state.editing = null; state.attachments = []; state.attachmentsChanged = false; state.importRows = []; state.importRunning = false; state.saving = false; state.readingFiles = false; state.loaded = false; state.eventId = ""; state.collection = "stock"; state.date = "upcoming"; state.view = "products";
+    state.generation++; state.request++; state.userId = ""; state.stock = []; state.new = []; state.events = []; state.selected.clear(); state.editing = null; state.attachments = []; state.attachmentsChanged = false; state.importRows = []; state.importRunning = false; state.saving = false; state.readingFiles = false; state.loaded = false; state.eventId = ""; state.collection = "stock"; state.schoolOnly = false; state.visibleLimit = pageSize; state.date = "upcoming"; state.view = "products";
     state.frames.forEach(frame => frame.remove()); state.frames.clear();
     document.querySelectorAll("dialog").forEach(d => d.close());
     $("psProductForm").reset(); $("psProductForm").elements.id.value = "";
     ["psProductList", "psEventList", "psEventBody", "psPrintPreview", "psAttachments", "psImportPreview", "psUser", "psCount", "psSelectionCount", "psVendors", "psCategories", "psPrintSummary"].forEach(id => $(id).replaceChildren());
     ["psSearch", "psEventSearch", "psCsvInput", "psFileInput"].forEach(id => { $(id).value = ""; });
     $("psVendor").innerHTML = '<option value="">All vendors</option>'; $("psDistributor").value = ""; $("psEventType").value = "";
+    syncDistributorButtons(); updateSelectionActions(); $("psLoadMore").hidden = true;
     $("psPrintSource").innerHTML = '<option value="selected">Selected products</option><option value="shown">Current product search</option>';
     $("psPrintLogo").value = "none"; $("psPrintHeading").value = "Product presentation";
     $("psPrintFormat").value = "list"; $("psPrintCopies").value = "1";
@@ -97,7 +114,7 @@
       state.stock = data.stockProducts.map(window.foodBrokerVendors.product); state.new = data.newProducts.map(window.foodBrokerVendors.product); state.events = data.events.map(event => ({...event, vendor:window.foodBrokerVendors.canonical(event.vendor), type: event.type === "pc" ? "personal" : event.type === "manufacturer" ? "vendor" : event.type})); state.loaded = true;
       state.selected = new Set([...state.selected].filter(value => productFromKey(value)));
       refreshFilters(); renderProducts(); renderEvents(); refreshPrintSources();
-      status("Up to date · Shared products can be maintained here. Event schedules are read only.");
+      status("Up to date");
     } catch (error) {
       if (!valid(gen, uid) || request !== state.request) return;
       status("Could not load the latest workspace. Check your connection and refresh.", "error"); errorDetails(error);
@@ -113,16 +130,20 @@
   }
   function shownProducts() {
     const words = normal($("psSearch").value).split(/\s+/).filter(Boolean), vendor = $("psVendor").value, distributor = $("psDistributor").value;
-    return collection().filter(p => (!vendor || p.vendor === vendor) && (!distributor || family(p) === distributor) && words.every(word => normal([description(p), metadata(p), p.gtin, p.category].join(" ")).includes(word)))
+    const schoolFamilies = state.schoolOnly ? new Set(state.stock.filter(p => p.k12).map(schoolFamily)) : null;
+    return collection().filter(p => (!schoolFamilies || schoolFamilies.has(schoolFamily(p))) && (!vendor || p.vendor === vendor) && (!distributor || family(p) === distributor) && words.every(word => normal([description(p), metadata(p), p.gtin, p.category].join(" ")).includes(word)))
       .sort((a, b) => text(a.vendor).trim().localeCompare(text(b.vendor).trim(), undefined, {sensitivity:"base",numeric:true}) || description(a).localeCompare(description(b)));
   }
   function renderProducts() {
-    const products = shownProducts(), limit = 600;
-    $("psCount").textContent = products.length + " product" + (products.length === 1 ? "" : "s") + (products.length > limit ? " · first 600 shown; narrow your search" : "");
-    $("psSelectionCount").textContent = state.selected.size ? state.selected.size + " selected for printing" : "";
-    $("psProductList").innerHTML = products.slice(0, limit).map(p => {
+    const products = shownProducts(), visible = products.slice(0, state.visibleLimit), remaining = products.length - visible.length;
+    $("psCount").textContent = remaining ? "Showing " + visible.length + " of " + products.length + " products" : products.length + " product" + (products.length === 1 ? "" : "s");
+    $("psSelectVisible").textContent = "Select shown (" + visible.length + ")"; $("psSelectVisible").disabled = !visible.length;
+    $("psLoadMore").hidden = !remaining;
+    $("psLoadMore").textContent = "Load " + Math.min(pageSize, remaining) + " more · " + remaining + " remaining";
+    updateSelectionActions();
+    $("psProductList").innerHTML = visible.map(p => {
       const selectedKey = key(state.collection, p.id), locked = state.collection === "new" && productLocked(p);
-      return `<article class="ps-product-row"><input type="checkbox" data-select-product="${esc(selectedKey)}" aria-label="Select ${esc(description(p))} for printing" ${state.selected.has(selectedKey) ? "checked" : ""} /><div><h3>${esc(description(p))}</h3><p>${esc(metadata(p))}</p>${locked ? '<span class="ps-lock">Stocked · New-product details locked</span>' : ""}</div><button type="button" data-edit-product="${esc(p.id)}">${locked ? "View" : "Edit"}</button></article>`;
+      return `<article class="ps-product-row"><input type="checkbox" data-select-product="${esc(selectedKey)}" aria-label="Select ${esc(description(p))} for printing" ${state.selected.has(selectedKey) ? "checked" : ""} /><div class="ps-product-info"><div class="ps-product-name"><h3>${esc(description(p))}</h3><button type="button" data-edit-product="${esc(p.id)}" aria-label="${locked ? "View" : "Edit"} ${esc(description(p))}">${locked ? "View" : "Edit"}</button></div><p>${esc(metadata(p))}</p>${locked ? '<span class="ps-lock">Stocked · New-product details locked</span>' : ""}</div></article>`;
     }).join("") || '<p class="ps-empty">No products match. Try a different search or filter.</p>';
     updatePrintSummary();
   }
@@ -143,7 +164,7 @@
       control.disabled = Boolean(locked);
     });
     $("psProductDialogTitle").textContent = p ? description(p) : state.collection === "stock" ? "Add stocked product" : "Add new product";
-    $("psProductHelp").textContent = locked ? "This new product has moved to stock. Its event-library details remain locked. Maintain the stocked item in Stocked products." : state.collection === "stock" ? "Changes update this shared stocked product for the team. Existing event selections stay linked." : "Changes update this shared new product wherever it is used. Product notes describe the product, not customer feedback.";
+    $("psProductHelp").textContent = locked ? "This new product has moved to stock. Its event-library details remain locked. Maintain the stocked item in Stocked products." : state.collection === "stock" ? !p && state.schoolOnly ? "This new stocked product will be included in K-12 school products and shared with the team." : "Changes update this shared stocked product for the team. Existing event selections stay linked." : "Changes update this shared new product wherever it is used. Product notes describe the product, not customer feedback.";
     document.querySelectorAll("[data-stock-field]").forEach(el => { el.hidden = state.collection !== "stock"; });
     document.querySelectorAll("[data-new-field]").forEach(el => { el.hidden = state.collection !== "new"; });
     $("psSaveProduct").hidden = Boolean(locked); $("psSaveProduct").disabled = false;
@@ -203,7 +224,7 @@
     Object.assign(product, window.foodBrokerVendors.product(product));
     if (form.elements.id.value) product.id = form.elements.id.value;
     if (kind === "new") { delete product.distributorNumber; delete product.distributor; }
-    if (kind === "stock") { if (state.attachmentsChanged) product.attachments = state.attachments.map(a => ({...a})); if (family(product) === "usFoods") product.distributorNumber = product.apn; if (family(product) === "sysco") product.distributorNumber = product.supc; }
+    if (kind === "stock") { if (!state.editing?.original && state.schoolOnly) product.k12 = true; if (state.attachmentsChanged) product.attachments = state.attachments.map(a => ({...a})); if (family(product) === "usFoods") product.distributorNumber = product.apn; if (family(product) === "sysco") product.distributorNumber = product.supc; }
     return product;
   }
   async function saveProduct(event) {
@@ -359,13 +380,17 @@
   }
   function init() {
     document.querySelectorAll("[data-view]").forEach(button=>button.addEventListener("click",()=>showView(button.dataset.view)));
-    document.querySelectorAll("[data-collection]").forEach(button=>button.addEventListener("click",()=>{state.collection=button.dataset.collection;document.querySelectorAll("[data-collection]").forEach(b=>b.setAttribute("aria-pressed",b===button?"true":"false"));renderProducts();}));
+    document.querySelectorAll("[data-collection]").forEach(button=>button.addEventListener("click",()=>{state.schoolOnly=button.dataset.collection==="school";state.collection=state.schoolOnly?"stock":button.dataset.collection;state.visibleLimit=pageSize;if(state.schoolOnly){$("psDistributor").value="";syncDistributorButtons();}document.querySelectorAll("[data-collection]").forEach(b=>b.setAttribute("aria-pressed",b===button?"true":"false"));renderProducts();}));
+    document.querySelectorAll("[data-ps-distributor]").forEach(button=>button.addEventListener("click",()=>{$("psDistributor").value=button.dataset.psDistributor;state.visibleLimit=pageSize;syncDistributorButtons();renderProducts();}));
     document.querySelectorAll("[data-date]").forEach(button=>button.addEventListener("click",()=>{state.date=button.dataset.date;document.querySelectorAll("[data-date]").forEach(b=>b.setAttribute("aria-pressed",b===button?"true":"false"));renderEvents();}));
-    ["psSearch","psVendor","psDistributor"].forEach(id=>$(id).addEventListener(id==="psSearch"?"input":"change",renderProducts));
+    ["psSearch","psVendor","psDistributor"].forEach(id=>$(id).addEventListener(id==="psSearch"?"input":"change",()=>{state.visibleLimit=pageSize;if(id==="psDistributor")syncDistributorButtons();renderProducts();}));
     ["psEventSearch","psEventType"].forEach(id=>$(id).addEventListener(id==="psEventSearch"?"input":"change",renderEvents));
     $("psProductList").addEventListener("click",event=>{const button=event.target.closest("[data-edit-product]");if(button)openProduct(button.dataset.editProduct);});
-    $("psProductList").addEventListener("change",event=>{const input=event.target.closest("[data-select-product]");if(!input)return;if(input.checked)state.selected.add(input.dataset.selectProduct);else state.selected.delete(input.dataset.selectProduct);$("psSelectionCount").textContent=state.selected.size+" selected for printing";updatePrintSummary();});
-    $("psSelectVisible").addEventListener("click",()=>{shownProducts().forEach(p=>state.selected.add(key(state.collection,p.id)));renderProducts();});
+    $("psProductList").addEventListener("change",event=>{const input=event.target.closest("[data-select-product]");if(!input)return;if(input.checked)state.selected.add(input.dataset.selectProduct);else state.selected.delete(input.dataset.selectProduct);updateSelectionActions();updatePrintSummary();});
+    $("psSelectVisible").addEventListener("click",()=>{shownProducts().slice(0,state.visibleLimit).forEach(p=>state.selected.add(key(state.collection,p.id)));renderProducts();});
+    $("psClearSelection").addEventListener("click",()=>{state.selected.clear();renderProducts();});
+    $("psPrepareSelection").addEventListener("click",()=>{if(!allowed()||!state.selected.size)return;$("psPrintSource").value="selected";showView("printing");});
+    $("psLoadMore").addEventListener("click",()=>{state.visibleLimit+=pageSize;renderProducts();});
     $("psAdd").addEventListener("click",()=>openProduct()); $("psProductForm").addEventListener("submit",saveProduct);
     $("psFileInput").addEventListener("change",event=>addFiles([...event.target.files]));
     $("psAttachments").addEventListener("click",event=>{const button=event.target.closest("[data-download-attachment]");if(button)downloadAttachment(Number(button.dataset.downloadAttachment));});
