@@ -13,6 +13,7 @@
   const logos = { usFoods: ["us-foods-logo.svg", "US Foods"], sysco: ["sysco-logo.png?v=20260917-official1", "Sysco"], linford: ["linford-logo.svg", "Linford"], qualitySales: ["quality-sales-logo.png", "Quality Sales"] };
   const pageSize = 100;
   const state = { userId: "", generation: 0, request: 0, stock: [], new: [], events: [], selected: new Set(), collection: "stock", schoolOnly: false, visibleLimit: pageSize, date: "upcoming", view: "products", editing: null, attachments: [], attachmentsChanged: false, importRows: [], importRunning: false, saving: false, readingFiles: false, frames: new Set(), eventId: "", loaded: false };
+  let labelPrint;
 
   function auth() { return window.foodBrokerBaseAuth; }
   function allowed() { return Boolean(auth()?.getCurrentUser()?.id && auth()?.getCurrentProfile()?.role === "product_support" && !auth()?.isPasswordRecovery?.()); }
@@ -69,6 +70,7 @@
   function clearSensitive() {
     state.generation++; state.request++; state.userId = ""; state.stock = []; state.new = []; state.events = []; state.selected.clear(); state.editing = null; state.attachments = []; state.attachmentsChanged = false; state.importRows = []; state.importRunning = false; state.saving = false; state.readingFiles = false; state.loaded = false; state.eventId = ""; state.collection = "stock"; state.schoolOnly = false; state.visibleLimit = pageSize; state.date = "upcoming"; state.view = "products";
     state.frames.forEach(frame => frame.remove()); state.frames.clear();
+    labelPrint?.clear();
     document.querySelectorAll("dialog").forEach(d => d.close());
     $("psProductForm").reset(); $("psProductForm").elements.id.value = "";
     ["psProductList", "psEventList", "psEventBody", "psPrintPreview", "psAttachments", "psImportPreview", "psUser", "psCount", "psSelectionCount", "psVendors", "psCategories", "psPrintSummary"].forEach(id => $(id).replaceChildren());
@@ -103,6 +105,7 @@
   }
   async function loadWorkspace() {
     if (!allowed()) return;
+    labelPrint?.invalidate("Refreshing products · Prepare a new preview when loading finishes.");
     const gen = state.generation, uid = state.userId, request = ++state.request;
     status("Loading shared product lists and event schedules…", "waiting"); errorDetails(null);
     $("psRefresh").disabled = true;
@@ -263,10 +266,10 @@
   function eventDate(event) { return event.startDate || event.date || ""; }
   function eventDateRange(event) { const start = dateText(eventDate(event)), end = dateText(event.endDate); return start + (end && end !== start ? " – " + end : ""); }
   function eventProducts(event) {
-    const ids = [...(Array.isArray(event.productIds) ? event.productIds : []), ...(Array.isArray(event.newProductIds) ? event.newProductIds : [])].map(text);
-    const products = ids.map(id => state.stock.find(p => text(p.id) === id) || state.new.find(p => text(p.id) === id)).filter(Boolean);
+    const stockIds = (Array.isArray(event.productIds) ? event.productIds : []).map(text), newIds = (Array.isArray(event.newProductIds) ? event.newProductIds : []).map(text);
+    const products = [...stockIds.map(id => state.stock.find(p => text(p.id) === id) || state.new.find(p => text(p.id) === id)), ...newIds.map(id => state.new.find(p => text(p.id) === id) || state.stock.find(p => text(p.id) === id))].filter(Boolean);
     const canonical = products.map(p => p.linkedStockId ? state.stock.find(s => text(s.id) === text(p.linkedStockId)) || p : p);
-    return [...new Map(canonical.map(p => [text(p.id), p])).values()];
+    return [...new Map(canonical.map(p => [key(state.stock.includes(p)?"stock":"new",p.id), p])).values()];
   }
   function renderEvents() {
     const now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate()), weekStart = new Date(today);
@@ -307,9 +310,9 @@
     if (source === "shown") return shownProducts();
     if (source.startsWith("event:")) { const event = state.events.find(e => text(e.id) === source.slice(6)); return event ? eventProducts(event) : []; }
     const products = [...state.selected].map(productFromKey).filter(Boolean).map(p => p.linkedStockId ? state.stock.find(s => s.id === p.linkedStockId) || p : p);
-    return [...new Map(products.map(p => [p.id, p])).values()];
+    return [...new Map(products.map(p => [key(state.stock.includes(p)?"stock":"new",p.id), p])).values()];
   }
-  function updatePrintSummary() { const count = printProducts().length; $("psPrintSummary").textContent = count + " product" + (count === 1 ? "" : "s") + " ready. Choose a distributor logo before printing, or leave No distributor logo selected."; }
+  function updatePrintSummary() { const count = printProducts().length; labelPrint?.sync(); $("psPrintSummary").textContent = count + " product" + (count === 1 ? "" : "s") + " ready. " + ($("psPrintFormat").value === "labels" ? "Select a product to edit its label wording, logo and copies. Edits stay in this print job." : "Choose a distributor logo before printing, or leave No distributor logo selected."); }
   function asset(value) { return new URL(value, window.location.href).href; }
   function logoMarkup(choice) { return `<div class="ps-preview-logos"><img src="${esc(asset("vendor-logos/pierce-cartwright.png"))}" alt="Pierce Cartwright" />${logos[choice] ? `<img src="${esc(asset(logos[choice][0]))}" alt="${esc(logos[choice][1])}" />` : ""}</div>`; }
   function printMarkup(products, format, logo, heading, copies) {
@@ -321,15 +324,17 @@
   }
   function preparePrint() {
     if (!allowed()) return;
+    if ($("psPrintFormat").value === "labels") {labelPrint.prepare();return;}
     const products = printProducts(), format = $("psPrintFormat").value, logo = $("psPrintLogo").value, heading = $("psPrintHeading").value.trim() || "Product presentation", copies = Math.max(1, Math.min(20, Number($("psPrintCopies").value) || 1));
     if (!products.length) { status("Choose products or an event lineup before printing.", "waiting"); return; }
     if (products.length * (format === "list" ? 1 : copies) > 1000) { status("Choose no more than 1,000 products or labels per print job. Narrow the search or reduce copies.", "error"); return; }
     const markup = printMarkup(products, format, logo, heading, copies);
     $("psPrintPreview").innerHTML = `<div class="ps-dialog-actions ps-preview-actions"><button type="button" id="psPrintNow" class="primary-action">Print this preview</button></div>${markup}`;
-    $("psPrintNow").addEventListener("click", () => sendToPrinter(markup, format, heading));
+    const revision = labelPrint.getRevision();
+    $("psPrintNow").addEventListener("click", () => {if(revision === labelPrint.getRevision())sendToPrinter(markup, format, heading, revision);});
     status("Preview ready · Check the format and logo, then print.");
   }
-  function sendToPrinter(markup, format, heading) {
+  function sendToPrinter(markup, format, heading, revision) {
     if (!allowed()) return;
     const gen = state.generation, uid = state.userId, frame = document.createElement("iframe");
     frame.title = "Product print preview"; frame.style.cssText = "position:fixed;width:1px;height:1px;left:-10000px;border:0"; state.frames.add(frame);
@@ -338,7 +343,7 @@
     frame.onload = async () => {
       const images = [...frame.contentDocument.images];
       await Promise.race([Promise.all(images.map(img => img.complete ? Promise.resolve() : new Promise(resolve => {img.onload = img.onerror = resolve;}))), new Promise(resolve => setTimeout(resolve, 4000))]);
-      if (!valid(gen, uid)) { frame.remove(); state.frames.delete(frame); return; }
+      if (!valid(gen, uid) || revision !== labelPrint.getRevision()) { frame.remove(); state.frames.delete(frame); return; }
       frame.contentWindow.addEventListener("afterprint", () => {frame.remove(); state.frames.delete(frame);}, {once:true});
       frame.contentWindow.focus(); frame.contentWindow.print();
     };
@@ -379,6 +384,7 @@
     if(!valid(gen,uid))return;state.importRows=failed.map(f=>f.product);state.importRunning=false;$("psCsvInput").disabled=false;$("psRunImport").disabled=!failed.length;$("psRunImport").textContent=failed.length?"Retry remaining products":"Import products";status(saved+" saved to the cloud"+(failed.length?" · "+failed.length+" not saved. Only these rows will be retried.":" · Import complete."),failed.length?"error":"","psImportStatus");$("psImportPreview").innerHTML=failed.length?'<ul>'+failed.slice(0,50).map(f=>'<li>CSV row '+f.row+': '+esc(f.message)+'</li>').join("")+'</ul>':'';
   }
   function init() {
+    labelPrint = window.foodBrokerSupportLabels.create({allowed,identity:()=>({generation:state.generation,userId:state.userId}),valid:identity=>valid(identity.generation,identity.userId),getProducts:printProducts,productKey:p=>key(state.stock.includes(p)?"stock":"new",p.id),itemNumber:genericItemNumber,status,frames:state.frames});
     document.querySelectorAll("[data-view]").forEach(button=>button.addEventListener("click",()=>showView(button.dataset.view)));
     document.querySelectorAll("[data-collection]").forEach(button=>button.addEventListener("click",()=>{state.schoolOnly=button.dataset.collection==="school";state.collection=state.schoolOnly?"stock":button.dataset.collection;state.visibleLimit=pageSize;if(state.schoolOnly){$("psDistributor").value="";syncDistributorButtons();}document.querySelectorAll("[data-collection]").forEach(b=>b.setAttribute("aria-pressed",b===button?"true":"false"));renderProducts();}));
     document.querySelectorAll("[data-ps-distributor]").forEach(button=>button.addEventListener("click",()=>{$("psDistributor").value=button.dataset.psDistributor;state.visibleLimit=pageSize;syncDistributorButtons();renderProducts();}));
@@ -398,6 +404,7 @@
     $("psEventList").addEventListener("click",event=>{const button=event.target.closest("[data-event-id]");if(button)openEvent(button.dataset.eventId);});
     $("psPrintEvent").addEventListener("click",()=>{const event=state.events.find(e=>text(e.id)===state.eventId);if(!event)return;$("psEventDialog").close();$("psPrintSource").value="event:"+event.id;$("psPrintHeading").value=event.name||"Product presentation";$("psPrintFormat").value="labels";showView("printing");});
     $("psPreparePrint").addEventListener("click",preparePrint); $("psPrintSource").addEventListener("change",updatePrintSummary);
+    $("psPrintFormat").addEventListener("change",updatePrintSummary);
     $("psRefresh").addEventListener("click",()=>{if(document.querySelector("dialog[open]")){status("Close the open window before refreshing so your entries stay intact.","waiting");return;}loadWorkspace();});
     $("psSignIn").addEventListener("click",()=>auth()?.openDialog());
     document.querySelectorAll("[data-close-dialog]").forEach(button=>button.addEventListener("click",()=>{const dialog=button.closest("dialog");if((dialog.id==="psProductDialog"&&(state.saving||state.readingFiles))||(dialog.id==="psImportDialog"&&state.importRunning))return;dialog.close();}));

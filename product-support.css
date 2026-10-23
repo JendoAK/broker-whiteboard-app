@@ -21,3 +21,48 @@
 
 .ps-template-download{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:white;color:var(--ink);font-size:14px;text-align:center}.ps-actions .ps-template-download{font-size:12px}
 @media(max-width:650px){.ps-section-heading{flex-wrap:wrap}.ps-section-heading>.ps-actions{justify-content:flex-start}}
+
+/* Sample-bag label setup and a scaled, physically sized print preview. */
+.ps-print-layout{min-width:0}
+.ps-print-layout[data-format=labels]{display:grid;grid-template-columns:minmax(250px,320px) minmax(0,1fr);gap:18px;align-items:start}
+.ps-bag-settings{min-width:0;padding:17px;background:var(--paper);border:1px solid var(--line);border-radius:9px}
+.ps-bag-settings h3{margin:0 0 15px;font-size:16px}
+.ps-bag-settings>label,.ps-bag-edit>label,.ps-bag-appearance>label{margin-bottom:12px}
+.ps-bag-settings label{font-size:12px;font-weight:600;gap:5px}
+.ps-bag-settings input:not([type=checkbox]),.ps-bag-settings select,.ps-bag-settings textarea{width:100%;font-size:13px;padding:8px 9px}
+.ps-bag-settings textarea{resize:vertical;min-height:70px;line-height:1.35}
+.ps-bag-settings .ps-hint{font-size:12px;line-height:1.45;margin:8px 0 12px}
+.ps-bag-field-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.ps-bag-logo-status{font-size:12px;line-height:1.4;min-height:17px;color:var(--muted);margin:-3px 0 12px;overflow-wrap:anywhere}
+.ps-bag-logo-status[data-tone=warning],.ps-bag-logo-status[data-tone=error]{color:#8b3e24}
+.ps-bag-logo-upload{border:1px dashed var(--line);border-radius:6px;padding:10px;margin:0 0 14px}
+.ps-bag-logo-upload input[type=file]{padding:6px 0;border:0;background:transparent;font-size:11px}
+.ps-bag-logo-upload button{font-size:12px;min-height:30px;padding:5px 8px;margin-top:7px}
+.ps-bag-logo-upload .ps-hint{margin-bottom:0}
+.ps-bag-code-options{display:flex;flex-wrap:wrap;gap:8px 12px;border:0;padding:0;margin:0 0 10px;min-width:0}
+.ps-bag-code-options legend{font-size:12px;font-weight:600;padding:0;margin:0 0 7px}
+.ps-bag-code-options label,.ps-bag-check{display:flex;align-items:center;gap:5px;min-height:28px}
+.ps-bag-code-options input[type=checkbox],.ps-bag-settings .ps-bag-check input[type=checkbox]{width:16px;height:16px;margin:0}
+.ps-bag-settings details{border-top:1px solid var(--line);padding-top:12px;margin-top:13px}
+.ps-bag-settings summary{font-size:13px;font-weight:700;cursor:pointer;line-height:1.4;padding-bottom:9px}
+.ps-bag-settings .ps-text{font-size:12px;text-align:left}
+.ps-print-layout[data-format=labels]>.ps-print-preview{min-width:0;padding:16px;border-radius:9px;overflow:hidden}
+.ps-bag-stagebar,.ps-bag-stage-bar,.ps-bag-preview-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.ps-bag-stagebar button,.ps-bag-stage-bar button,.ps-bag-preview-toolbar button{font-size:13px;min-height:34px;padding:7px 11px}
+.ps-bag-view-controls,.ps-bag-preview-views{display:flex;align-items:center;gap:4px}
+[data-bag-view][aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:white}
+.ps-bag-preview-count,.ps-bag-pagination,.ps-bag-preview-footer{font-size:12px;color:var(--muted)}
+.ps-bag-preview-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px}
+.ps-bag-pagination{display:flex;align-items:center;gap:8px}
+#psBagPrev,#psBagNext{font-size:12px;min-height:30px;padding:5px 9px}
+#psBagPreviewPaper{position:relative;min-width:0;width:100%;margin:0 auto;overflow:visible}
+#psBagPreviewPaper .ps-bag-paper-inner{position:absolute;left:0;top:0;transform-origin:top left}
+#psBagPreviewPaper .ps-bag-paper-inner>.bag-label-page{margin:0;background:white;color:black}
+#psBagPreviewPaper .ps-bag-paper-inner>.bag-label-single{position:relative;width:4in;height:2in;background:white;color:black;box-shadow:0 2px 10px #203d3925;border-radius:.2in}
+#psBagFit{font-size:12px;line-height:1.5;color:#2e654b;margin:13px 0 0;overflow-wrap:anywhere}
+#psBagFit[data-error=true],#psBagFit[data-tone=error]{color:#a33627}
+.ps-bag-print-note{font-size:12px;line-height:1.45;color:var(--muted);margin:10px 0 0}
+@media(max-width:900px){.ps-print-layout[data-format=labels]{grid-template-columns:minmax(240px,285px) minmax(0,1fr);gap:12px}.ps-print-layout[data-format=labels]>.ps-print-preview{padding:12px}}
+@media(max-width:700px){.ps-print-layout[data-format=labels]{grid-template-columns:1fr}.ps-bag-settings{padding:14px}.ps-print-layout[data-format=labels]>.ps-print-preview{padding:12px}}
+@media(max-width:400px){.ps-bag-field-pair{grid-template-columns:1fr}.ps-bag-settings input:not([type=checkbox]),.ps-bag-settings select,.ps-bag-settings textarea{font-size:16px}.ps-print-layout[data-format=labels]>.ps-print-preview{padding:8px}}
+@media print{#psBagSettings,.ps-bag-stagebar,.ps-bag-stage-bar,.ps-bag-preview-toolbar,.ps-bag-preview-footer,#psBagFit,#psPrintNow,.ps-bag-print-note{display:none!important}.ps-print-layout[data-format=labels]{display:block!important}.ps-print-layout[data-format=labels]>.ps-print-preview{padding:0;background:white;overflow:visible}#psBagPreviewPaper{height:auto!important;width:auto!important}#psBagPreviewPaper .ps-bag-paper-inner{position:static!important;transform:none!important}#psBagPreviewPaper .ps-bag-paper-inner>.bag-label-page{box-shadow:none}}
