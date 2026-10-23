@@ -1,4 +1,7 @@
 (function () {
+  // Capture recovery intent before createClient consumes the URL credentials.
+  const initialRecoveryRequest = new URLSearchParams(window.location.hash.slice(1)).get("type") === "recovery"
+    || new URLSearchParams(window.location.search).get("type") === "recovery";
   const config = window.FOODBROKERBASE_SUPABASE;
   const supabaseGlobal = window.supabase;
   const client =
@@ -18,6 +21,8 @@
   let currentProfile = null;
   let profileLoadError = false;
   let checkingAccess = false;
+  let userVersion = 0;
+  const isProductSupportPage = () => document.body?.hasAttribute("data-product-support-page");
 
   async function refreshAccess() {
     if (!client || checkingAccess) return;
@@ -36,6 +41,7 @@
     client,
     getCurrentUser: () => currentUser,
     getCurrentProfile: () => currentProfile,
+    isPasswordRecovery: () => passwordRecoveryActive,
     isAdmin: () => isAdmin(),
     isSuperUser: () => isSuperUser(),
     getCurrentSession: () => (client ? client.auth.getSession() : Promise.resolve({ data: { session: null } })),
@@ -75,7 +81,7 @@
   }
 
   function isApproved() {
-    return Boolean(currentUser && approvedRoles.has(currentProfile?.role));
+    return Boolean(currentUser && (approvedRoles.has(currentProfile?.role) || (currentProfile?.role === "product_support" && isProductSupportPage())));
   }
 
   function isAdmin() {
@@ -114,6 +120,7 @@
   }
 
   async function loadCurrentProfile(user = currentUser) {
+    const requestVersion = userVersion;
     currentProfile = null;
     profileLoadError = false;
     if (!client || !user) return null;
@@ -124,6 +131,7 @@
       .eq("id", user.id)
       .maybeSingle();
 
+    if (currentUser?.id !== user.id || requestVersion !== userVersion) return null;
     if (error) {
       profileLoadError = true;
       console.warn("FoodBrokerBase could not load the signed-in profile.", error);
@@ -226,9 +234,37 @@
   }
 
   async function applyUser(user) {
+    const version = ++userVersion;
     const wasSignedIn = Boolean(currentUser);
+    const identityChanged = (currentUser?.id || "") !== (user?.id || "");
     currentUser = user || null;
+    if (identityChanged) {
+      currentProfile = null;
+      document.body.classList.remove("auth-signed-in");
+      document.body.classList.add("auth-pending");
+      document.querySelectorAll("dialog[open]").forEach(dialog => dialog.close());
+      window.dispatchEvent(new CustomEvent("foodbrokerbase:auth-checking", { detail: { user: currentUser } }));
+    }
     await loadCurrentProfile(currentUser);
+    if (version !== userVersion) return;
+    if (currentUser && currentProfile?.role === "pending") {
+      const { data, error } = await client.rpc("claim_product_support_access");
+      if (version !== userVersion) return;
+      if (error) console.warn("Could not check preapproved product support access.", error);
+      if (data === true) await loadCurrentProfile(currentUser);
+      if (version !== userVersion) return;
+    }
+    if (currentProfile?.role === "product_support" && !isProductSupportPage() && !passwordRecoveryActive) {
+      document.body.classList.remove("auth-signed-in");
+      document.body.classList.add("auth-pending");
+      document.querySelectorAll("dialog[open]").forEach(dialog => dialog.close());
+      window.location.replace(new URL("product-support.html", window.location.href).href);
+      return;
+    }
+    if (isProductSupportPage() && approvedRoles.has(currentProfile?.role) && !passwordRecoveryActive) {
+      window.location.replace(new URL("index.html", window.location.href).href);
+      return;
+    }
     updateLoginButtons();
     notifyAuthChange();
     refreshDialogState();
@@ -249,7 +285,7 @@
     });
   }
 
-  let passwordRecoveryActive = false;
+  let passwordRecoveryActive = initialRecoveryRequest;
 
   function authRedirectUrl() {
     const url = new URL(window.location.href);
@@ -381,7 +417,7 @@
       if (!currentUser) {
         current.textContent = "Not signed in yet.";
       } else {
-        const roleLabel = currentProfile?.role === "super_user" ? "Super User" : currentProfile?.role === "admin" ? "Administrator" : currentProfile?.role === "member" ? "Team member" : "Pending approval";
+        const roleLabel = currentProfile?.role === "super_user" ? "Super User" : currentProfile?.role === "admin" ? "Administrator" : currentProfile?.role === "product_support" ? "Product Support" : currentProfile?.role === "member" ? "Team member" : "Pending approval";
         current.innerHTML = `<strong>Signed in:</strong> ${escapeHtml(currentUser.email)}<br><span>${escapeHtml(roleLabel)}</span>`;
       }
     }
@@ -569,6 +605,7 @@
       [
         ["pending", "Pending"],
         ["member", "Team Member"],
+        ["product_support", "Product Support"],
         ["admin", "Administrator"],
         ["super_user", "Super User"]
       ].forEach(([value, label]) => {
@@ -604,7 +641,7 @@
       if (isSuperUser()) actions.appendChild(select);
       else {
         const roleLabel = document.createElement("span");
-        roleLabel.textContent = profile.role === "super_user" ? "Super User" : profile.role === "admin" ? "Administrator" : profile.role === "member" ? "Team Member" : "Pending";
+        roleLabel.textContent = profile.role === "super_user" ? "Super User" : profile.role === "admin" ? "Administrator" : profile.role === "product_support" ? "Product Support" : profile.role === "member" ? "Team Member" : "Pending";
         actions.appendChild(roleLabel);
         if (profile.role === "pending") {
           const approve = document.createElement("button");
@@ -792,6 +829,7 @@
     passwordRecoveryActive = false;
     passwordInput.value = "";
     confirmInput.value = "";
+    await applyUser(currentUser);
     refreshDialogState();
     setStatus("Password changed successfully.", "success");
   }
@@ -844,19 +882,21 @@
 
     setBusy(true);
     setStatus("Creating account...");
-    const { data, error } = await client.auth.signUp({ email, password });
+    const { data, error } = await client.auth.signUp({ email, password, options: { emailRedirectTo: authRedirectUrl() } });
     if (error) {
       setBusy(false);
       setStatus(error.message, "error");
       return;
     }
 
-    await applyUser(data.user || currentUser);
+    // An unconfirmed signup returns a user description without a session.
+    // It is not a signed-in identity and must not trigger profile/role reads.
+    if (data.session?.user) await applyUser(data.session.user);
     setBusy(false);
     setStatus(
       data.session
-        ? "Account created. An administrator must approve it before app data opens."
-        : "Account created. Check the email inbox to confirm it, then sign in and wait for approval.",
+        ? isApproved() ? "Account created. Your approved workspace is ready." : "Account created. Team approval is required before app data opens."
+        : "Account created. Check your email to confirm your address, then sign in. Approved accounts open automatically; other accounts need team approval.",
       "success"
     );
   }
@@ -887,27 +927,29 @@
       return;
     }
 
-    const { data } = await client.auth.getUser();
-    await applyUser(data.user || null);
-
     client.auth.onAuthStateChange((event, session) => {
+      // Synchronous flags are safe here; authenticated calls stay outside the
+      // SDK's auth lock in the deferred task below.
+      if (event === "PASSWORD_RECOVERY") passwordRecoveryActive = true;
       window.setTimeout(async () => {
-        if (event === "PASSWORD_RECOVERY") passwordRecoveryActive = true;
         await applyUser(session?.user || null);
         if (event === "PASSWORD_RECOVERY") {
-          passwordRecoveryActive = true;
-          const dialog = ensureDialog();
-          refreshDialogState();
-          setStatus("Choose and confirm a new password.", "pending");
-          if (!dialog.open && typeof dialog.showModal === "function") {
-            dialog.showModal();
-          } else if (!dialog.open) {
-            dialog.setAttribute("open", "open");
-          }
-          document.querySelector("#authNewPassword")?.focus();
+          showPasswordRecoveryDialog();
         }
       }, 0);
     });
+    const { data } = await client.auth.getUser();
+    await applyUser(data.user || null);
+    if (passwordRecoveryActive) showPasswordRecoveryDialog();
+  }
+
+  function showPasswordRecoveryDialog() {
+    const dialog = ensureDialog();
+    refreshDialogState();
+    setStatus("Choose and confirm a new password.", "pending");
+    if (!dialog.open && typeof dialog.showModal === "function") dialog.showModal();
+    else if (!dialog.open) dialog.setAttribute("open", "open");
+    document.querySelector("#authNewPassword")?.focus();
   }
 
   ready(init);

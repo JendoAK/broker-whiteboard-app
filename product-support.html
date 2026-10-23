@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#245e5b" />
+  <title>Product Support · FoodBrokerBase</title>
+  <link rel="icon" href="broker-whiteboard-logo.png" />
+  <link rel="stylesheet" href="product-support.css?v=20261023-support1" />
+</head>
+<body data-product-support-page>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="ps-brand"><img src="vendor-logos/pierce-cartwright.png" alt="Pierce Cartwright" /><div><span class="eyebrow">FoodBrokerBase</span><h1>Product Support</h1></div></div>
+      <div class="ps-account"><span id="psUser"></span><button type="button" class="login-action">Login</button></div>
+    </header>
+    <main id="psWorkspace" hidden>
+      <nav class="ps-nav" aria-label="Product Support workspace">
+        <button type="button" data-view="products" aria-current="page">Products</button>
+        <button type="button" data-view="events">Events &amp; Calendar</button>
+        <button type="button" data-view="printing">Printing</button>
+        <button type="button" id="psRefresh" class="ps-quiet">↻ Refresh</button>
+      </nav>
+      <p id="psStatus" class="ps-status" role="status" aria-live="polite"></p>
+      <details id="psError" class="ps-error" hidden><summary>Error details</summary><pre></pre></details>
+      <section id="psProducts" aria-labelledby="psProductsTitle">
+        <div class="ps-section-heading"><div><h2 id="psProductsTitle">Product lists</h2><p>Add and maintain the team’s shared products.</p></div><div class="ps-actions"><button type="button" id="psImport">Import CSV</button><button type="button" id="psAdd" class="primary-action">+ Add product</button></div></div>
+        <div class="ps-toolbar">
+          <div class="ps-segment" role="group" aria-label="Product collection"><button type="button" data-collection="stock" aria-pressed="true">Stocked products</button><button type="button" data-collection="new" aria-pressed="false">New products</button></div>
+          <label class="ps-search"><span class="sr-only">Search products</span><input id="psSearch" type="search" placeholder="Product, vendor, MF#, APN or SUPC…" /></label>
+          <label><span class="sr-only">Vendor</span><select id="psVendor"><option value="">All vendors</option></select></label>
+          <label><span class="sr-only">Distributor</span><select id="psDistributor"><option value="">All distributors</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="other">Other</option></select></label>
+        </div>
+        <div class="ps-list-meta"><span id="psCount"></span><button id="psSelectVisible" type="button" class="ps-text">Select shown for printing</button><span id="psSelectionCount"></span></div>
+        <div id="psProductList" class="ps-product-list"></div>
+      </section>
+      <section id="psEvents" aria-labelledby="psEventsTitle" hidden>
+        <div class="ps-section-heading"><div><h2 id="psEventsTitle">Events &amp; Calendar</h2><p>Read-only schedules and product lists for the team’s events.</p></div></div>
+        <div class="ps-toolbar ps-event-toolbar"><div class="ps-segment" role="group" aria-label="Event dates"><button type="button" data-date="upcoming" aria-pressed="true">Upcoming</button><button type="button" data-date="week">This week</button><button type="button" data-date="month">This month</button><button type="button" data-date="past">Past</button><button type="button" data-date="all">All dates</button></div><label><span class="sr-only">Event type</span><select id="psEventType"><option value="">All event types</option><option value="personal">Market visits</option><option value="vendor">Vendor visits</option><option value="foodshow">Foodshows</option><option value="testkitchen">Test kitchens</option></select></label><label class="ps-search"><span class="sr-only">Search events</span><input id="psEventSearch" type="search" placeholder="Event or location…" /></label></div>
+        <div id="psEventList" class="ps-event-list"></div>
+      </section>
+      <section id="psPrinting" aria-labelledby="psPrintingTitle" hidden>
+        <div class="ps-section-heading"><div><h2 id="psPrintingTitle">Product lists &amp; labels</h2><p>Prepare labels for foodshows and product presentations.</p></div></div>
+        <div class="ps-print-options">
+          <label><span>Products to print</span><select id="psPrintSource"><option value="selected">Selected products</option><option value="shown">Current product search</option></select></label>
+          <label><span>Format</span><select id="psPrintFormat"><option value="list">Product list</option><option value="labels">2 × 4 inch labels · 10 per Letter sheet</option><option value="cards">4 × 6 inch presentation cards</option></select></label>
+          <label><span>Distributor logo</span><select id="psPrintLogo"><option value="none">No distributor logo</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option></select></label>
+          <label><span>Heading</span><input id="psPrintHeading" value="Product presentation" maxlength="120" /></label>
+          <label><span>Copies of each label</span><input id="psPrintCopies" type="number" min="1" max="20" value="1" /></label>
+          <button type="button" id="psPreparePrint" class="primary-action">Preview &amp; print</button>
+        </div>
+        <p id="psPrintSummary" class="ps-hint"></p><p class="ps-hint">Labels use Letter paper at 100% / actual size. Presentation cards are 6 inches wide × 4 inches tall. Check a plain-paper sheet before using label stock.</p>
+        <div id="psPrintPreview" class="ps-print-preview"><p class="ps-empty">Choose products, then select Preview &amp; print.</p></div>
+      </section>
+    </main>
+    <section id="psAccess" class="ps-access"><h2>Checking your access…</h2><p>Product Support opens after your account permissions are checked.</p><button type="button" id="psSignIn" class="primary-action">Sign in / check access</button></section>
+    <footer>Product Support · Shared products and read-only event preparation</footer>
+  </div>
+  <dialog id="psProductDialog" aria-labelledby="psProductDialogTitle"><form id="psProductForm"><div class="form-header"><div><p class="eyebrow">Shared product</p><h2 id="psProductDialogTitle">Product</h2></div><button type="button" data-close-dialog class="icon-button" aria-label="Close product">×</button></div><p class="ps-hint" id="psProductHelp"></p><input type="hidden" name="id" /><div class="ps-form-grid">
+    <label class="ps-span-two"><span>Product description</span><input name="description" required maxlength="500" /></label>
+    <label><span>Vendor / manufacturer</span><input name="vendor" required maxlength="160" list="psVendors" /></label><datalist id="psVendors"></datalist>
+    <label data-stock-field><span>Distributor</span><select name="distributor"><option>US Foods Anchorage</option><option>US Foods Fairbanks</option><option>Sysco</option><option>Linford</option><option>Other</option><option>Not stocked</option></select></label>
+    <label><span>Manufacturer product number (MF#)</span><input name="manufacturerNumber" maxlength="100" /></label>
+    <label><span>Packaging</span><input name="packaging" maxlength="160" /></label>
+    <label><span>US Foods APN</span><input name="apn" maxlength="80" inputmode="text" /></label>
+    <label><span>Sysco SUPC</span><input name="supc" maxlength="80" inputmode="text" /></label>
+    <label data-stock-field><span>Other distributor item number</span><input name="distributorNumber" maxlength="100" /></label>
+    <label><span>GTIN</span><input name="gtin" maxlength="100" /></label>
+    <label><span>Storage</span><input name="storage" maxlength="100" list="psStorage" /></label><datalist id="psStorage"><option>Frozen</option><option>Chill</option><option>Dry</option></datalist>
+    <label><span>Brand name</span><input name="brandName" maxlength="160" /></label>
+    <label><span>Brand type</span><input name="brandType" maxlength="100" /></label>
+    <label><span>Category</span><input name="category" maxlength="100" list="psCategories" /></label><datalist id="psCategories"></datalist>
+    <label data-new-field class="ps-span-two"><span>Product notes</span><textarea name="notes" rows="3" maxlength="10000"></textarea></label>
+    <div data-stock-field class="ps-span-two ps-attachments"><div class="ps-section-heading"><h3>Product documents</h3><label class="ps-file-label">+ Add files<input id="psFileInput" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,.csv,.docx,.xlsx,.pptx" multiple /></label></div><p class="ps-hint">Specsheets, coupons and product documents · up to 4 MB per file.</p><div id="psAttachments"></div></div>
+  </div><p id="psProductStatus" role="status" class="ps-status"></p><details id="psProductError" class="ps-error" hidden><summary>Error details</summary><pre></pre></details><div class="ps-dialog-actions"><button type="button" data-close-dialog>Cancel</button><button type="submit" id="psSaveProduct" class="primary-action">Save product</button></div></form></dialog>
+  <dialog id="psEventDialog" aria-labelledby="psEventDialogTitle"><div class="form-header"><div><p class="eyebrow">Read-only event</p><h2 id="psEventDialogTitle">Event</h2></div><button type="button" data-close-dialog class="icon-button" aria-label="Close event">×</button></div><div id="psEventBody"></div><div class="ps-dialog-actions"><button type="button" data-close-dialog>Close</button><button type="button" id="psPrintEvent" class="primary-action">Prepare product labels</button></div></dialog>
+  <dialog id="psImportDialog" aria-labelledby="psImportTitle"><div class="form-header"><h2 id="psImportTitle">Import stocked products</h2><button type="button" data-close-dialog class="icon-button" aria-label="Close import">×</button></div><p>Use the CSV template to add products. Each row needs a description, vendor and distributor. An existing product ID updates that item; a blank ID adds a new item.</p><button id="psCsvTemplate" type="button">Download CSV template</button><label class="ps-import-file"><span>CSV file · up to 500 rows</span><input type="file" id="psCsvInput" accept=".csv,text/csv" /></label><p id="psImportStatus" class="ps-status" role="status"></p><div id="psImportPreview"></div><div class="ps-dialog-actions"><button type="button" data-close-dialog>Close</button><button id="psRunImport" type="button" class="primary-action" disabled>Import products</button></div></dialog>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="supabase-auth.js?v=20261023-support1"></script>
+  <script src="product-support.js?v=20261023-support1"></script>
+</body>
+</html>
