@@ -111,7 +111,7 @@
       $("psBagLogoStatus").textContent = ""; $("psBagHelp").textContent = "";
       Object.keys(fields).forEach(id => {$(id).value = "";});
       $("psBagCopies").value = "1"; $("psBagStart").value = "1"; $("psBagLogoMode").value = "automatic"; $("psBagTextSize").value = "standard";
-      ["psBagShowMf","psBagShowApn","psBagShowSupc","psBagShowItem","psBagOutlines"].forEach(id => {$(id).checked = true;});
+      ["psBagShowMf","psBagShowApn","psBagShowSupc","psBagShowItem"].forEach(id => {$(id).checked = true;});
       view = "label"; pageNumber = 0; updateFormat();
     }
     function updateFormat() {
@@ -209,7 +209,7 @@
     }
     async function buildJob(identity,rev,resources) {
       const type = $("psBagTextSize").value, typography = type === "large" ? {titlePt:18,bodyPt:14} : type === "compact" ? {titlePt:14,bodyPt:11} : {titlePt:16,bodyPt:12};
-      const job = {products:[],imageUrls:[],startPosition:Number($("psBagStart").value),showMf:$("psBagShowMf").checked,showApn:$("psBagShowApn").checked,showSupc:$("psBagShowSupc").checked,showItem:$("psBagShowItem").checked,showOutlines:$("psBagOutlines").checked,typography,logoMode:"automatic"};
+      const job = {products:[],imageUrls:[],startPosition:Number($("psBagStart").value),showMf:$("psBagShowMf").checked,showApn:$("psBagShowApn").checked,showSupc:$("psBagShowSupc").checked,showItem:$("psBagShowItem").checked,showOutlines:false,typography,logoMode:"automatic"};
       const draftList = products.map(draftFor);
       // Validate counts and text before fetching any images.
       const counts = renderer.validate({...job,products:draftList.map(d=>({...d,logos:[],customLogo:undefined}))});
@@ -355,7 +355,7 @@
     $("psBagLogoFile").addEventListener("change",event=>upload(event.target.files[0]));
     $("psBagClearLogo").addEventListener("click",()=>{if(current()){uploadRevision++;current().customLogo=null;$("psBagLogoFile").value="";invalidate();logoOptions();}});
     $("psBagReset").addEventListener("click",()=>{const p=products.find(p=>productKey(p)===active);if(p){uploadRevision++;drafts.delete(active);draftFor(p);invalidate();loadEditor();updateQuantities();}});
-    ["psBagStart","psBagShowMf","psBagShowApn","psBagShowSupc","psBagShowItem","psBagOutlines","psBagTextSize"].forEach(id=>$(id).addEventListener("change",()=>invalidate()));
+    ["psBagStart","psBagShowMf","psBagShowApn","psBagShowSupc","psBagShowItem","psBagTextSize"].forEach(id=>$(id).addEventListener("change",()=>invalidate()));
     ["psPrintFormat","psPrintLogo","psPrintHeading","psPrintCopies"].forEach(id=>$(id).addEventListener(id==="psPrintHeading"||id==="psPrintCopies"?"input":"change",()=>{invalidate();sync();}));
     new ResizeObserver(scalePreview).observe($("psPrintPreview"));
     return Object.freeze({sync,clear,invalidate,prepare,recordError,clearErrors,getProducts:()=>host.allowed()?products.slice():[],getRevision:()=>revision});

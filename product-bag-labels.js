@@ -44,8 +44,7 @@
   @page{size:Letter portrait;margin:0}
   html,body{margin:0!important;padding:0!important;background:#fff!important}
   .bag-label-page{margin:0;box-shadow:none;print-color-adjust:exact;-webkit-print-color-adjust:exact}
-  .bag-label-page[data-print-outlines=false] .bag-label::before{display:none}
-  .bag-label-blank::before{display:none}
+  .bag-label::before{display:none}
   .bag-label{outline:none!important}
   .bag-label[data-overflow=true]{background:#fff!important}
 }
