@@ -61,12 +61,19 @@ button {
 
 .main-nav {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 8px;
   max-width: 100%;
-  overflow-x: auto;
+  overflow: visible;
   padding-bottom: 5px;
   scrollbar-width: thin;
+}
+
+/* Keep the calendar and printing actions together when sections wrap. */
+.nav-quick-actions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
 .view-actions {

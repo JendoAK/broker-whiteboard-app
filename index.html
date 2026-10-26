@@ -14,7 +14,7 @@
     <link rel="icon" href="pwa-icon-192.png" />
     <link rel="apple-touch-icon" href="pwa-icon-192.png" />
   <link rel="stylesheet" href="save-status.css?v=20261022-savestatus1" />
-  <link rel="stylesheet" href="styles.css?v=20261014-stockcards2" />
+  <link rel="stylesheet" href="styles.css?v=20261026-printnav1" />
   <link rel="stylesheet" href="contacts-layout.css?v=20261023-contacts1" />
   <link rel="stylesheet" href="action-buttons.css?v=20260909-trashicons1" />
   <link rel="stylesheet" href="team-work-view.css?v=20260909-activity1" />
@@ -25,7 +25,7 @@
 <script type="application/x-foodbroker-module" data-main-src="time-picker.js?v=20260917-time1"></script>
 <script type="application/x-foodbroker-module" data-main-src="copy-email.js?v=20261023-qualitysales1"></script>
 <link rel="stylesheet" href="manager-overview.css?v=20260918-manager1" />
-<link rel="stylesheet" href="foodshow-layout.css?v=20260929-foodshow8" /><link rel="stylesheet" href="table-planner.css?v=20260930-planner14" /><script type="application/x-foodbroker-module" data-main-src="table-planner.js?v=20260930-planner14"></script><link rel="stylesheet" href="window-layout.css?v=20260930-windows1" /><link rel="stylesheet" href="event-agenda.css?v=20261022-compactfilters1" /><link rel="stylesheet" href="event-products.css?v=20261022-eventease1" /><link rel="stylesheet" href="operator-products.css?v=20261022-operatorcompact1" /><link rel="stylesheet" href="visit-panels.css?v=20261022-visitpanels1" /><link rel="stylesheet" href="workspace-preferences.css?v=20261023-qualitysales1" /><link rel="stylesheet" href="settings-menu.css?v=20261023-account1" /><link rel="stylesheet" href="account-settings.css?v=20261023-account1" /><link rel="stylesheet" href="quality-sales.css?v=20261023-qualitysales1" /><link rel="stylesheet" href="mobile-layout.css?v=20261023-mobile1" /><link rel="stylesheet" href="vendor-directory.css?v=20261023-vendors1" /><link rel="stylesheet" href="team-print-center.css?v=20261026-labelpolish1" /></head>
+<link rel="stylesheet" href="foodshow-layout.css?v=20260929-foodshow8" /><link rel="stylesheet" href="table-planner.css?v=20260930-planner14" /><script type="application/x-foodbroker-module" data-main-src="table-planner.js?v=20260930-planner14"></script><link rel="stylesheet" href="window-layout.css?v=20260930-windows1" /><link rel="stylesheet" href="event-agenda.css?v=20261022-compactfilters1" /><link rel="stylesheet" href="event-products.css?v=20261022-eventease1" /><link rel="stylesheet" href="operator-products.css?v=20261022-operatorcompact1" /><link rel="stylesheet" href="visit-panels.css?v=20261022-visitpanels1" /><link rel="stylesheet" href="workspace-preferences.css?v=20261023-qualitysales1" /><link rel="stylesheet" href="settings-menu.css?v=20261023-account1" /><link rel="stylesheet" href="account-settings.css?v=20261023-account1" /><link rel="stylesheet" href="quality-sales.css?v=20261023-qualitysales1" /><link rel="stylesheet" href="mobile-layout.css?v=20261026-printnav1" /><link rel="stylesheet" href="vendor-directory.css?v=20261023-vendors1" /><link rel="stylesheet" href="team-print-center.css?v=20261026-labelpolish1" /></head>
   <body class="auth-pending">
     <datalist id="timelineSearchSuggestions"></datalist>
     <div class="app-shell">
@@ -49,8 +49,13 @@
             <button class="ghost-action stock-nav-action nav-button" id="openStockLists" type="button"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
             <button class="ghost-action sample-nav-action nav-button" id="openSampleTracker" type="button"><span class="nav-icon" aria-hidden="true">&#129514;</span><span>Trackers</span></button>
             <button class="ghost-action market-nav-action nav-button" id="openMarketVisits" type="button"><span class="nav-icon" aria-hidden="true">&#128506;</span><span>Events &amp; Visits</span></button>
-            <button class="ghost-action calendar-action nav-button" id="openCalendar" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
-            <button class="ghost-action print-center-nav-action nav-button" id="openPrintCenter" type="button" aria-haspopup="dialog" aria-controls="teamPrintCenterDialog"><span class="nav-icon" aria-hidden="true">&#128424;</span><span>Print center</span></button>
+            <div class="nav-quick-actions">
+
+              <button class="ghost-action calendar-action nav-button" id="openCalendar" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+
+              <button class="ghost-action print-center-nav-action nav-button" id="openPrintCenter" data-open-print-center type="button" aria-haspopup="dialog" aria-controls="teamPrintCenterDialog"><span class="nav-icon" aria-hidden="true">&#128424;</span><span>Print center</span></button>
+
+            </div>
           </div>
           <div class="view-actions">
             <button class="primary-action add-note-action" id="addNoteTop" type="button">+ Add Lead</button>
@@ -491,7 +496,13 @@
               <button class="ghost-action stock-nav-action nav-button" id="openStockListsTodo" type="button"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
               <button class="ghost-action sample-nav-action nav-button" id="openSampleTrackerTodo" type="button"><span class="nav-icon" aria-hidden="true">&#129514;</span><span>Trackers</span></button>
               <button class="ghost-action market-nav-action nav-button" id="openMarketVisitsTodo" type="button"><span class="nav-icon" aria-hidden="true">&#128506;</span><span>Events &amp; Visits</span></button>
-              <button class="ghost-action calendar-action nav-button" id="openCalendarTodo" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+              <div class="nav-quick-actions">
+
+                <button class="ghost-action calendar-action nav-button" id="openCalendarTodo" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+
+                <button class="ghost-action print-center-nav-action nav-button" id="openPrintCenterTodo" data-open-print-center type="button" aria-haspopup="dialog" aria-controls="teamPrintCenterDialog"><span class="nav-icon" aria-hidden="true">&#128424;</span><span>Print center</span></button>
+
+              </div>
             </div>
             <div class="view-actions todo-top-actions">
               <button class="primary-action" id="addTodo" type="button">+ Add Task</button>
@@ -558,7 +569,13 @@
               <button class="ghost-action stock-nav-action nav-button" id="openStockListsVendor" type="button"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
               <button class="ghost-action sample-nav-action nav-button" id="openSampleTrackerVendor" type="button"><span class="nav-icon" aria-hidden="true">&#129514;</span><span>Trackers</span></button>
               <button class="ghost-action market-nav-action nav-button" id="openMarketVisitsVendor" type="button"><span class="nav-icon" aria-hidden="true">&#128506;</span><span>Events &amp; Visits</span></button>
-              <button class="ghost-action calendar-action nav-button" id="openCalendarVendor" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+              <div class="nav-quick-actions">
+
+                <button class="ghost-action calendar-action nav-button" id="openCalendarVendor" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+
+                <button class="ghost-action print-center-nav-action nav-button" id="openPrintCenterVendor" data-open-print-center type="button" aria-haspopup="dialog" aria-controls="teamPrintCenterDialog"><span class="nav-icon" aria-hidden="true">&#128424;</span><span>Print center</span></button>
+
+              </div>
             </div>
           </div>
           <div class="utility-actions" aria-label="Board utilities">
@@ -636,7 +653,13 @@
               <button class="ghost-action stock-nav-action nav-button" id="openStockListsAddress" type="button"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
               <button class="ghost-action sample-nav-action nav-button" id="openSampleTrackerAddress" type="button"><span class="nav-icon" aria-hidden="true">&#129514;</span><span>Trackers</span></button>
               <button class="ghost-action market-nav-action nav-button" id="openMarketVisitsAddress" type="button"><span class="nav-icon" aria-hidden="true">&#128506;</span><span>Events &amp; Visits</span></button>
-              <button class="ghost-action calendar-action nav-button" id="openCalendarAddress" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+              <div class="nav-quick-actions">
+
+                <button class="ghost-action calendar-action nav-button" id="openCalendarAddress" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+
+                <button class="ghost-action print-center-nav-action nav-button" id="openPrintCenterAddress" data-open-print-center type="button" aria-haspopup="dialog" aria-controls="teamPrintCenterDialog"><span class="nav-icon" aria-hidden="true">&#128424;</span><span>Print center</span></button>
+
+              </div>
             </div>
           </div>
           <div class="utility-actions" aria-label="Board utilities">
@@ -774,7 +797,13 @@
               <button class="ghost-action stock-nav-action nav-button" id="openStockListsMarket" type="button"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
               <button class="ghost-action sample-nav-action nav-button" id="openSampleTrackerMarket" type="button"><span class="nav-icon" aria-hidden="true">&#129514;</span><span>Trackers</span></button>
               <button class="ghost-action market-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">&#128506;</span><span>Events &amp; Visits</span></button>
-              <button class="ghost-action calendar-action nav-button" id="openCalendarMarket" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+              <div class="nav-quick-actions">
+
+                <button class="ghost-action calendar-action nav-button" id="openCalendarMarket" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+
+                <button class="ghost-action print-center-nav-action nav-button" id="openPrintCenterMarket" data-open-print-center type="button" aria-haspopup="dialog" aria-controls="teamPrintCenterDialog"><span class="nav-icon" aria-hidden="true">&#128424;</span><span>Print center</span></button>
+
+              </div>
             </div>
           </div>
           <div class="utility-actions" aria-label="Board utilities">
@@ -949,7 +978,13 @@
               <button class="ghost-action stock-nav-action nav-button" id="openStockListsSample" type="button"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
               <button class="ghost-action sample-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">&#129514;</span><span>Trackers</span></button>
               <button class="ghost-action market-nav-action nav-button" id="openMarketVisitsSample" type="button"><span class="nav-icon" aria-hidden="true">&#128506;</span><span>Events &amp; Visits</span></button>
-              <button class="ghost-action calendar-action nav-button" id="openCalendarSample" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+              <div class="nav-quick-actions">
+
+                <button class="ghost-action calendar-action nav-button" id="openCalendarSample" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+
+                <button class="ghost-action print-center-nav-action nav-button" id="openPrintCenterSample" data-open-print-center type="button" aria-haspopup="dialog" aria-controls="teamPrintCenterDialog"><span class="nav-icon" aria-hidden="true">&#128424;</span><span>Print center</span></button>
+
+              </div>
             </div>
           </div>
           <div class="utility-actions" aria-label="Board utilities">
@@ -1194,7 +1229,13 @@
               <button class="ghost-action stock-nav-action nav-button active-view" type="button" aria-current="page"><span class="nav-icon" aria-hidden="true">&#128230;</span><span>Stock Lists</span></button>
               <button class="ghost-action sample-nav-action nav-button" id="openSampleTrackerStock" type="button"><span class="nav-icon" aria-hidden="true">&#129514;</span><span>Trackers</span></button>
               <button class="ghost-action market-nav-action nav-button" id="openMarketVisitsStock" type="button"><span class="nav-icon" aria-hidden="true">&#128506;</span><span>Events &amp; Visits</span></button>
-              <button class="ghost-action calendar-action nav-button" id="openCalendarStock" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+              <div class="nav-quick-actions">
+
+                <button class="ghost-action calendar-action nav-button" id="openCalendarStock" type="button"><span class="nav-icon" aria-hidden="true">&#9638;</span><span>Calendar</span></button>
+
+                <button class="ghost-action print-center-nav-action nav-button" id="openPrintCenterStock" data-open-print-center type="button" aria-haspopup="dialog" aria-controls="teamPrintCenterDialog"><span class="nav-icon" aria-hidden="true">&#128424;</span><span>Print center</span></button>
+
+              </div>
             </div>
             <div class="stock-toolbar"><div class="view-actions"><a class="primary-action stock-import-action" href="stock-list-upload-template.xlsx" download>Download Excel Template</a></div>
             <div class="view-actions stock-actions" id="stockListActions" hidden>
@@ -1454,7 +1495,7 @@
 <script type="application/x-foodbroker-module" data-main-src="todo-drag.js?v=20260917-todopointer1"></script>
 <script type="application/x-foodbroker-module" data-main-src="todo-archive.js?v=20260909-todoarchive1"></script>
 <script type="application/x-foodbroker-module" data-main-src="manager-overview.js?v=20260918-managersettings1"></script>
-<script type="application/x-foodbroker-module" data-main-src="event-agenda.js?v=20261022-eventease1"></script><script type="application/x-foodbroker-module" data-main-src="settings-menu.js?v=20261023-account1"></script><script type="application/x-foodbroker-module" data-main-src="mobile-layout.js?v=20261023-mobile1"></script><script type="application/x-foodbroker-module" data-main-src="product-bag-labels.js?v=20261026-nooutlines1"></script><script type="application/x-foodbroker-module" data-main-src="product-print-logos.js?v=20261023-baglabels1"></script><script type="application/x-foodbroker-module" data-main-src="product-support-labels.js?v=20261026-nooutlines1"></script><script type="application/x-foodbroker-module" data-main-src="team-print-center-template.js?v=20261026-nooutlines1"></script><script type="application/x-foodbroker-module" data-main-src="team-print-center.js?v=20261026-currentprints1"></script><script src="main-workspace-loader.js?v=20261026-teamprint1"></script></body>
+<script type="application/x-foodbroker-module" data-main-src="event-agenda.js?v=20261022-eventease1"></script><script type="application/x-foodbroker-module" data-main-src="settings-menu.js?v=20261023-account1"></script><script type="application/x-foodbroker-module" data-main-src="mobile-layout.js?v=20261023-mobile1"></script><script type="application/x-foodbroker-module" data-main-src="product-bag-labels.js?v=20261026-nooutlines1"></script><script type="application/x-foodbroker-module" data-main-src="product-print-logos.js?v=20261023-baglabels1"></script><script type="application/x-foodbroker-module" data-main-src="product-support-labels.js?v=20261026-nooutlines1"></script><script type="application/x-foodbroker-module" data-main-src="team-print-center-template.js?v=20261026-nooutlines1"></script><script type="application/x-foodbroker-module" data-main-src="team-print-center.js?v=20261026-printnav1"></script><script src="main-workspace-loader.js?v=20261026-teamprint1"></script></body>
 </html>
 
 

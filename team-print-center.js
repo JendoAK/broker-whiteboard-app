@@ -184,12 +184,12 @@
     status("Preview ready · Check the format and logo, then print.");
   }
   function init() {
-    const trigger=$("openPrintCenter");
-    if(!trigger)return;
+    const triggers=document.querySelectorAll("[data-open-print-center]");
+    if(!triggers.length)return;
     const template=document.createElement("template");template.innerHTML=window.foodBrokerTeamPrintTemplate;
     document.querySelector(".app-shell").append(template.content.cloneNode(true));dialog=$("teamPrintCenterDialog");
     labels=window.foodBrokerSupportLabels.create({allowed,identity,valid,beforeSync:refreshPrintSources,getProducts:printProducts,productKey,itemNumber,status,selectionChanged:renderPrintCount,frames:state.frames});
-    trigger.addEventListener("click",open);$("tpClose").addEventListener("click",close);dialog.addEventListener("close",()=>{if(!dialog.open)clear();});dialog.addEventListener("cancel",event=>{event.preventDefault();close();});
+    triggers.forEach(trigger=>trigger.addEventListener("click",open));$("tpClose").addEventListener("click",close);dialog.addEventListener("close",()=>{if(!dialog.open)clear();});dialog.addEventListener("cancel",event=>{event.preventDefault();close();});
     $("teamPrintForm").addEventListener("submit",event=>event.preventDefault());
     $("tpSearch").addEventListener("input",()=>{state.visibleLimit=pageSize;renderPicker();});
     ["tpCollection","tpDistributor"].forEach(id=>$(id).addEventListener("change",()=>{state.visibleLimit=pageSize;renderPicker();}));

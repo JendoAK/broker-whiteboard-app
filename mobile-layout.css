@@ -8,8 +8,10 @@
   .title-block { width: 100%; gap: 8px; }
   .logo-crop { max-width: 180px; }
   .mobile-nav-toggle, .mobile-filter-toggle, .mobile-summary-toggle { width: 100%; min-height: 44px; border: 1px solid #b3c8bf; border-radius: 9px; background: #fffefb; color: #254e43; padding: 10px 12px; text-align: left; font-weight: 700; }
-  .main-nav { display: none; }
-  .main-nav.mobile-nav-open { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); overflow: visible; }
+  .main-nav { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); width: 100%; overflow: visible; margin-right: 0; padding: 0; }
+  .main-nav:not(.mobile-nav-open) > :not(.nav-quick-actions) { display: none; }
+  .main-nav .nav-quick-actions { grid-column: 1 / -1; min-width: 0; }
+  .main-nav .nav-quick-actions > .nav-button { flex: 1 1 0; }
   .main-nav .nav-button { min-width: 0; white-space: normal; margin: 0; padding: 10px 6px; }
   .global-timeline-search { grid-template-columns: minmax(0,1fr) auto; }
   .global-timeline-search label { grid-column: auto; }
