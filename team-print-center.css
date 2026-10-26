@@ -86,3 +86,35 @@
 @media(max-width:700px){#teamPrintCenterDialog{width:calc(100vw - 16px);max-height:94vh}#teamPrintCenterDialog #teamPrintForm{padding:11px}#teamPrintCenterDialog .tp-dialog-header{padding:12px}#teamPrintCenterDialog .tp-dialog-header h2{font-size:21px}#teamPrintCenterDialog .tp-picker-filters{grid-template-columns:1fr 1fr}#teamPrintCenterDialog .tp-search{grid-column:1/-1}#teamPrintCenterDialog .ps-print-options{grid-template-columns:1fr 1fr}#teamPrintCenterDialog .ps-print-layout[data-format=labels]{grid-template-columns:1fr}#teamPrintCenterDialog #tpRefresh{margin-left:auto}#teamPrintCenterDialog .ps-bag-settings{padding:13px}}
 @media(max-width:430px){#teamPrintCenterDialog .tp-picker-filters,#teamPrintCenterDialog .ps-print-options,#teamPrintCenterDialog .ps-bag-field-pair{grid-template-columns:1fr}#teamPrintCenterDialog .tp-search{grid-column:auto}#teamPrintCenterDialog input:not([type=checkbox]),#teamPrintCenterDialog select,#teamPrintCenterDialog textarea{font-size:16px}#teamPrintCenterDialog .tp-picker-actions{gap:6px}#teamPrintCenterDialog #tpCount{width:100%;margin-right:0}#teamPrintCenterDialog .ps-print-preview{padding:9px}#teamPrintCenterDialog .ps-bag-stagebar{gap:6px}#teamPrintCenterDialog .ps-bag-stagebar button{padding:7px 9px;font-size:12px}}
 @media print{#teamPrintCenterDialog .tp-dialog-header,#teamPrintCenterDialog .tp-picker,#teamPrintCenterDialog .ps-print-options,#teamPrintCenterDialog #psBagSettings,#teamPrintCenterDialog .ps-bag-stagebar,#teamPrintCenterDialog .ps-bag-preview-footer,#teamPrintCenterDialog .tp-print-note,#teamPrintCenterDialog .ps-hint,#teamPrintCenterDialog #tpStatus{display:none!important}}
+
+/* Compact product choices and print-job quantities. */
+#teamPrintCenterDialog .ps-print-products{border:1px solid var(--line);border-radius:8px;background:var(--paper);padding:10px 12px;margin:10px 0;min-width:0}
+#teamPrintCenterDialog .ps-print-products>summary{font-size:13px;font-weight:700;line-height:1.5;cursor:pointer}
+#teamPrintCenterDialog #psPrintProductCount{font-size:12px;font-weight:400;color:var(--muted);margin-left:7px}
+#teamPrintCenterDialog .ps-print-product-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:9px 0}
+#teamPrintCenterDialog .ps-print-product-search{flex:1 1 260px;max-width:480px;min-width:0}
+#teamPrintCenterDialog .ps-print-product-search input{width:100%;min-height:34px;border:1px solid #a7c0b6;border-radius:6px;background:white;color:var(--ink);padding:7px 9px;font:13px Arial,sans-serif;box-sizing:border-box}
+#teamPrintCenterDialog .ps-print-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+#teamPrintCenterDialog .ps-print-product-toolbar button{font-size:12px;min-height:30px;white-space:nowrap}
+#teamPrintCenterDialog .ps-print-product-list{max-height:220px;overflow-y:auto;border:1px solid #d3dfd8;background:white;border-radius:6px;min-width:0}
+#teamPrintCenterDialog .ps-print-product-row{display:flex;align-items:center;gap:10px;border-bottom:1px solid #dbe5de;padding:8px 10px;min-width:0;cursor:pointer;font-size:13px;line-height:1.35}
+#teamPrintCenterDialog .ps-print-product-row:last-child{border-bottom:0}
+#teamPrintCenterDialog .ps-print-product-row:has(input:checked){background:#f0f7f2}
+#teamPrintCenterDialog .ps-print-product-row input[type=checkbox]{accent-color:var(--teal);width:17px;height:17px;min-width:17px;margin:0}
+#teamPrintCenterDialog .ps-print-product-row>span{display:block;min-width:0}
+#teamPrintCenterDialog .ps-print-product-row strong{display:block;font-size:13px;line-height:1.35;overflow-wrap:anywhere}
+#teamPrintCenterDialog .ps-print-product-row small{display:block;font-size:11px;font-weight:400;line-height:1.4;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
+#teamPrintCenterDialog .ps-bag-quantity{display:flex;align-items:center;gap:8px 13px;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;background:var(--soft);padding:10px 12px;margin:10px 0 14px;font-size:12px;font-weight:600;min-width:0}
+#teamPrintCenterDialog .ps-bag-quantity-buttons{display:flex;gap:5px;flex-wrap:wrap}
+#teamPrintCenterDialog .ps-bag-quantity-buttons button{font-size:12px;min-height:32px;padding:6px 10px;background:white;border:1px solid #a7c0b6;color:var(--ink);border-radius:6px}
+#teamPrintCenterDialog .ps-bag-quantity-buttons button[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:white}
+#teamPrintCenterDialog .ps-bag-quantity small{font-size:11px;font-weight:400;color:var(--muted)}
+#teamPrintCenterDialog .ps-print-errors{border:1px solid #dda58e;border-radius:8px;background:#fff0eb;color:#7c3427;padding:10px 12px;margin:10px 0 14px;min-width:0}
+#teamPrintCenterDialog .ps-print-errors>summary{font-size:13px;font-weight:700;cursor:pointer;line-height:1.5}
+#teamPrintCenterDialog .ps-print-errors pre{font:12px/1.5 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto;margin:10px 0}
+#teamPrintCenterDialog .ps-print-error-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#teamPrintCenterDialog .ps-print-error-actions button{font-size:12px;min-height:32px}
+#teamPrintCenterDialog #psPrintCopyStatus{font-size:12px;line-height:1.4;margin:8px 0 0}
+#teamPrintCenterDialog #psPrintCopyStatus:empty{display:none}
+@media(max-width:430px){#teamPrintCenterDialog .ps-print-product-search{flex-basis:100%;max-width:none}#teamPrintCenterDialog .ps-print-product-search input{font-size:16px}#teamPrintCenterDialog .ps-bag-quantity>span{flex-basis:100%}#teamPrintCenterDialog .ps-print-product-list{max-height:200px}}
+@media print{#teamPrintCenterDialog .ps-print-products,#teamPrintCenterDialog .ps-bag-quantity,#teamPrintCenterDialog .ps-print-errors{display:none!important}}

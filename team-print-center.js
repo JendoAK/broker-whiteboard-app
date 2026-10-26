@@ -106,8 +106,12 @@
   function updateSummary() {
     if(!allowed())return;
     labels.sync();
-    const count=printProducts().length;
-    $("psPrintSummary").textContent=count+" product"+(count===1?"":"s")+" ready. "+($("psPrintFormat").value==="labels"?"Select a product to edit its label wording, logo and copies. Edits stay in this print job.":"Choose a distributor logo before printing, or leave No distributor logo selected.");
+    renderPrintCount();
+  }
+  function renderPrintCount() {
+    if(!allowed())return;
+    const count=labels?.getProducts().length || 0;
+    $("psPrintSummary").textContent=count+" product"+(count===1?"":"s")+" selected to print. "+($("psPrintFormat").value==="labels"?"One label per product is the default. Choose products below; edit individual wording, logos and quantities in Label setup.":"Choose products below and a distributor logo before printing.");
   }
   function renderPicker() {
     if(!allowed())return;
@@ -155,14 +159,15 @@
         if(!valid(captured) || revision!==labels.getRevision()){frame.remove();state.frames.delete(frame);return;}
         if(format==="cards" && [...frame.contentDocument.querySelectorAll(".ps-preview-label")].some(card=>card.scrollHeight>card.clientHeight+1 || card.scrollWidth>card.clientWidth+1))throw new Error("A presentation card has more text than fits. Shorten the product wording or print a product list.");
         frame.contentWindow.addEventListener("afterprint",()=>{frame.remove();state.frames.delete(frame);},{once:true});frame.contentWindow.focus();frame.contentWindow.print();
-      }catch(error){frame.remove();state.frames.delete(frame);if(valid(captured) && revision===labels.getRevision())status(error.message || "Could not load a print logo. Choose No distributor logo or try again.","error");}
+      }catch(error){frame.remove();state.frames.delete(frame);if(valid(captured) && revision===labels.getRevision()){labels.recordError(error,"PRODUCT_DOCUMENT_PRINT");status(error.message || "Could not load a print logo. Choose No distributor logo or try again.","error");}}
     };
     document.body.appendChild(frame);
   }
   function prepare() {
     if(!allowed())return;
     if($("psPrintFormat").value==="labels"){labels.prepare();return;}
-    const products=printProducts(),format=$("psPrintFormat").value,copies=Number($("psPrintCopies").value),heading=$("psPrintHeading").value.trim() || "Product presentation";
+    labels.sync();
+    const products=labels.getProducts(),format=$("psPrintFormat").value,copies=Number($("psPrintCopies").value),heading=$("psPrintHeading").value.trim() || "Product presentation";
     if(!products.length){status("Choose products or an event lineup before printing.","waiting");return;}
     if(!["list","cards"].includes(format) || !Number.isInteger(copies) || copies<1 || copies>20){status("Choose a valid print format and a whole number of copies from 1 to 20.","error");return;}
     if(products.length*(format==="cards"?copies:1)>1000){status("Print no more than 1,000 products or cards per job. Narrow the search or reduce copies.","error");return;}
@@ -177,7 +182,7 @@
     if(!trigger)return;
     const template=document.createElement("template");template.innerHTML=window.foodBrokerTeamPrintTemplate;
     document.querySelector(".app-shell").append(template.content.cloneNode(true));dialog=$("teamPrintCenterDialog");
-    labels=window.foodBrokerSupportLabels.create({allowed,identity,valid,getProducts:printProducts,productKey,itemNumber,status,frames:state.frames});
+    labels=window.foodBrokerSupportLabels.create({allowed,identity,valid,getProducts:printProducts,productKey,itemNumber,status,selectionChanged:renderPrintCount,frames:state.frames});
     trigger.addEventListener("click",open);$("tpClose").addEventListener("click",close);dialog.addEventListener("close",()=>{if(!dialog.open)clear();});dialog.addEventListener("cancel",event=>{event.preventDefault();close();});
     $("teamPrintForm").addEventListener("submit",event=>event.preventDefault());
     $("tpSearch").addEventListener("input",()=>{state.visibleLimit=pageSize;renderPicker();});
@@ -186,7 +191,7 @@
     $("tpSelectShown").addEventListener("click",()=>{if(!allowed())return;shownProducts().slice(0,state.visibleLimit).forEach(product=>state.selected.add(productKey(product)));renderPicker();});
     $("tpClearSelection").addEventListener("click",()=>{state.selected.clear();renderPicker();});$("tpLoadMore").addEventListener("click",()=>{state.visibleLimit+=pageSize;renderPicker();});
     $("tpRefresh").addEventListener("click",()=>{if(!allowed())return;labels.invalidate("Products refreshed · Prepare a new preview.");cleanupFrames();snapshot();status("Product choices refreshed. Your print-only label edits are kept.");});
-    $("psPrintSource").addEventListener("change",updateSummary);$("psPrintFormat").addEventListener("change",updateSummary);$("psPreparePrint").addEventListener("click",prepare);
+    $("psPrintSource").addEventListener("change",()=>{$("tpCatalogPicker").open=!$("psPrintSource").value.startsWith("event:");$("psPrintProductSearch").value="";updateSummary();});$("psPrintFormat").addEventListener("change",updateSummary);$("psPreparePrint").addEventListener("click",prepare);
     // Clear print media before the workspace loader starts its auth-transition reload.
     window.addEventListener("foodbrokerbase:workspace-leaving",close);
     window.addEventListener("foodbrokerbase:auth-checking",close,true);

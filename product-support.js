@@ -312,7 +312,8 @@
     const products = [...state.selected].map(productFromKey).filter(Boolean).map(p => p.linkedStockId ? state.stock.find(s => s.id === p.linkedStockId) || p : p);
     return [...new Map(products.map(p => [key(state.stock.includes(p)?"stock":"new",p.id), p])).values()];
   }
-  function updatePrintSummary() { const count = printProducts().length; labelPrint?.sync(); $("psPrintSummary").textContent = count + " product" + (count === 1 ? "" : "s") + " ready. " + ($("psPrintFormat").value === "labels" ? "Select a product to edit its label wording, logo and copies. Edits stay in this print job." : "Choose a distributor logo before printing, or leave No distributor logo selected."); }
+  function renderPrintCount() {const count=labelPrint?.getProducts().length || 0; $("psPrintSummary").textContent=count+" product"+(count===1?"":"s")+" selected to print. "+($("psPrintFormat").value==="labels"?"One label per product is the default. Choose products below; edit individual wording, logos and quantities in Label setup.":"Choose products below and a distributor logo before printing.");}
+  function updatePrintSummary() {labelPrint?.sync();renderPrintCount();}
   function asset(value) { return new URL(value, window.location.href).href; }
   function logoMarkup(choice) { return `<div class="ps-preview-logos"><img src="${esc(asset("vendor-logos/pierce-cartwright.png"))}" alt="Pierce Cartwright" />${logos[choice] ? `<img src="${esc(asset(logos[choice][0]))}" alt="${esc(logos[choice][1])}" />` : ""}</div>`; }
   function printMarkup(products, format, logo, heading, copies) {
@@ -325,9 +326,11 @@
   function preparePrint() {
     if (!allowed()) return;
     if ($("psPrintFormat").value === "labels") {labelPrint.prepare();return;}
-    const products = printProducts(), format = $("psPrintFormat").value, logo = $("psPrintLogo").value, heading = $("psPrintHeading").value.trim() || "Product presentation", copies = Math.max(1, Math.min(20, Number($("psPrintCopies").value) || 1));
+    labelPrint.sync();
+    const products = labelPrint.getProducts(), format = $("psPrintFormat").value, logo = $("psPrintLogo").value, heading = $("psPrintHeading").value.trim() || "Product presentation", copies = Math.max(1, Math.min(20, Number($("psPrintCopies").value) || 1));
     if (!products.length) { status("Choose products or an event lineup before printing.", "waiting"); return; }
     if (products.length * (format === "list" ? 1 : copies) > 1000) { status("Choose no more than 1,000 products or labels per print job. Narrow the search or reduce copies.", "error"); return; }
+    labelPrint.invalidate();
     const markup = printMarkup(products, format, logo, heading, copies);
     $("psPrintPreview").innerHTML = `<div class="ps-dialog-actions ps-preview-actions"><button type="button" id="psPrintNow" class="primary-action">Print this preview</button></div>${markup}`;
     const revision = labelPrint.getRevision();
@@ -341,11 +344,12 @@
     const dimensions = format === "labels" ? "@page{size:letter portrait;margin:.5in .15625in}.ps-sheet-preview{break-after:page}.ps-preview-label-grid{display:grid;grid-template-columns:4in 4in;column-gap:.1875in;row-gap:0}.ps-preview-label{width:4in;height:2in;padding:.12in .16in;overflow:hidden;box-sizing:border-box}.ps-preview-label h3{font-size:12pt}.ps-preview-label p{font-size:8pt}" : format === "cards" ? "@page{size:letter portrait;margin:.5in}.ps-sheet-preview{break-after:page}.ps-preview-label{width:6in;height:4in;border:1px dashed #aaa;padding:.25in;margin:auto;overflow:hidden;box-sizing:border-box}.ps-preview-label h3{font-size:23pt}.ps-preview-label p{font-size:12pt}" : "@page{size:letter portrait;margin:.5in}thead{display:table-header-group}tr{break-inside:avoid}";
     frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(heading)}</title><style>body{font-family:Arial,sans-serif;margin:0;color:#203d39}*{box-sizing:border-box}h2{font-size:17pt}h3,p{margin:4px 0}.ps-preview-logos{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.ps-preview-logos img{height:34px;max-width:105px;object-fit:contain}.ps-preview-label{display:flex;flex-direction:column;justify-content:space-between;break-inside:avoid;overflow-wrap:anywhere}.ps-preview-label .ps-preview-logos{margin:0}.ps-preview-label .ps-preview-logos img{height:20px;max-width:80px}.ps-preview-table{border-collapse:collapse;width:100%;font-size:9pt}.ps-preview-table th,.ps-preview-table td{border:1px solid #c5cfc7;padding:6px;text-align:left;overflow-wrap:anywhere}.ps-preview-table th{background:#f6dc83}.ps-sheet-preview:last-child{break-after:auto}${dimensions}</style></head><body>${markup}</body></html>`;
     frame.onload = async () => {
-      const images = [...frame.contentDocument.images];
-      await Promise.race([Promise.all(images.map(img => img.complete ? Promise.resolve() : new Promise(resolve => {img.onload = img.onerror = resolve;}))), new Promise(resolve => setTimeout(resolve, 4000))]);
-      if (!valid(gen, uid) || revision !== labelPrint.getRevision()) { frame.remove(); state.frames.delete(frame); return; }
-      frame.contentWindow.addEventListener("afterprint", () => {frame.remove(); state.frames.delete(frame);}, {once:true});
-      frame.contentWindow.focus(); frame.contentWindow.print();
+      try {
+        await Promise.race([Promise.all([frame.contentDocument.fonts.ready,...[...frame.contentDocument.images].map(image=>image.decode())]),new Promise((_,reject)=>setTimeout(()=>reject(new Error("A print logo did not finish loading. Choose No distributor logo or try again.")),8000))]);
+        if (!valid(gen, uid) || revision !== labelPrint.getRevision()) { frame.remove(); state.frames.delete(frame); return; }
+        frame.contentWindow.addEventListener("afterprint", () => {frame.remove(); state.frames.delete(frame);}, {once:true});
+        frame.contentWindow.focus(); frame.contentWindow.print();
+      } catch(error) {frame.remove();state.frames.delete(frame);if(valid(gen,uid) && revision===labelPrint.getRevision()){labelPrint.recordError(error,"PRODUCT_DOCUMENT_PRINT");status(error.message || "Printing could not start. The error details are kept below.","error");}}
     };
     document.body.appendChild(frame);
   }
@@ -384,7 +388,7 @@
     if(!valid(gen,uid))return;state.importRows=failed.map(f=>f.product);state.importRunning=false;$("psCsvInput").disabled=false;$("psRunImport").disabled=!failed.length;$("psRunImport").textContent=failed.length?"Retry remaining products":"Import products";status(saved+" saved to the cloud"+(failed.length?" · "+failed.length+" not saved. Only these rows will be retried.":" · Import complete."),failed.length?"error":"","psImportStatus");$("psImportPreview").innerHTML=failed.length?'<ul>'+failed.slice(0,50).map(f=>'<li>CSV row '+f.row+': '+esc(f.message)+'</li>').join("")+'</ul>':'';
   }
   function init() {
-    labelPrint = window.foodBrokerSupportLabels.create({allowed,identity:()=>({generation:state.generation,userId:state.userId}),valid:identity=>valid(identity.generation,identity.userId),getProducts:printProducts,productKey:p=>key(state.stock.includes(p)?"stock":"new",p.id),itemNumber:genericItemNumber,status,frames:state.frames});
+    labelPrint = window.foodBrokerSupportLabels.create({allowed,identity:()=>({generation:state.generation,userId:state.userId}),valid:identity=>valid(identity.generation,identity.userId),getProducts:printProducts,productKey:p=>key(state.stock.includes(p)?"stock":"new",p.id),itemNumber:genericItemNumber,status,selectionChanged:renderPrintCount,frames:state.frames});
     document.querySelectorAll("[data-view]").forEach(button=>button.addEventListener("click",()=>showView(button.dataset.view)));
     document.querySelectorAll("[data-collection]").forEach(button=>button.addEventListener("click",()=>{state.schoolOnly=button.dataset.collection==="school";state.collection=state.schoolOnly?"stock":button.dataset.collection;state.visibleLimit=pageSize;if(state.schoolOnly){$("psDistributor").value="";syncDistributorButtons();}document.querySelectorAll("[data-collection]").forEach(b=>b.setAttribute("aria-pressed",b===button?"true":"false"));renderProducts();}));
     document.querySelectorAll("[data-ps-distributor]").forEach(button=>button.addEventListener("click",()=>{$("psDistributor").value=button.dataset.psDistributor;state.visibleLimit=pageSize;syncDistributorButtons();renderProducts();}));

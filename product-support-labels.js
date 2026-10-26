@@ -6,11 +6,48 @@
   const mimeTypes = new Set(["image/png","image/jpeg","image/webp","image/gif"]);
   function create(host) {
     const $ = id => document.getElementById(id), renderer = window.foodBrokerBagLabels, catalog = window.foodBrokerPrintLogos;
-    const drafts = new Map(), assets = new Map(), controllers = new Set(), frames = new Set(), resourceGroups = new Set();
-    let products = [], active = "", signature = "", revision = 0, ready = null, view = "label", pageNumber = 0, uploadRevision = 0;
+    const drafts = new Map(), assets = new Map(), controllers = new Set(), frames = new Set(), resourceGroups = new Set(), exclusions = new Map();
+    let products = [], available = [], active = "", source = "", signature = "", revision = 0, ready = null, view = "label", pageNumber = 0, uploadRevision = 0;
     const productKey = p => host.productKey(p);
     const current = () => drafts.get(active);
     const isCurrent = (identity, rev) => host.valid(identity) && revision === rev;
+    function clearErrors() {
+      $("psPrintErrors").hidden = true; $("psPrintErrors").open = false;
+      $("psPrintErrorDetails").textContent = ""; $("psPrintCopyStatus").textContent = "";
+    }
+    function recordError(error, context = "LABEL_PREVIEW") {
+      if (!host.allowed()) return;
+      const clean = value => String(value == null ? "" : value).replace(/Bearer\s+\S+/gi,"Bearer [redacted]").replace(/\beyJ[\w-]+\.[\w-]+(?:\.[\w-]+)?\b/g,"[token redacted]").replace(/\b(?:sb_secret_\S+|sb_publishable_\S+)\b/g,"[key redacted]").replace(/https?:\/\/[^\s]+/gi,"[URL]").replace(/\b(?:Failing row contains|row contains)\s*\([^)]*\)/gi,"Row [values redacted]").replace(/\bKey\s*\([^)]*\)\s*=\s*\([^)]*\)/gi,"Key [values redacted]").replace(/\{[^{}]*\}/g,"[record details redacted]").slice(0,1200);
+      $("psPrintErrorDetails").textContent = [new Date().toISOString(),"Step: "+clean(context),error?.name && "Type: "+clean(error.name),error?.code && "Code: "+clean(error.code),"Message: "+clean(error?.message || error || "The print job could not be completed.")].filter(Boolean).join("\n");
+      $("psPrintErrors").hidden = false; $("psPrintErrors").open = true; $("psPrintCopyStatus").textContent = "Details stay here until dismissed or you leave this workspace.";
+    }
+    const excluded = () => {
+      const source = $("psPrintSource").value;
+      if (!exclusions.has(source)) exclusions.set(source,new Set());
+      return exclusions.get(source);
+    };
+    function renderSelection() {
+      const query = $("psPrintProductSearch").value.normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim(), omitted = excluded();
+      const rows = available.filter(p=>[p.description,p.vendor,p.brandName,p.manufacturerNumber,p.apn,p.supc,host.itemNumber(p)].join(" ").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().includes(query));
+      $("psPrintProductList").innerHTML = rows.map(p=>'<label class="ps-print-product-row"><input type="checkbox" data-print-product="'+esc(productKey(p))+'"'+(!omitted.has(productKey(p))?' checked':'')+' /><span><strong>'+esc(p.description || "Untitled product")+'</strong><small>'+esc([p.vendor,p.brandName,p.apn && "APN "+p.apn,p.supc && "SUPC "+p.supc,p.manufacturerNumber && "MF# "+p.manufacturerNumber,host.itemNumber(p) && "Item# "+host.itemNumber(p)].filter(Boolean).join(" · "))+'</small></span></label>').join("") || '<p class="ps-empty">'+(available.length?'No products match this search.':'Choose products or an event above.')+'</p>';
+      $("psPrintProductCount").textContent = products.length+" of "+available.length+" selected";
+      $("psPrintSelectAll").disabled = !available.length; $("psPrintSelectNone").disabled = !products.length;
+      updateQuantities();
+    }
+    function updateQuantities() {
+      const counts = products.map(p=>draftFor(p).copies);
+      for (const [id,count] of [["psBagOneEach",1],["psBagFullSheet",10]]) {
+        $(id).disabled = !counts.length; $(id).setAttribute("aria-pressed",String(Boolean(counts.length) && counts.every(value=>value===count)));
+      }
+    }
+    function chooseProducts() {
+      products = available.filter(p=>!excluded().has(productKey(p)));
+      products.forEach(draftFor);
+      if (!products.some(p=>productKey(p)===active)) {active = products.length ? productKey(products[0]) : "";uploadRevision++;}
+      $("psBagProduct").innerHTML = products.map(p=>'<option value="'+esc(productKey(p))+'">'+esc(p.description || "Untitled product")+'</option>').join("");
+      $("psBagProduct").value = active;
+      renderSelection(); updateFormat(); loadEditor(); host.selectionChanged?.();
+    }
     function releaseResources(group) {
       if (!group || group.released) return;
       group.released = true;
@@ -34,7 +71,7 @@
       const id = productKey(p);
       const base = {title:p.description || "Untitled product",subtitle:"",packaging:p.packaging || "",manufacturerNumber:p.manufacturerNumber || "",apn:p.apn || "",supc:p.supc || "",itemNumber:host.itemNumber(p) || ""};
       Object.keys(base).forEach(field=>{base[field]=String(base[field]);});
-      if (!drafts.has(id)) drafts.set(id,{id,source:p,...base,copies:10,logoMode:"automatic",logoChoice:"",customLogo:null,dirty:new Set()});
+      if (!drafts.has(id)) drafts.set(id,{id,source:p,...base,copies:1,logoMode:"automatic",logoChoice:"",customLogo:null,dirty:new Set()});
       const draft = drafts.get(id);
       for (const field of Object.values(fields)) if (!draft.dirty.has(field)) draft[field] = base[field];
       draft.source = p;
@@ -51,30 +88,30 @@
     }
     function clear() {
       invalidate("Choose products, then select Preview layout.");
-      drafts.clear(); assets.clear(); products = []; active = ""; signature = ""; uploadRevision++;
+      drafts.clear(); assets.clear(); exclusions.clear(); products = []; available = []; active = ""; source = ""; signature = ""; uploadRevision++;
+      clearErrors(); $("psPrintProductList").replaceChildren(); $("psPrintProductSearch").value = ""; $("psPrintProductCount").textContent = "";
+      $("psPrintSelectAll").disabled = true; $("psPrintSelectNone").disabled = true; updateQuantities();
       $("psBagProduct").replaceChildren(); $("psBagLogoChoice").replaceChildren(); $("psBagLogoFile").value = "";
       $("psBagLogoStatus").textContent = ""; $("psBagHelp").textContent = "";
       Object.keys(fields).forEach(id => {$(id).value = "";});
-      $("psBagCopies").value = "10"; $("psBagStart").value = "1"; $("psBagLogoMode").value = "automatic"; $("psBagTextSize").value = "standard";
+      $("psBagCopies").value = "1"; $("psBagStart").value = "1"; $("psBagLogoMode").value = "automatic"; $("psBagTextSize").value = "standard";
       ["psBagShowMf","psBagShowApn","psBagShowSupc","psBagShowItem","psBagOutlines"].forEach(id => {$(id).checked = true;});
       view = "label"; pageNumber = 0; updateFormat();
     }
     function updateFormat() {
       const labels = $("psPrintFormat").value === "labels";
       $("psBagSettings").hidden = !labels; $("psPrintLayout").dataset.format = labels ? "labels" : $("psPrintFormat").value;
+      $("psBagQuantity").hidden = !labels;
       document.querySelectorAll("[data-print-document]").forEach(node => {node.hidden = labels;});
     }
     function sync() {
       if (!host.allowed()) return;
       const next = host.getProducts();
+      if (source !== $("psPrintSource").value) {source = $("psPrintSource").value;$("psPrintProductSearch").value = "";}
       const nextSignature = JSON.stringify([$("psPrintSource").value,$("psPrintFormat").value,next.map(p=>[productKey(p),p.updatedAt,p.description,p.vendor,p.brandName,p.brandType,p.distributor,p.packaging,p.manufacturerNumber,p.apn,p.supc,host.itemNumber(p)])]);
       if (signature !== nextSignature) {invalidate("Choose the label wording and logo, then select Preview layout.");signature = nextSignature;}
-      products = next;
-      products.forEach(draftFor);
-      if (!products.some(p => productKey(p) === active)) active = products.length ? productKey(products[0]) : "";
-      $("psBagProduct").innerHTML = products.map(p=>'<option value="'+esc(productKey(p))+'">'+esc(p.description || "Untitled product")+'</option>').join("");
-      $("psBagProduct").value = active;
-      updateFormat(); loadEditor();
+      available = [...new Map(next.map(p=>[productKey(p),p])).values()];
+      chooseProducts();
     }
     function resolveLogo(draft) {
       if (draft.logoMode === "custom") return draft.customLogo ? {name:"Uploaded logo",logos:[draft.customLogo]} : {missing:true,reason:"Upload a logo for this label, or choose another logo option."};
@@ -139,7 +176,7 @@
         draft.logoMode = "custom"; draft.logoChoice = "";
         invalidate("Logo added for this print job · Select Preview layout.");
         if (current() === draft) {$("psBagLogoMode").value="custom";logoOptions();}
-      } catch (error) {if(host.valid(identity) && rev === uploadRevision) {$("psBagLogoStatus").textContent=error.message;host.status(error.message,"error");}}
+      } catch (error) {if(host.valid(identity) && rev === uploadRevision) {recordError(error,"LABEL_LOGO_UPLOAD");$("psBagLogoStatus").textContent=error.message;host.status(error.message,"error");}}
       finally {if(host.valid(identity) && rev === uploadRevision) $("psBagLogoFile").value="";}
     }
     async function assetData(src) {
@@ -148,7 +185,7 @@
       if (url.origin !== location.origin || !["print-logos/","vendor-logos/"].some(prefix=>url.pathname.startsWith(basePath+prefix))) throw new Error("This logo is not in the app’s verified logo library.");
       const controller = new AbortController(); controllers.add(controller);
       const promise = (async()=>{
-        try {const response=await fetch(url,{credentials:"omit",signal:controller.signal});if(!response.ok)throw new Error("Logo image unavailable. Try another logo or select No logo.");const dataUrl=(await imageData(await response.blob())).dataUrl;if(!controller.signal.aborted)assets.set(src,dataUrl);return dataUrl;}
+        try {const response=await fetch(url,{credentials:"omit",signal:controller.signal});if(!response.ok){const error=new Error("Logo image unavailable (HTTP "+response.status+"). Try another logo or select No logo.");error.code="LOGO_HTTP_"+response.status;throw error;}const dataUrl=(await imageData(await response.blob())).dataUrl;if(!controller.signal.aborted)assets.set(src,dataUrl);return dataUrl;}
         finally {controllers.delete(controller);}
       })();
       return promise;
@@ -197,7 +234,7 @@
     async function prepare() {
       if (!host.allowed()) return;
       sync();
-      if (!products.length) {host.status("Choose products or an event lineup before printing.","waiting");return;}
+      if (!products.length) {host.status("Select at least one product in the print checklist.","waiting");return;}
       const rev=invalidate("Checking label size and logos…"),identity=host.identity();
       const resources = {byData:new Map(),bytes:0,released:false}; resourceGroups.add(resources);
       host.status("Checking label size and logos…","waiting");
@@ -217,6 +254,7 @@
         try {if(currentJob)$("psPrintPreview").innerHTML='<p id="psBagFit" class="ps-status" data-tone="error" role="alert">'+esc(error.message)+'</p>';}
         finally {releaseResources(resources);}
         if (!currentJob) return;
+        recordError(error,"LABEL_PREVIEW");
         host.status("Labels need an adjustment before printing.","error");
       }
     }
@@ -239,23 +277,45 @@
     }
     function print() {
       if (!ready || !isCurrent(ready.identity,ready.revision) || !ready.frame.isConnected) return;
-      const frame=ready.frame,resources=ready.resources,fit=renderer.inspectOverflow(frame.contentDocument);
-      if(!fit.ok){invalidate("Label content changed. Select Preview layout to check it again.");return;}
-      frame.contentWindow.addEventListener("afterprint",()=>{frame.remove();frames.delete(frame);host.frames.delete(frame);if(ready?.frame===frame)invalidate("Print dialog closed · Select Preview layout to print again.");else releaseResources(resources);},{once:true});
-      frame.contentWindow.focus();frame.contentWindow.print();
+      try {
+        const frame=ready.frame,resources=ready.resources,fit=renderer.inspectOverflow(frame.contentDocument);
+        if(!fit.ok)throw new Error("Label content changed. Select Preview layout to check it again.");
+        frame.contentWindow.addEventListener("afterprint",()=>{frame.remove();frames.delete(frame);host.frames.delete(frame);if(ready?.frame===frame)invalidate("Print dialog closed · Select Preview layout to print again.");else releaseResources(resources);},{once:true});
+        frame.contentWindow.focus();frame.contentWindow.print();
+      } catch(error) {invalidate("Printing could not start. Select Preview layout and try again.");recordError(error,"LABEL_PRINT");host.status("Printing could not start. The error details are kept below.","error");}
     }
+    $("psPrintProductList").addEventListener("change",event=>{
+      if (!host.allowed()) return;
+      const input=event.target.closest("[data-print-product]");
+      if (!input || !available.some(p=>productKey(p)===input.dataset.printProduct)) return;
+      if (input.checked) excluded().delete(input.dataset.printProduct); else excluded().add(input.dataset.printProduct);
+      invalidate("Product selection changed · Select Preview layout."); chooseProducts();
+    });
+    $("psPrintProductSearch").addEventListener("input",()=>{if(host.allowed())renderSelection();});
+    $("psPrintSelectAll").addEventListener("click",()=>{if(!host.allowed())return;excluded().clear();invalidate("All products selected · Select Preview layout.");chooseProducts();});
+    $("psPrintSelectNone").addEventListener("click",()=>{if(!host.allowed())return;available.forEach(p=>excluded().add(productKey(p)));invalidate("Select the products you want to print.");chooseProducts();});
+    for (const [id,copies] of [["psBagOneEach",1],["psBagFullSheet",10]]) $(id).addEventListener("click",()=>{
+      if(!host.allowed())return;products.forEach(p=>{draftFor(p).copies=copies;});invalidate("Label quantities changed · Select Preview layout.");loadEditor();updateQuantities();
+    });
+    $("psPrintDismissError").addEventListener("click",clearErrors);
+    $("psPrintCopyError").addEventListener("click",async()=>{
+      if(!host.allowed() || $("psPrintErrors").hidden)return;
+      const identity=host.identity(),details=$("psPrintErrorDetails").textContent;
+      try {await navigator.clipboard.writeText(details);if(host.valid(identity))$("psPrintCopyStatus").textContent="Error details copied.";}
+      catch {if(host.valid(identity)){$("psPrintCopyStatus").textContent="Select and copy the details below. Your browser could not copy them automatically.";const range=document.createRange();range.selectNodeContents($("psPrintErrorDetails"));const selection=window.getSelection();selection?.removeAllRanges();selection?.addRange(range);}}
+    });
     $("psBagProduct").addEventListener("change",()=>{active=$("psBagProduct").value;uploadRevision++;loadEditor();renderPreview();});
     Object.entries(fields).forEach(([id,field])=>$(id).addEventListener("input",()=>{if(!host.allowed()||!current())return;current()[field]=$(id).value;current().dirty.add(field);invalidate();}));
-    $("psBagCopies").addEventListener("input",()=>{if(current()){current().copies=Number($("psBagCopies").value);invalidate();}});
+    $("psBagCopies").addEventListener("input",()=>{if(host.allowed()&&current()){current().copies=Number($("psBagCopies").value);invalidate();updateQuantities();}});
     $("psBagLogoMode").addEventListener("change",()=>{if(current()){current().logoMode=$("psBagLogoMode").value;current().logoChoice="";uploadRevision++;invalidate();logoOptions();}});
     $("psBagLogoChoice").addEventListener("change",()=>{if(current()){current().logoChoice=$("psBagLogoChoice").value;invalidate();logoOptions();}});
     $("psBagLogoFile").addEventListener("change",event=>upload(event.target.files[0]));
     $("psBagClearLogo").addEventListener("click",()=>{if(current()){uploadRevision++;current().customLogo=null;$("psBagLogoFile").value="";invalidate();logoOptions();}});
-    $("psBagReset").addEventListener("click",()=>{const p=products.find(p=>productKey(p)===active);if(p){uploadRevision++;drafts.delete(active);draftFor(p);invalidate();loadEditor();}});
+    $("psBagReset").addEventListener("click",()=>{const p=products.find(p=>productKey(p)===active);if(p){uploadRevision++;drafts.delete(active);draftFor(p);invalidate();loadEditor();updateQuantities();}});
     ["psBagStart","psBagShowMf","psBagShowApn","psBagShowSupc","psBagShowItem","psBagOutlines","psBagTextSize"].forEach(id=>$(id).addEventListener("change",()=>invalidate()));
     ["psPrintFormat","psPrintLogo","psPrintHeading","psPrintCopies"].forEach(id=>$(id).addEventListener(id==="psPrintHeading"||id==="psPrintCopies"?"input":"change",()=>{invalidate();sync();}));
     new ResizeObserver(scalePreview).observe($("psPrintPreview"));
-    return Object.freeze({sync,clear,invalidate,prepare,getRevision:()=>revision});
+    return Object.freeze({sync,clear,invalidate,prepare,recordError,clearErrors,getProducts:()=>host.allowed()?products.slice():[],getRevision:()=>revision});
   }
   window.foodBrokerSupportLabels = Object.freeze({create});
 })();

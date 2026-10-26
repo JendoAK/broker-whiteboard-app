@@ -30,7 +30,7 @@
 .bag-label-grid{position:absolute;left:.15625in;top:var(--bag-top-pt,36.1pt);display:grid;grid-template-columns:4in 4in;grid-template-rows:repeat(5,2in);column-gap:.1875in;row-gap:0;width:8.1875in;height:10in}
 .bag-label{position:relative;width:4in;height:2in;margin:0;padding:0;min-width:0;min-height:0;overflow:visible}
 .bag-label::before{content:"";position:absolute;inset:0;border:.25pt solid #bfbfbf;border-radius:.2in;pointer-events:none}
-.bag-label-inner{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;width:100%;height:100%;padding:var(--bag-padding-top,3.75pt) var(--bag-padding-side,21.55pt) var(--bag-padding-bottom,2.85pt);text-align:center;font-family:var(--bag-font-family,Arial),sans-serif;overflow:visible;line-height:1.15}
+.bag-label-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;padding:var(--bag-padding-top,3.75pt) var(--bag-padding-side,21.55pt) var(--bag-padding-bottom,3.75pt);text-align:center;font-family:var(--bag-font-family,Arial),sans-serif;overflow:visible;line-height:1.15}
 .bag-label-inner>*{flex-shrink:0;max-width:100%}
 .bag-label-logos{display:flex;justify-content:center;align-items:flex-end;gap:0;margin:0 0 var(--bag-logo-gap,5.7pt);max-width:100%}
 .bag-label-logo-box{position:relative;display:flex;flex:none;justify-content:center;align-items:center;margin:0;overflow:hidden}
@@ -38,13 +38,14 @@
 .bag-label-logo-cropped{position:absolute;max-width:none;object-fit:fill}
 .bag-label-title{font-size:var(--bag-title-pt,16pt);font-weight:700;line-height:1.15;margin:0 0 var(--bag-title-gap,2.85pt);overflow-wrap:break-word;white-space:pre-line}
 .bag-label-line{font-size:var(--bag-body-pt,12pt);font-weight:400;line-height:1.15;margin:0 0 var(--bag-body-gap,2.85pt);overflow-wrap:break-word;white-space:pre-line}
-.bag-label-line:last-child{margin-bottom:0}
+.bag-label-inner>:last-child{margin-bottom:0}
 .bag-label[data-overflow=true]{outline:2px solid #b23523;outline-offset:-2px;background:#fff2ed}
 @media print{
   @page{size:Letter portrait;margin:0}
   html,body{margin:0!important;padding:0!important;background:#fff!important}
   .bag-label-page{margin:0;box-shadow:none;print-color-adjust:exact;-webkit-print-color-adjust:exact}
   .bag-label-page[data-print-outlines=false] .bag-label::before{display:none}
+  .bag-label-blank::before{display:none}
   .bag-label{outline:none!important}
   .bag-label[data-overflow=true]{background:#fff!important}
 }
@@ -145,7 +146,7 @@
 
   function labelMarkup(product, index, job) {
     const typography = { ...(job.typography || {}), ...(product.typography || {}) };
-    const layout = { topPaddingPt: 3.75, sidePaddingPt: 21.55, bottomPaddingPt: 2.85, logoGapPt: 5.7, titleGapPt: 2.85, bodyGapPt: 2.85, ...(job.layout || {}), ...(product.layout || {}) };
+    const layout = { topPaddingPt: 3.75, sidePaddingPt: 21.55, bottomPaddingPt: 3.75, logoGapPt: 5.7, titleGapPt: 2.85, bodyGapPt: 2.85, ...(job.layout || {}), ...(product.layout || {}) };
     const style = "--bag-title-pt:" + (typography.titlePt == null ? 16 : typography.titlePt) + "pt;--bag-body-pt:" + (typography.bodyPt == null ? 12 : typography.bodyPt) + "pt;--bag-font-family:" + (typography.fontFamily || "Arial") + ";--bag-padding-top:" + layout.topPaddingPt + "pt;--bag-padding-side:" + layout.sidePaddingPt + "pt;--bag-padding-bottom:" + layout.bottomPaddingPt + "pt;--bag-logo-gap:" + layout.logoGapPt + "pt;--bag-title-gap:" + layout.titleGapPt + "pt;--bag-body-gap:" + layout.bodyGapPt + "pt";
     const resolvedLogos = Array.isArray(product.logos) ? product.logos : product.logoDataUrl ? [{ dataUrl: product.logoDataUrl, alt: product.logoAlt, widthPt: (product.logoWidthIn == null ? 3.25 : product.logoWidthIn) * 72, heightPt: (product.logoHeightIn == null ? 0.7 : product.logoHeightIn) * 72 }] : [];
     const logo = job.logoMode !== "none" && resolvedLogos.length ? `<div class="bag-label-logos">${resolvedLogos.map(image => {

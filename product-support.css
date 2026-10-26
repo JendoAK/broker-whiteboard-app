@@ -66,3 +66,35 @@
 @media(max-width:700px){.ps-print-layout[data-format=labels]{grid-template-columns:1fr}.ps-bag-settings{padding:14px}.ps-print-layout[data-format=labels]>.ps-print-preview{padding:12px}}
 @media(max-width:400px){.ps-bag-field-pair{grid-template-columns:1fr}.ps-bag-settings input:not([type=checkbox]),.ps-bag-settings select,.ps-bag-settings textarea{font-size:16px}.ps-print-layout[data-format=labels]>.ps-print-preview{padding:8px}}
 @media print{#psBagSettings,.ps-bag-stagebar,.ps-bag-stage-bar,.ps-bag-preview-toolbar,.ps-bag-preview-footer,#psBagFit,#psPrintNow,.ps-bag-print-note{display:none!important}.ps-print-layout[data-format=labels]{display:block!important}.ps-print-layout[data-format=labels]>.ps-print-preview{padding:0;background:white;overflow:visible}#psBagPreviewPaper{height:auto!important;width:auto!important}#psBagPreviewPaper .ps-bag-paper-inner{position:static!important;transform:none!important}#psBagPreviewPaper .ps-bag-paper-inner>.bag-label-page{box-shadow:none}}
+
+/* Compact product choices and print-job quantities. */
+.ps-print-products{border:1px solid var(--line);border-radius:8px;background:var(--paper);padding:10px 12px;margin:10px 0;min-width:0}
+.ps-print-products>summary{font-size:13px;font-weight:700;line-height:1.5;cursor:pointer}
+#psPrintProductCount{font-size:12px;font-weight:400;color:var(--muted);margin-left:7px}
+.ps-print-product-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:9px 0}
+.ps-print-product-search{flex:1 1 260px;max-width:480px;min-width:0}
+.ps-print-product-search input{width:100%;min-height:34px;border:1px solid #a7c0b6;border-radius:6px;background:white;color:var(--ink);padding:7px 9px;font:13px Arial,sans-serif;box-sizing:border-box}
+.ps-print-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.ps-print-product-toolbar button{font-size:12px;min-height:30px;white-space:nowrap}
+.ps-print-product-list{max-height:220px;overflow-y:auto;border:1px solid #d3dfd8;background:white;border-radius:6px;min-width:0}
+.ps-print-product-row{display:flex;align-items:center;gap:10px;border-bottom:1px solid #dbe5de;padding:8px 10px;min-width:0;cursor:pointer;font-size:13px;line-height:1.35}
+.ps-print-product-row:last-child{border-bottom:0}
+.ps-print-product-row:has(input:checked){background:#f0f7f2}
+.ps-print-product-row input[type=checkbox]{accent-color:var(--teal);width:17px;height:17px;min-width:17px;margin:0}
+.ps-print-product-row>span{display:block;min-width:0}
+.ps-print-product-row strong{display:block;font-size:13px;line-height:1.35;overflow-wrap:anywhere}
+.ps-print-product-row small{display:block;font-size:11px;font-weight:400;line-height:1.4;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
+.ps-bag-quantity{display:flex;align-items:center;gap:8px 13px;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;background:var(--soft);padding:10px 12px;margin:10px 0 14px;font-size:12px;font-weight:600;min-width:0}
+.ps-bag-quantity-buttons{display:flex;gap:5px;flex-wrap:wrap}
+.ps-bag-quantity-buttons button{font-size:12px;min-height:32px;padding:6px 10px;background:white;border:1px solid #a7c0b6;color:var(--ink);border-radius:6px}
+.ps-bag-quantity-buttons button[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:white}
+.ps-bag-quantity small{font-size:11px;font-weight:400;color:var(--muted)}
+.ps-print-errors{border:1px solid #dda58e;border-radius:8px;background:#fff0eb;color:#7c3427;padding:10px 12px;margin:10px 0 14px;min-width:0}
+.ps-print-errors>summary{font-size:13px;font-weight:700;cursor:pointer;line-height:1.5}
+.ps-print-errors pre{font:12px/1.5 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto;margin:10px 0}
+.ps-print-error-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ps-print-error-actions button{font-size:12px;min-height:32px}
+#psPrintCopyStatus{font-size:12px;line-height:1.4;margin:8px 0 0}
+#psPrintCopyStatus:empty{display:none}
+@media(max-width:430px){.ps-print-product-search{flex-basis:100%;max-width:none}.ps-print-product-search input{font-size:16px}.ps-bag-quantity>span{flex-basis:100%}.ps-print-product-list{max-height:200px}}
+@media print{.ps-print-products,.ps-bag-quantity,.ps-print-errors{display:none!important}}
