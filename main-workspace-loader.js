@@ -19,6 +19,10 @@
     return !auth?.isPasswordRecovery?.() && fullRoles.has(auth?.getCurrentProfile?.()?.role) ? auth?.getCurrentUser?.()?.id || "" : "";
   }
   function valid(version, uid) { return generation === version && currentUser() === uid; }
+  function leaveWorkspace() {
+    window.dispatchEvent(new CustomEvent("foodbrokerbase:workspace-leaving"));
+    window.location.reload();
+  }
   function showProblem(error) {
     const gate = document.querySelector("#authGate");
     if (!gate) return;
@@ -122,7 +126,7 @@
       if (started) {
         generation++; pendingReady.length = 0;
         document.body.classList.remove("auth-signed-in"); document.body.classList.add("auth-pending");
-        window.location.reload();
+        leaveWorkspace();
       }
       return;
     }
@@ -133,7 +137,7 @@
     if (!started) return;
     generation++; pendingReady.length = 0;
     document.body.classList.remove("auth-signed-in"); document.body.classList.add("auth-pending");
-    window.location.reload();
+    leaveWorkspace();
   });
   if(document.readyState === "loading") originalDocumentAdd.call(document,"DOMContentLoaded",reconcile,{once:true}); else reconcile();
 })();
