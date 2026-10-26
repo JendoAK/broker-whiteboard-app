@@ -8,7 +8,7 @@
   const esc = value => text(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
   const normal = value => text(value).normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
   const fields = ["description", "vendor", "distributor", "distributorNumber", "manufacturerNumber", "apn", "supc", "gtin", "packaging", "storage", "brandName", "brandType", "category", "notes"];
-  const csvFields = ["id", "description", "vendor", "distributor", "manufacturerNumber", "apn", "supc", "distributorNumber", "gtin", "packaging", "storage", "brandName", "brandType", "category", "so"];
+  const csvFields = ["id", "description", "vendor", "distributor", "manufacturerNumber", "apn", "supc", "distributorNumber", "gtin", "packaging", "storage", "brandName", "brandType", "category", "so", "k12"];
   const typeNames = { personal: "Market visit", vendor: "Vendor visit", foodshow: "Foodshow", testkitchen: "Test kitchen" };
   const logos = { usFoods: ["us-foods-logo.svg", "US Foods"], sysco: ["sysco-logo.png?v=20260917-official1", "Sysco"], linford: ["linford-logo.svg", "Linford"], qualitySales: ["quality-sales-logo.png", "Quality Sales"] };
   const pageSize = 100;
@@ -38,6 +38,43 @@
     if (d.includes("linford")) return "linford";
     if (/^quality\s*sales$/.test(d)) return "qualitySales";
     return "other";
+  }
+  function canonicalDistributor(value) {
+    const name=text(value).trim();
+    return /^us\s*foods\s+fairbanks$/i.test(name) ? "US Foods Anchorage" : name;
+  }
+  function isSchoolList(value) { return /^k[\s-]*12$/i.test(text(value).trim()); }
+  function productSupplier(form) { return canonicalDistributor(isSchoolList(form.elements.distributor.value) ? form.elements.k12Supplier.value : form.elements.distributor.value); }
+  function syncProductDistributorFields() {
+    const form=$("psProductForm"),kind=state.editing?.collection || state.collection,stock=kind==="stock",school=stock && isSchoolList(form.elements.distributor.value),supplier=productSupplier(form),group=family({distributor:supplier});
+    $("psK12SupplierField").hidden=!school;form.elements.k12Supplier.required=school;form.elements.distributor.required=stock;
+    if(state.editing){
+      const previous=state.editing.numberSupplier,next=stock && supplier && !["usFoods","sysco"].includes(group)?supplier:"";
+      if(previous)state.editing.numberDrafts.set(previous,form.elements.distributorNumber.value);
+      if(previous!==next)form.elements.distributorNumber.value=next?state.editing.numberDrafts.get(next) || "":"";
+      state.editing.numberSupplier=next;
+    }
+    const primary=$("psProductNumberFields"),other=$("psOtherProductNumberFields"),all=!stock || school;
+    const apn=$("psProductApnField"),supc=$("psProductSupcField"),item=$("psProductItemField");
+    for(const [node,main] of [[apn,all || group==="usFoods"],[supc,all || group==="sysco"]]){node.hidden=false;(main?primary:other).append(node);}
+    const generic=stock && supplier && !["usFoods","sysco"].includes(group);
+    item.hidden=!generic;primary.append(item);
+    $("psOtherProductNumbers").hidden=all || !other.children.length;
+    $("psProductItemLabel").textContent=group==="linford"?"Linford item number":group==="qualitySales"?"Quality Sales item number":"Distributor item number";
+    $("psK12ProductHint").hidden=!school;
+  }
+  function changeProductList() {
+    const form=$("psProductForm"),school=isSchoolList(form.elements.distributor.value),previous=form.dataset.previousDistributor || "";
+    if(school){
+      form.elements.includeK12.checked=true;
+      if(state.editing?.original && previous && !isSchoolList(previous))form.elements.k12Supplier.value=canonicalDistributor(previous);
+      else if(!state.editing?.original && !form.dataset.k12SupplierChosen)form.elements.k12Supplier.value="";
+    }
+    form.dataset.previousDistributor=form.elements.distributor.value;syncProductDistributorFields();
+  }
+  function syncImportSupplier(needsSupplier=false) {
+    const school=isSchoolList($("psImportDistributor").value);
+    $("psImportK12SupplierField").hidden=!(school || needsSupplier);$("psImportK12Supplier").required=needsSupplier;
   }
   function genericItemNumber(p) { return !["usFoods", "sysco"].includes(family(p)) ? p.distributorNumber : ""; }
   function codes(p) { return [["MF#", p.manufacturerNumber], ["APN", p.apn], ["SUPC", p.supc], ["Item", genericItemNumber(p)]].filter(([, v]) => v).map(([label, v]) => label + " " + v).join(" · "); }
@@ -158,18 +195,30 @@
     state.attachments = (Array.isArray(p?.attachments) ? p.attachments : []).map(a => ({...a}));
     state.attachmentsChanged = false;
     const form = $("psProductForm"); form.reset();
+    state.editing.numberDrafts=new Map();state.editing.numberSupplier="";delete form.dataset.k12SupplierChosen;
     form.elements.id.value = p?.id || "";
     const locked = state.collection === "new" && p && productLocked(p);
     fields.forEach(field => {
       const control = form.elements[field];
-      control.value = p?.[field] || (field === "distributor" ? state.collection === "stock" ? "US Foods Anchorage" : "Not stocked" : "");
-      if (field === "distributor" && p?.[field] && !control.value) { control.add(new Option(p[field], p[field])); control.value = p[field]; }
+      const value=field === "distributor"?canonicalDistributor(p?.[field]):p?.[field];
+      control.value = value || (field === "distributor" ? state.collection === "stock" ? "US Foods Anchorage" : "Not stocked" : "");
+      if (field === "distributor" && value && !control.value) { control.add(new Option(value, value)); control.value = value; }
       control.disabled = Boolean(locked);
     });
+    const originalSupplier=canonicalDistributor(p?.distributor),school=state.collection==="stock" && Boolean(p?.k12 || isSchoolList(originalSupplier) || !p && state.schoolOnly);
+    if(originalSupplier && !isSchoolList(originalSupplier)){
+      if(![...form.elements.k12Supplier.options].some(option=>option.value===originalSupplier))form.elements.k12Supplier.add(new Option(originalSupplier,originalSupplier));
+      form.elements.k12Supplier.value=originalSupplier;
+      if(!["usFoods","sysco"].includes(family({distributor:originalSupplier})))state.editing.numberDrafts.set(originalSupplier,text(p?.distributorNumber));
+    }
+    if(school)form.elements.distributor.value="K12";
+    form.elements.includeK12.checked=school;form.dataset.previousDistributor=form.elements.distributor.value;
+    form.elements.k12Supplier.disabled=Boolean(locked);form.elements.includeK12.disabled=Boolean(locked);
     $("psProductDialogTitle").textContent = p ? description(p) : state.collection === "stock" ? "Add stocked product" : "Add new product";
     $("psProductHelp").textContent = locked ? "This new product has moved to stock. Its event-library details remain locked. Maintain the stocked item in Stocked products." : state.collection === "stock" ? !p && state.schoolOnly ? "This new stocked product will be included in K-12 school products and shared with the team." : "Changes update this shared stocked product for the team. Existing event selections stay linked." : "Changes update this shared new product wherever it is used. Product notes describe the product, not customer feedback.";
     document.querySelectorAll("[data-stock-field]").forEach(el => { el.hidden = state.collection !== "stock"; });
     document.querySelectorAll("[data-new-field]").forEach(el => { el.hidden = state.collection !== "new"; });
+    syncProductDistributorFields();
     $("psSaveProduct").hidden = Boolean(locked); $("psSaveProduct").disabled = false;
     $("psFileInput").value = ""; status("", "", "psProductStatus"); errorDetails(null, "psProductError"); renderAttachments();
     $("psProductDialog").showModal(); if (!locked) form.elements.description.focus();
@@ -224,10 +273,11 @@
   function productPatch(form, kind) {
     const product = {};
     fields.forEach(field => { if (field !== "notes" || kind === "new") product[field] = text(form.elements[field].value).trim(); });
+    if(kind==="stock"){product.distributor=productSupplier(form);product.k12=form.elements.includeK12.checked || isSchoolList(form.elements.distributor.value);}
     Object.assign(product, window.foodBrokerVendors.product(product));
     if (form.elements.id.value) product.id = form.elements.id.value;
     if (kind === "new") { delete product.distributorNumber; delete product.distributor; }
-    if (kind === "stock") { if (!state.editing?.original && state.schoolOnly) product.k12 = true; if (state.attachmentsChanged) product.attachments = state.attachments.map(a => ({...a})); if (family(product) === "usFoods") product.distributorNumber = product.apn; if (family(product) === "sysco") product.distributorNumber = product.supc; }
+    if (kind === "stock") { if (state.attachmentsChanged) product.attachments = state.attachments.map(a => ({...a})); if (family(product) === "usFoods") product.distributorNumber = product.apn; if (family(product) === "sysco") product.distributorNumber = product.supc; }
     return product;
   }
   async function saveProduct(event) {
@@ -361,12 +411,19 @@
     for (let i=0; i<source.length; i++) { const c=source[i]; if(c==='"'){if(quoted&&source[i+1]==='"'){cell+='"';i++;}else quoted=!quoted;}else if(c===","&&!quoted){row.push(cell);cell="";}else if((c==="\n"||c==="\r")&&!quoted){if(c==="\r"&&source[i+1]==="\n")i++;row.push(cell);if(row.some(v=>v.trim()))rows.push(row.splice(0));else row.length=0;cell="";}else cell+=c; }
     if(quoted)throw new Error("A quoted CSV field is missing its closing quote.");row.push(cell);if(row.some(v=>v.trim()))rows.push(row);
     if(rows.length<2)throw new Error("The CSV needs a header and at least one product row.");
-    const aliases={description:"description",productdescription:"description",vendor:"vendor",manufacturer:"vendor",distributor:"distributor",id:"id",apn:"apn",usf:"apn",usfoods:"apn",supc:"supc",sysco:"supc",linfordnumber:"linfordNumber",linforditemnumber:"linfordNumber",linforditem:"linfordNumber",linford:"linfordNumber",qualitysalesnumber:"qualitySalesNumber",qualitysalesitemnumber:"qualitySalesNumber",qualitysalesitem:"qualitySalesNumber",qsnumber:"qualitySalesNumber",distributornumber:"distributorNumber",distributoritemnumber:"distributorNumber",itemnumber:"distributorNumber",item:"distributorNumber",manufacturernumber:"manufacturerNumber",manufacturerproductnumber:"manufacturerNumber",mfr:"manufacturerNumber",mf:"manufacturerNumber",upc:"manufacturerNumber",gtin:"gtin",packaging:"packaging",storage:"storage",brandname:"brandName",brandtype:"brandType",category:"category",specialorder:"so",so:"so"};
+    const aliases={description:"description",productdescription:"description",vendor:"vendor",manufacturer:"vendor",distributor:"distributor",id:"id",k12:"k12",includeink12:"k12",schoolproducts:"k12",apn:"apn",usf:"apn",usfoods:"apn",supc:"supc",sysco:"supc",linfordnumber:"linfordNumber",linforditemnumber:"linfordNumber",linforditem:"linfordNumber",linford:"linfordNumber",qualitysalesnumber:"qualitySalesNumber",qualitysalesitemnumber:"qualitySalesNumber",qualitysalesitem:"qualitySalesNumber",qsnumber:"qualitySalesNumber",distributornumber:"distributorNumber",distributoritemnumber:"distributorNumber",itemnumber:"distributorNumber",item:"distributorNumber",manufacturernumber:"manufacturerNumber",manufacturerproductnumber:"manufacturerNumber",mfr:"manufacturerNumber",mf:"manufacturerNumber",upc:"manufacturerNumber",gtin:"gtin",packaging:"packaging",storage:"storage",brandname:"brandName",brandtype:"brandType",category:"category",specialorder:"so",so:"so"};
     const headers=rows.shift().map(h=>aliases[h.replace(/^\uFEFF/,"").trim().toLowerCase().replace(/[^a-z0-9]/g,"")]||""); if(!["description","vendor"].every(h=>headers.includes(h)))throw new Error("Use the template headers: Description and Vendor are required.");
     if(rows.length>500)throw new Error("Import up to 500 products at a time.");
+    const selected=canonicalDistributor($("psImportDistributor").value),schoolImport=isSchoolList(selected),distributorColumn=headers.indexOf("distributor");
+    const needsSupplier=rows.some(values=>{const value=canonicalDistributor(distributorColumn<0?"":values[distributorColumn]);return isSchoolList(value) || !value && schoolImport;});
+    syncImportSupplier(needsSupplier);
     return rows.map((values,i)=>{
       const p={};headers.forEach((h,n)=>{if(csvFields.includes(h)||h==="linfordNumber"||h==="qualitySalesNumber")p[h]=text(values[n]).trim();});
-      p.distributor=p.distributor||$("psImportDistributor").value;
+      const rowDistributor=canonicalDistributor(p.distributor),schoolRow=isSchoolList(rowDistributor),marked=p.k12;
+      if(marked!==undefined){if(!marked)delete p.k12;else if(/^(yes|y|true|1)$/i.test(marked))p.k12=true;else if(/^(no|n|false|0)$/i.test(marked))p.k12=false;else throw new Error("Row "+(i+2)+" needs Yes or No in the K12 column.");}
+      if(schoolImport || schoolRow)p.k12=true;
+      p.distributor=rowDistributor && !schoolRow?rowDistributor:schoolImport || schoolRow?canonicalDistributor($("psImportK12Supplier").value):selected;
+      if(!p.distributor && (schoolImport || schoolRow))throw new Error("Row "+(i+2)+": choose the real supplier under Supplied through for K12 products, or include a real Distributor in the CSV.");
       if(!p.description||!p.vendor||!p.distributor)throw new Error("Row "+(i+2)+" needs a description, vendor and distributor.");
       const group=family(p);
       const number=group==="linford"?p.linfordNumber:group==="qualitySales"?p.qualitySalesNumber:group==="usFoods"?p.apn:group==="sysco"?p.supc:"";
@@ -378,7 +435,7 @@
   }
   async function readCsv(file) {
     const gen=state.generation,uid=state.userId;state.importRows=[];$("psRunImport").disabled=true;
-    try{if(!file)return;if(file.size>2*1024*1024)throw new Error("Choose a CSV under 2 MB.");const rows=parseCsv(await file.text());if(!valid(gen,uid))return;state.importRows=rows;$("psImportPreview").innerHTML='<div class="ps-import-preview"><table class="ps-preview-table"><thead><tr><th>Action</th><th>Product</th><th>Vendor</th><th>Distributor</th></tr></thead><tbody>'+rows.slice(0,20).map(p=>`<tr><td>${p.id?"Update":"Add"}</td><td>${esc(p.description)}</td><td>${esc(p.vendor)}</td><td>${esc(p.distributor)}</td></tr>`).join("")+'</tbody></table></div>';status(rows.length+" products ready · Preview shows the first 20. No changes have been saved yet.","waiting","psImportStatus");$("psRunImport").disabled=false;}catch(error){if(valid(gen,uid)){status(error.message,"error","psImportStatus");$("psImportPreview").replaceChildren();}}
+    try{if(!file)return;if(file.size>2*1024*1024)throw new Error("Choose a CSV under 2 MB.");const rows=parseCsv(await file.text());if(!valid(gen,uid))return;state.importRows=rows;$("psImportPreview").innerHTML='<div class="ps-import-preview"><table class="ps-preview-table"><thead><tr><th>Action</th><th>Product</th><th>Vendor</th><th>Distributor</th><th>K12</th></tr></thead><tbody>'+rows.slice(0,20).map(p=>`<tr><td>${p.id?"Update":"Add"}</td><td>${esc(p.description)}</td><td>${esc(p.vendor)}</td><td>${esc(p.distributor)}</td><td>${p.k12?"Yes":""}</td></tr>`).join("")+'</tbody></table></div>';status(rows.length+" products ready · Preview shows the first 20. No changes have been saved yet.","waiting","psImportStatus");$("psRunImport").disabled=false;}catch(error){if(valid(gen,uid)){status(error.message,"error","psImportStatus");$("psImportPreview").replaceChildren();}}
   }
   async function runImport() {
     if(!allowed()||state.importRunning||!state.importRows.length)return;
@@ -404,6 +461,9 @@
     $("psClearSelection").addEventListener("click",()=>{state.selected.clear();renderProducts();});
     $("psPrepareSelection").addEventListener("click",()=>{if(!allowed()||!state.selected.size)return;$("psPrintSource").value="selected";showView("printing");});
     $("psLoadMore").addEventListener("click",()=>{state.visibleLimit+=pageSize;renderProducts();});
+    $("psProductForm").elements.distributor.addEventListener("change",changeProductList);
+    $("psProductForm").elements.k12Supplier.addEventListener("change",()=>{$("psProductForm").dataset.k12SupplierChosen="true";syncProductDistributorFields();});
+    $("psProductK12").addEventListener("change",()=>{const form=$("psProductForm");if(!form.elements.includeK12.checked && isSchoolList(form.elements.distributor.value)){form.elements.distributor.value=canonicalDistributor(form.elements.k12Supplier.value)||"US Foods Anchorage";form.dataset.previousDistributor=form.elements.distributor.value;}syncProductDistributorFields();});
     $("psAdd").addEventListener("click",()=>openProduct()); $("psProductForm").addEventListener("submit",saveProduct);
     $("psFileInput").addEventListener("change",event=>addFiles([...event.target.files]));
     $("psAttachments").addEventListener("click",event=>{const button=event.target.closest("[data-download-attachment]");if(button)downloadAttachment(Number(button.dataset.downloadAttachment));});
@@ -417,10 +477,11 @@
     $("psSignIn").addEventListener("click",()=>auth()?.openDialog());
     document.querySelectorAll("[data-close-dialog]").forEach(button=>button.addEventListener("click",()=>{const dialog=button.closest("dialog");if((dialog.id==="psProductDialog"&&(state.saving||state.readingFiles))||(dialog.id==="psImportDialog"&&state.importRunning))return;dialog.close();}));
     $("psProductDialog").addEventListener("cancel",event=>{if(state.saving||state.readingFiles)event.preventDefault();}); $("psImportDialog").addEventListener("cancel",event=>{if(state.importRunning)event.preventDefault();});
-    $("psImport").addEventListener("click",()=>{if(!allowed())return;$("psImportDialog").showModal();});
+    $("psImport").addEventListener("click",()=>{if(!allowed())return;syncImportSupplier();$("psImportDialog").showModal();});
     $("psCsvTemplate").addEventListener("click",()=>download("stock-product-template.csv",csvFields.join(",")+"\r\n", "text/csv;charset=utf-8"));
     $("psCsvInput").addEventListener("change",event=>readCsv(event.target.files[0]));$("psRunImport").addEventListener("click",runImport);
-    $("psImportDistributor").addEventListener("change",()=>{if(!state.importRunning)readCsv($("psCsvInput").files[0]);});
+    $("psImportDistributor").addEventListener("change",()=>{if(!state.importRunning){syncImportSupplier();readCsv($("psCsvInput").files[0]);}});
+    $("psImportK12Supplier").addEventListener("change",()=>{if(!state.importRunning)readCsv($("psCsvInput").files[0]);});
     window.addEventListener("foodbrokerbase:auth-checking",clearSensitive);
     window.addEventListener("foodbrokerbase:auth",applyAuth);applyAuth();
   }

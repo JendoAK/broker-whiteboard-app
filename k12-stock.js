@@ -34,7 +34,7 @@ function getK12Products() {
     const codes=(items,key)=>[...new Set(items.map(item=>item[key]).filter(Boolean))].join(', ');
     const special=items.filter(item=>item.so==='Yes');
     const specialOnly=special.length>0&&!items.some(item=>item.distributor!=='Not stocked'&&item.so!=='Yes');
-    return {...base,apn:codes(usf,'apn'),supc:codes(sysco,'supc'),k12QualitySalesNumber:codes(qualitySales,'distributorNumber'),so:specialOnly?'Yes':'',k12Usf:usf.some(item=>item.so!=='Yes'),k12Sysco:sysco.some(item=>item.so!=='Yes'),k12QualitySales:qualitySales.some(item=>item.so!=='Yes'),k12Linford:linford.some(item=>item.so!=='Yes'),k12SpecialOrder:special.length>0,k12SpecialOrderOnly:specialOnly,k12SpecialOrderDistributors:[...new Set(special.map(item=>item.distributor))]};
+    return {...base,apn:codes(items,'apn'),supc:codes(items,'supc'),k12QualitySalesNumber:codes(qualitySales,'distributorNumber'),so:specialOnly?'Yes':'',k12Usf:usf.some(item=>item.so!=='Yes'),k12Sysco:sysco.some(item=>item.so!=='Yes'),k12QualitySales:qualitySales.some(item=>item.so!=='Yes'),k12Linford:linford.some(item=>item.so!=='Yes'),k12SpecialOrder:special.length>0,k12SpecialOrderOnly:specialOnly,k12SpecialOrderDistributors:[...new Set(special.map(item=>item.distributor))]};
   });
 }
 function renderK12Stocking(product) {

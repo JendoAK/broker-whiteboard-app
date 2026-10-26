@@ -98,3 +98,12 @@
 #psPrintCopyStatus:empty{display:none}
 @media(max-width:430px){.ps-print-product-search{flex-basis:100%;max-width:none}.ps-print-product-search input{font-size:16px}.ps-bag-quantity>span{flex-basis:100%}.ps-print-product-list{max-height:200px}}
 @media print{.ps-print-products,.ps-bag-quantity,.ps-print-errors{display:none!important}}
+
+/* One item number for each supplier; K12 retains the real supplier and membership. */
+#psProductForm .ps-product-k12-check{display:flex;align-items:center;gap:8px;align-self:end;min-height:38px;font-size:13px}
+#psProductForm .ps-product-k12-check input{width:17px;height:17px;min-width:17px;margin:0;accent-color:var(--teal)}
+.ps-product-number-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;min-width:0}
+#psOtherProductNumbers{padding:10px 0;border-top:1px solid var(--line)}
+#psOtherProductNumbers summary{font-size:13px;font-weight:600;cursor:pointer;padding-bottom:8px}
+#psImportK12SupplierField{margin:10px 0}#psK12ProductHint{margin:0;font-size:12px}
+@media(max-width:650px){.ps-product-number-fields{grid-template-columns:1fr}}
