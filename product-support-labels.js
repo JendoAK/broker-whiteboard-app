@@ -4,6 +4,22 @@
   const esc = value => String(value == null ? "" : value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
   const fields = {psBagTitle:"title",psBagSubtitle:"subtitle",psBagPackaging:"packaging",psBagMf:"manufacturerNumber",psBagApn:"apn",psBagSupc:"supc",psBagItem:"itemNumber"};
   const mimeTypes = new Set(["image/png","image/jpeg","image/webp","image/gif"]);
+  function eventDay(value) {
+    const match=/^(\d{4})-(\d{2})-(\d{2})(?:$|[T\s])/.exec(String(value || ""));
+    if(!match)return "";
+    const year=Number(match[1]),month=Number(match[2]),day=Number(match[3]),date=new Date(year,month-1,day,12);
+    return date.getFullYear()===year && date.getMonth()===month-1 && date.getDate()===day ? match[1]+"-"+match[2]+"-"+match[3] : "";
+  }
+  function isPrintableEvent(event,now=new Date()) {
+    if(!event || event.archivedAt || event.deletedAt || Number.isNaN(now.getTime()))return false;
+    const start=eventDay(event.startDate) || eventDay(event.date),end=eventDay(event.endDate),last=start && end ? (start>end?start:end) : end || start;
+    const today=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");
+    return Boolean(last && last>=today);
+  }
+  function printableEvents(events,now=new Date()) {
+    const first=event=>eventDay(event.startDate) || eventDay(event.date) || eventDay(event.endDate);
+    return events.filter(event=>isPrintableEvent(event,now)).slice().sort((a,b)=>first(a).localeCompare(first(b)) || String(a.name || "").localeCompare(String(b.name || "")));
+  }
   function create(host) {
     const $ = id => document.getElementById(id), renderer = window.foodBrokerBagLabels, catalog = window.foodBrokerPrintLogos;
     const drafts = new Map(), assets = new Map(), controllers = new Set(), frames = new Set(), resourceGroups = new Set(), exclusions = new Map();
@@ -106,6 +122,7 @@
     }
     function sync() {
       if (!host.allowed()) return;
+      host.beforeSync?.();
       const next = host.getProducts();
       if (source !== $("psPrintSource").value) {source = $("psPrintSource").value;$("psPrintProductSearch").value = "";}
       const nextSignature = JSON.stringify([$("psPrintSource").value,$("psPrintFormat").value,next.map(p=>[productKey(p),p.updatedAt,p.description,p.vendor,p.brandName,p.brandType,p.distributor,p.packaging,p.manufacturerNumber,p.apn,p.supc,host.itemNumber(p)])]);
@@ -300,6 +317,8 @@
       $("psBagPrev").addEventListener("click",()=>{pageNumber--;renderPreview();});$("psBagNext").addEventListener("click",()=>{pageNumber++;renderPreview();});scalePreview();
     }
     function print() {
+      if(!host.allowed())return;
+      sync();
       if (!ready || !isCurrent(ready.identity,ready.revision) || !ready.frame.isConnected) return;
       try {
         const frame=ready.frame,resources=ready.resources,fit=renderer.inspectOverflow(frame.contentDocument);
@@ -341,5 +360,5 @@
     new ResizeObserver(scalePreview).observe($("psPrintPreview"));
     return Object.freeze({sync,clear,invalidate,prepare,recordError,clearErrors,getProducts:()=>host.allowed()?products.slice():[],getRevision:()=>revision});
   }
-  window.foodBrokerSupportLabels = Object.freeze({create});
+  window.foodBrokerSupportLabels = Object.freeze({create,isPrintableEvent,printableEvents});
 })();

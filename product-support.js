@@ -299,16 +299,17 @@
     $("psEventBody").innerHTML = `<div class="ps-event-detail"><p><strong>${esc(typeNames[event.type] || "Event")}</strong><br>${esc(eventDateRange(event))} ${esc([event.startTime, event.endTime].filter(Boolean).join(" – "))}</p><p>${esc(event.location || "Location to be confirmed")}${reps ? "<br>Team: " + esc(reps) : ""}</p></div>${calls.length ? `<h3>Schedule</h3><ul class="ps-schedule">${calls.slice().sort((a, b) => text(a.date).localeCompare(text(b.date)) || text(a.startTime).localeCompare(text(b.startTime))).map(call => `<li><div>${esc(dateText(call.date))}<small>${esc([call.startTime, call.endTime].filter(Boolean).join(" – "))}</small></div><div><strong>${esc(call.title || call.operatorName || "Appointment")}</strong>${call.location ? "<small>" + esc(call.location) + "</small>" : ""}</div></li>`).join("")}</ul>` : ""}<h3>Product lineup (${products.length})</h3><div class="ps-product-list">${products.map(p => `<article class="ps-product-row"><span aria-hidden="true">•</span><div><h3>${esc(description(p))}</h3><p>${esc(metadata(p))}</p></div></article>`).join("") || '<p class="ps-empty">No products have been added to this event.</p>'}</div>`;
     $("psPrintEvent").disabled = !products.length; $("psEventDialog").showModal();
   }
-  function refreshPrintSources() {
+  function renderPrintSources() {
+    if(!allowed())return;
     const current = $("psPrintSource").value;
-    $("psPrintSource").innerHTML = '<option value="selected">Selected products</option><option value="shown">Current product search</option>' + state.events.slice().sort((a,b) => eventDate(b).localeCompare(eventDate(a))).map(e => `<option value="event:${esc(e.id)}">${esc(e.name || "Event")} · ${esc(dateText(eventDate(e)))}</option>`).join("");
+    $("psPrintSource").innerHTML = '<option value="selected">Selected products</option><option value="shown">Current product search</option>' + window.foodBrokerSupportLabels.printableEvents(state.events).map(e => `<option value="event:${esc(e.id)}">${esc(e.name || "Event")} · ${esc(dateText(eventDate(e) || e.endDate))}</option>`).join("");
     if ([...$("psPrintSource").options].some(o => o.value === current)) $("psPrintSource").value = current;
-    updatePrintSummary();
   }
+  function refreshPrintSources() {updatePrintSummary();}
   function printProducts() {
     const source = $("psPrintSource").value;
     if (source === "shown") return shownProducts();
-    if (source.startsWith("event:")) { const event = state.events.find(e => text(e.id) === source.slice(6)); return event ? eventProducts(event) : []; }
+    if (source.startsWith("event:")) { const event = state.events.find(e => text(e.id) === source.slice(6)); return window.foodBrokerSupportLabels.isPrintableEvent(event) ? eventProducts(event) : []; }
     const products = [...state.selected].map(productFromKey).filter(Boolean).map(p => p.linkedStockId ? state.stock.find(s => s.id === p.linkedStockId) || p : p);
     return [...new Map(products.map(p => [key(state.stock.includes(p)?"stock":"new",p.id), p])).values()];
   }
@@ -339,6 +340,8 @@
   }
   function sendToPrinter(markup, format, heading, revision) {
     if (!allowed()) return;
+    updatePrintSummary();
+    if(revision!==labelPrint.getRevision())return;
     const gen = state.generation, uid = state.userId, frame = document.createElement("iframe");
     frame.title = "Product print preview"; frame.style.cssText = "position:fixed;width:1px;height:1px;left:-10000px;border:0"; state.frames.add(frame);
     const dimensions = format === "labels" ? "@page{size:letter portrait;margin:.5in .15625in}.ps-sheet-preview{break-after:page}.ps-preview-label-grid{display:grid;grid-template-columns:4in 4in;column-gap:.1875in;row-gap:0}.ps-preview-label{width:4in;height:2in;padding:.12in .16in;overflow:hidden;box-sizing:border-box}.ps-preview-label h3{font-size:12pt}.ps-preview-label p{font-size:8pt}" : format === "cards" ? "@page{size:letter portrait;margin:.5in}.ps-sheet-preview{break-after:page}.ps-preview-label{width:6in;height:4in;border:1px dashed #aaa;padding:.25in;margin:auto;overflow:hidden;box-sizing:border-box}.ps-preview-label h3{font-size:23pt}.ps-preview-label p{font-size:12pt}" : "@page{size:letter portrait;margin:.5in}thead{display:table-header-group}tr{break-inside:avoid}";
@@ -388,7 +391,7 @@
     if(!valid(gen,uid))return;state.importRows=failed.map(f=>f.product);state.importRunning=false;$("psCsvInput").disabled=false;$("psRunImport").disabled=!failed.length;$("psRunImport").textContent=failed.length?"Retry remaining products":"Import products";status(saved+" saved to the cloud"+(failed.length?" · "+failed.length+" not saved. Only these rows will be retried.":" · Import complete."),failed.length?"error":"","psImportStatus");$("psImportPreview").innerHTML=failed.length?'<ul>'+failed.slice(0,50).map(f=>'<li>CSV row '+f.row+': '+esc(f.message)+'</li>').join("")+'</ul>':'';
   }
   function init() {
-    labelPrint = window.foodBrokerSupportLabels.create({allowed,identity:()=>({generation:state.generation,userId:state.userId}),valid:identity=>valid(identity.generation,identity.userId),getProducts:printProducts,productKey:p=>key(state.stock.includes(p)?"stock":"new",p.id),itemNumber:genericItemNumber,status,selectionChanged:renderPrintCount,frames:state.frames});
+    labelPrint = window.foodBrokerSupportLabels.create({allowed,identity:()=>({generation:state.generation,userId:state.userId}),valid:identity=>valid(identity.generation,identity.userId),beforeSync:renderPrintSources,getProducts:printProducts,productKey:p=>key(state.stock.includes(p)?"stock":"new",p.id),itemNumber:genericItemNumber,status,selectionChanged:renderPrintCount,frames:state.frames});
     document.querySelectorAll("[data-view]").forEach(button=>button.addEventListener("click",()=>showView(button.dataset.view)));
     document.querySelectorAll("[data-collection]").forEach(button=>button.addEventListener("click",()=>{state.schoolOnly=button.dataset.collection==="school";state.collection=state.schoolOnly?"stock":button.dataset.collection;state.visibleLimit=pageSize;if(state.schoolOnly){$("psDistributor").value="";syncDistributorButtons();}document.querySelectorAll("[data-collection]").forEach(b=>b.setAttribute("aria-pressed",b===button?"true":"false"));renderProducts();}));
     document.querySelectorAll("[data-ps-distributor]").forEach(button=>button.addEventListener("click",()=>{$("psDistributor").value=button.dataset.psDistributor;state.visibleLimit=pageSize;syncDistributorButtons();renderProducts();}));
@@ -406,8 +409,9 @@
     $("psAttachments").addEventListener("click",event=>{const button=event.target.closest("[data-download-attachment]");if(button)downloadAttachment(Number(button.dataset.downloadAttachment));});
     $("psAttachments").addEventListener("change",event=>{const select=event.target.closest("[data-attachment-category]");if(select&&state.attachments[Number(select.dataset.attachmentCategory)]){state.attachments[Number(select.dataset.attachmentCategory)].category=select.value;state.attachmentsChanged=true;}});
     $("psEventList").addEventListener("click",event=>{const button=event.target.closest("[data-event-id]");if(button)openEvent(button.dataset.eventId);});
-    $("psPrintEvent").addEventListener("click",()=>{const event=state.events.find(e=>text(e.id)===state.eventId);if(!event)return;$("psEventDialog").close();$("psPrintSource").value="event:"+event.id;$("psPrintHeading").value=event.name||"Product presentation";$("psPrintFormat").value="labels";showView("printing");});
+    $("psPrintEvent").addEventListener("click",()=>{const event=state.events.find(e=>text(e.id)===state.eventId);if(!event)return;$("psEventDialog").close();if(window.foodBrokerSupportLabels.isPrintableEvent(event))$("psPrintSource").value="event:"+event.id;else{state.selected=new Set(eventProducts(event).map(product=>key(state.stock.includes(product)?"stock":"new",product.id)));updateSelectionActions();$("psPrintSource").value="selected";}$("psPrintHeading").value=event.name||"Product presentation";$("psPrintFormat").value="labels";showView("printing");});
     $("psPreparePrint").addEventListener("click",preparePrint); $("psPrintSource").addEventListener("change",updatePrintSummary);
+    $("psPrintSource").addEventListener("focus",updatePrintSummary);
     $("psPrintFormat").addEventListener("change",updatePrintSummary);
     $("psRefresh").addEventListener("click",()=>{if(document.querySelector("dialog[open]")){status("Close the open window before refreshing so your entries stay intact.","waiting");return;}loadWorkspace();});
     $("psSignIn").addEventListener("click",()=>auth()?.openDialog());
