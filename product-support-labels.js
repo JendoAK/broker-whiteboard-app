@@ -224,11 +224,33 @@
       frame.srcdoc = renderer.printDocument(job); document.body.appendChild(frame);
       try {
         await loaded;
-        await Promise.race([Promise.all([frame.contentDocument.fonts.ready,...[...frame.contentDocument.images].map(image=>image.decode())]),new Promise((_,reject)=>setTimeout(()=>reject(new Error("A label logo did not finish loading. Choose another logo or try again.")),8000))]);
-        if (!isCurrent(identity,rev)) {frame.remove();frames.delete(frame);host.frames.delete(frame);return null;}
-        const fit = renderer.inspectOverflow(frame.contentDocument);
-        if (!fit.ok) throw new Error(fit.issues.slice(0,3).map(issue=>"Label "+issue.labelIndex+" ("+issue.title+"): "+issue.reasons.join(" ")).join(" ")+" Shorten the wording, use Compact text, or hide an item number.");
-        return frame;
+        const stages=new Map();
+        const productIndex=labelIndex=>{let offset=0;return job.products.findIndex(product=>{offset+=product.copies;return labelIndex<=offset;});};
+        for(let pass=0;pass<=3;pass++) {
+          if (!isCurrent(identity,rev)) {frame.remove();frames.delete(frame);host.frames.delete(frame);return null;}
+          let decodeTimer;
+          try {await Promise.race([Promise.all([frame.contentDocument.fonts.ready,...[...frame.contentDocument.images].map(image=>image.decode())]),new Promise((_,reject)=>{decodeTimer=setTimeout(()=>reject(new Error("A label logo did not finish loading. Choose another logo or try again.")),8000);})]);}
+          finally {clearTimeout(decodeTimer);}
+          if (!isCurrent(identity,rev)) {frame.remove();frames.delete(frame);host.frames.delete(frame);return null;}
+          const fit = renderer.inspectOverflow(frame.contentDocument);
+          if(fit.ok){job.autoFitCount=stages.size;return frame;}
+          const failing=new Map();
+          for(const issue of fit.issues){const index=productIndex(issue.labelIndex);if(index<0 || !issue.labelIndex)throw new Error(issue.reasons.join(" "));if(!failing.has(index))failing.set(index,new Set());issue.reasons.forEach(reason=>failing.get(index).add(reason));}
+          const canFit=pass<3 && [...failing.values()].every(reasons=>[...reasons].every(reason=>/^(Text exceeds the label width\.|Content exceeds the label height\.)$/.test(reason)));
+          if(!canFit){
+            const error=new Error([...failing].slice(0,3).map(([index,reasons])=>job.products[index].title+": "+[...reasons].join(" ")).join(" ")+" Automatic fitting could not fit all the wording. Shorten this product’s label wording or hide an item number.");
+            error.name="BagLabelFitError";error.code="LABEL_CONTENT_TOO_LONG";error.productIndex=failing.keys().next().value;throw error;
+          }
+          for(const index of failing.keys()){
+            const stage=(stages.get(index)||0)+1,product=job.products[index],type=product.typography || job.typography;
+            stages.set(index,stage);
+            product.layout={topPaddingPt:3.75,bottomPaddingPt:3.75,sidePaddingPt:12,logoGapPt:2,titleGapPt:1.5,bodyGapPt:1.5};
+            product.typography={...type,titlePt:Math.min(type.titlePt,stage===1?type.titlePt:stage===2?14:12),bodyPt:Math.min(type.bodyPt,stage===1?type.bodyPt:stage===2?11:10)};
+            const maxHeight=stage===1?36:stage===2?30:24,width=product.logos.reduce((sum,logo)=>sum+(logo.widthPt || 234),0),height=Math.max(0,...product.logos.map(logo=>logo.heightPt || 50.4)),scale=Math.min(1,252/Math.max(1,width),maxHeight/Math.max(1,height));
+            product.logos=product.logos.map(logo=>({...logo,widthPt:(logo.widthPt || 234)*scale,heightPt:(logo.heightPt || 50.4)*scale}));
+          }
+          frame.contentDocument.body.innerHTML=renderer.build(job).html;
+        }
       } catch (error) {frame.remove();frames.delete(frame);host.frames.delete(frame);throw error;}
     }
     async function prepare() {
@@ -242,11 +264,12 @@
       try {
         const job=await buildJob(identity,rev,resources);
         if (!job || !isCurrent(identity,rev)) {releaseResources(resources);return;}
-        const output=renderer.build(job),frame=await validatedFrame(job,identity,rev);
+        const frame=await validatedFrame(job,identity,rev);
         ownedFrame = frame;
         if (!frame || !isCurrent(identity,rev)) {if(frame){frame.remove();frames.delete(frame);host.frames.delete(frame);}releaseResources(resources);return;}
+        const output=renderer.build(job);
         ready={job,output,frame,identity,revision:rev,resources,keys:products.map(productKey)};pageNumber=0;renderPreview();
-        host.status("Preview ready · Label wording is for this print job only. Print Letter paper at 100% / actual size.");
+        host.status("Preview ready · "+(job.autoFitCount?job.autoFitCount+" product"+(job.autoFitCount===1?"":"s")+" adjusted automatically to fit. ":"")+"Label wording is for this print job only. Print Letter paper at 100% / actual size.");
       } catch(error) {
         if (ownedFrame) {ownedFrame.remove();frames.delete(ownedFrame);host.frames.delete(ownedFrame);}
         if (ready?.resources === resources) ready = null;
@@ -254,6 +277,7 @@
         try {if(currentJob)$("psPrintPreview").innerHTML='<p id="psBagFit" class="ps-status" data-tone="error" role="alert">'+esc(error.message)+'</p>';}
         finally {releaseResources(resources);}
         if (!currentJob) return;
+        if(Number.isInteger(error.productIndex) && products[error.productIndex]){active=productKey(products[error.productIndex]);$("psBagProduct").value=active;loadEditor();}
         recordError(error,"LABEL_PREVIEW");
         host.status("Labels need an adjustment before printing.","error");
       }
@@ -270,7 +294,7 @@
       let content;
       if(view==="sheet")content=pages[pageNumber].outerHTML;
       else {const index=Math.max(0,ready.keys.indexOf(active)),offset=job.products.slice(0,index).reduce((n,p)=>n+p.copies,0);content='<div class="bag-label-single">'+holder.querySelector('[data-label-index="'+(offset+1)+'"]').outerHTML+'</div>';}
-      $("psPrintPreview").innerHTML='<style>'+output.css+'</style><div class="ps-bag-stagebar"><div class="ps-bag-view-controls" role="group" aria-label="Label preview"><button type="button" data-bag-view="label" aria-pressed="'+(view==="label")+'">One label</button><button type="button" data-bag-view="sheet" aria-pressed="'+(view==="sheet")+'">Full sheet</button></div><button id="psPrintNow" type="button" class="primary-action">Print this preview</button></div><div id="psBagPreviewPaper"><div class="ps-bag-paper-inner">'+content+'</div></div><div class="ps-bag-preview-footer"><p id="psBagFit" role="status">'+output.labelCount+' labels · '+output.pageCount+' sheet'+(output.pageCount===1?"":"s")+' · Content fits</p><div class="ps-bag-pagination"'+(view!=="sheet"||pages.length<2?' hidden':'')+'><button id="psBagPrev" type="button" aria-label="Previous sheet"'+(pageNumber===0?' disabled':'')+'>←</button><span>Sheet '+(pageNumber+1)+' of '+pages.length+'</span><button id="psBagNext" type="button" aria-label="Next sheet"'+(pageNumber===pages.length-1?' disabled':'')+'>→</button></div></div>';
+      $("psPrintPreview").innerHTML='<style>'+output.css+'</style><div class="ps-bag-stagebar"><div class="ps-bag-view-controls" role="group" aria-label="Label preview"><button type="button" data-bag-view="label" aria-pressed="'+(view==="label")+'">One label</button><button type="button" data-bag-view="sheet" aria-pressed="'+(view==="sheet")+'">Full sheet</button></div><button id="psPrintNow" type="button" class="primary-action">Print this preview</button></div><div id="psBagPreviewPaper"><div class="ps-bag-paper-inner">'+content+'</div></div><div class="ps-bag-preview-footer"><p id="psBagFit" role="status">'+output.labelCount+' labels · '+output.pageCount+' sheet'+(output.pageCount===1?"":"s")+' · Content fits'+(job.autoFitCount?' · '+job.autoFitCount+' product'+(job.autoFitCount===1?'':'s')+' adjusted automatically':'')+'</p><div class="ps-bag-pagination"'+(view!=="sheet"||pages.length<2?' hidden':'')+'><button id="psBagPrev" type="button" aria-label="Previous sheet"'+(pageNumber===0?' disabled':'')+'>←</button><span>Sheet '+(pageNumber+1)+' of '+pages.length+'</span><button id="psBagNext" type="button" aria-label="Next sheet"'+(pageNumber===pages.length-1?' disabled':'')+'>→</button></div></div>';
       $("psPrintNow").addEventListener("click",print);
       $("psPrintPreview").querySelectorAll("[data-bag-view]").forEach(button=>button.addEventListener("click",()=>{view=button.dataset.bagView;renderPreview();}));
       $("psBagPrev").addEventListener("click",()=>{pageNumber--;renderPreview();});$("psBagNext").addEventListener("click",()=>{pageNumber++;renderPreview();});scalePreview();
