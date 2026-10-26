@@ -55,6 +55,11 @@
   const finiteNumber = value => typeof value === "number" && Number.isFinite(value);
   const integerInRange = (value, min, max) => finiteNumber(value) && Number.isInteger(value) && value >= min && value <= max;
   const rasterDataUrl = value => /^data:image\/(?:png|jpe?g|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(value) && value.length <= 4 * Math.ceil(4 * 1024 * 1024 / 3) + 64;
+  const localObjectUrl = value => {
+    const origin = scope.location?.origin;
+    const prefix = "blob:" + origin + "/";
+    return typeof value === "string" && typeof origin === "string" && /^https?:\/\//.test(origin) && value.startsWith(prefix) && /^[a-f0-9-]{36}$/i.test(value.slice(prefix.length));
+  };
 
   function validateLayout(layout, errors, prefix) {
     if (layout == null) return;
@@ -68,6 +73,9 @@
     const errors = [];
     if (!job || typeof job !== "object" || Array.isArray(job)) return { valid: false, errors: ["Choose a label job."], labelCount: 0, pageCount: 0 };
     const products = job.products;
+    const imageUrls = job.imageUrls == null ? [] : job.imageUrls;
+    if (!Array.isArray(imageUrls) || imageUrls.length > 6000 || imageUrls.some(value => !localObjectUrl(value))) errors.push("Use only image resources created for this label job.");
+    const allowedImages = new Set(Array.isArray(imageUrls) ? imageUrls : []);
     if (!Array.isArray(products) || !products.length) errors.push("Choose at least one product to label.");
     if (Array.isArray(products) && products.length > 1000) errors.push("A label job can contain no more than 1,000 products.");
     const startPosition = job.startPosition == null ? 1 : job.startPosition;
@@ -116,7 +124,10 @@
         else product.logos.forEach((logo, logoIndex) => {
           const logoPrefix = prefix + "logo " + (logoIndex + 1) + ": ";
           if (!logo || typeof logo !== "object" || Array.isArray(logo)) { errors.push(logoPrefix + "choose valid image settings."); return; }
-          if (typeof logo.dataUrl !== "string" || !rasterDataUrl(logo.dataUrl)) errors.push(logoPrefix + "use a PNG, JPEG, WebP or GIF data image.");
+          const objectImage = typeof logo.objectUrl === "string" && localObjectUrl(logo.objectUrl) && allowedImages.has(logo.objectUrl);
+          if (logo.objectUrl != null && !objectImage) errors.push(logoPrefix + "use an image resource created for this label job.");
+          if (!objectImage && (typeof logo.dataUrl !== "string" || !rasterDataUrl(logo.dataUrl))) errors.push(logoPrefix + "use a PNG, JPEG, WebP or GIF data image.");
+          if (logo.dataUrl != null && (typeof logo.dataUrl !== "string" || !rasterDataUrl(logo.dataUrl))) errors.push(logoPrefix + "use a valid raster data image.");
           if (logo.alt != null && (typeof logo.alt !== "string" || logo.alt.length > 2000)) errors.push(logoPrefix + "enter an image description of no more than 2,000 characters.");
           ["widthPt", "heightPt"].forEach(field => {
             if (logo[field] != null && (!finiteNumber(logo[field]) || logo[field] <= 0 || logo[field] > (field === "widthPt" ? 288 : 144))) errors.push(logoPrefix + field + " must fit within the 4 × 2 inch label.");
@@ -142,7 +153,7 @@
       const left = image.cropLeft || 0, right = image.cropRight || 0, top = image.cropTop || 0, bottom = image.cropBottom || 0;
       const cropped = Boolean(left || right || top || bottom);
       const cropStyle = cropped ? `width:${100 / (1 - left - right)}%;height:${100 / (1 - top - bottom)}%;left:${-100 * left / (1 - left - right)}%;top:${-100 * top / (1 - top - bottom)}%` : "";
-      return `<div class="bag-label-logo-box" style="width:${width}pt;height:${height}pt"><img class="bag-label-logo${cropped ? " bag-label-logo-cropped" : ""}" src="${escape(image.dataUrl)}" alt="${escape(image.alt || "Product logo")}"${cropped ? ` style="${escape(cropStyle)}"` : ""} /></div>`;
+      return `<div class="bag-label-logo-box" style="width:${width}pt;height:${height}pt"><img class="bag-label-logo${cropped ? " bag-label-logo-cropped" : ""}" src="${escape(image.objectUrl || image.dataUrl)}" alt="${escape(image.alt || "Product logo")}"${cropped ? ` style="${escape(cropStyle)}"` : ""} /></div>`;
     }).join("")}</div>` : "";
     const lines = [];
     if (product.subtitle) lines.push(product.subtitle);

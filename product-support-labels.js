@@ -6,11 +6,30 @@
   const mimeTypes = new Set(["image/png","image/jpeg","image/webp","image/gif"]);
   function create(host) {
     const $ = id => document.getElementById(id), renderer = window.foodBrokerBagLabels, catalog = window.foodBrokerPrintLogos;
-    const drafts = new Map(), assets = new Map(), controllers = new Set(), frames = new Set();
+    const drafts = new Map(), assets = new Map(), controllers = new Set(), frames = new Set(), resourceGroups = new Set();
     let products = [], active = "", signature = "", revision = 0, ready = null, view = "label", pageNumber = 0, uploadRevision = 0;
     const productKey = p => host.productKey(p);
     const current = () => drafts.get(active);
     const isCurrent = (identity, rev) => host.valid(identity) && revision === rev;
+    function releaseResources(group) {
+      if (!group || group.released) return;
+      group.released = true;
+      group.byData.forEach(url => URL.revokeObjectURL(url));
+      group.byData.clear(); resourceGroups.delete(group);
+    }
+    function imageResource(group, dataUrl) {
+      if (group.released) throw new Error("This label preview was replaced. Select Preview layout again.");
+      if (group.byData.has(dataUrl)) return group.byData.get(dataUrl);
+      const match = /^data:(image\/(?:png|jpe?g|webp|gif));base64,([A-Za-z0-9+/]+={0,2})$/i.exec(dataUrl);
+      if (!match) throw new Error("Choose a valid PNG, JPEG, WebP or GIF logo.");
+      const encoded = match[2], decodedBytes = encoded.length * 3 / 4 - (encoded.endsWith("==") ? 2 : encoded.endsWith("=") ? 1 : 0);
+      if (group.bytes + decodedBytes > 16*1024*1024) throw new Error("This print job has too many different large logo images. Use smaller images or split the products into smaller jobs.");
+      const binary = atob(encoded), bytes = new Uint8Array(binary.length);
+      for (let i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes],{type:match[1]}));
+      group.bytes += bytes.length; group.byData.set(dataUrl,url);
+      return url;
+    }
     function draftFor(p) {
       const id = productKey(p);
       const base = {title:p.description || "Untitled product",subtitle:"",packaging:p.packaging || "",manufacturerNumber:p.manufacturerNumber || "",apn:p.apn || "",supc:p.supc || "",itemNumber:host.itemNumber(p) || ""};
@@ -27,6 +46,7 @@
       frames.forEach(frame => {frame.remove();host.frames.delete(frame);}); frames.clear();
       $("psPrintNow")?.remove();
       $("psPrintPreview").innerHTML = '<p class="ps-empty">'+esc(message)+'</p>';
+      [...resourceGroups].forEach(releaseResources);
       return revision;
     }
     function clear() {
@@ -133,14 +153,13 @@
       })();
       return promise;
     }
-    async function buildJob(identity,rev) {
+    async function buildJob(identity,rev,resources) {
       const type = $("psBagTextSize").value, typography = type === "large" ? {titlePt:18,bodyPt:14} : type === "compact" ? {titlePt:14,bodyPt:11} : {titlePt:16,bodyPt:12};
-      const job = {products:[],startPosition:Number($("psBagStart").value),showMf:$("psBagShowMf").checked,showApn:$("psBagShowApn").checked,showSupc:$("psBagShowSupc").checked,showItem:$("psBagShowItem").checked,showOutlines:$("psBagOutlines").checked,typography,logoMode:"automatic"};
+      const job = {products:[],imageUrls:[],startPosition:Number($("psBagStart").value),showMf:$("psBagShowMf").checked,showApn:$("psBagShowApn").checked,showSupc:$("psBagShowSupc").checked,showItem:$("psBagShowItem").checked,showOutlines:$("psBagOutlines").checked,typography,logoMode:"automatic"};
       const draftList = products.map(draftFor);
       // Validate counts and text before fetching any images.
       const counts = renderer.validate({...job,products:draftList.map(d=>({...d,logos:[],customLogo:undefined}))});
       if (!counts.valid) throw new Error(counts.errors.join(" "));
-      let artworkBytes = 0;
       for (const draft of draftList) {
         const resolved = resolveLogo(draft);
         if (resolved.missing) throw new Error(draft.title+": "+(resolved.reason || "Choose a matching logo or select No logo."));
@@ -148,12 +167,13 @@
         for (const logo of logoList) {
           const dataUrl = logo.dataUrl || await assetData(logo.src);
           if (!isCurrent(identity,rev)) return null;
-          artworkBytes += dataUrl.length * draft.copies;
-          if (artworkBytes > 16*1024*1024) throw new Error("This print job contains too much logo artwork. Use a smaller logo image or split the products into smaller print jobs.");
-          images.push({...logo,dataUrl});
+          const objectUrl = imageResource(resources,dataUrl);
+          const {src,dataUrl:originalData,...layout} = logo;
+          images.push({...layout,objectUrl});
         }
         job.products.push({title:draft.title,subtitle:draft.subtitle,packaging:draft.packaging,manufacturerNumber:draft.manufacturerNumber,apn:draft.apn,supc:draft.supc,itemNumber:draft.itemNumber,copies:draft.copies,logos:images});
       }
+      job.imageUrls = [...resources.byData.values()];
       return job;
     }
     async function validatedFrame(job,identity,rev) {
@@ -179,17 +199,24 @@
       sync();
       if (!products.length) {host.status("Choose products or an event lineup before printing.","waiting");return;}
       const rev=invalidate("Checking label size and logos…"),identity=host.identity();
+      const resources = {byData:new Map(),bytes:0,released:false}; resourceGroups.add(resources);
       host.status("Checking label size and logos…","waiting");
+      let ownedFrame = null;
       try {
-        const job=await buildJob(identity,rev);
-        if (!job || !isCurrent(identity,rev)) return;
+        const job=await buildJob(identity,rev,resources);
+        if (!job || !isCurrent(identity,rev)) {releaseResources(resources);return;}
         const output=renderer.build(job),frame=await validatedFrame(job,identity,rev);
-        if (!frame || !isCurrent(identity,rev)) return;
-        ready={job,output,frame,identity,revision:rev,keys:products.map(productKey)};pageNumber=0;renderPreview();
+        ownedFrame = frame;
+        if (!frame || !isCurrent(identity,rev)) {if(frame){frame.remove();frames.delete(frame);host.frames.delete(frame);}releaseResources(resources);return;}
+        ready={job,output,frame,identity,revision:rev,resources,keys:products.map(productKey)};pageNumber=0;renderPreview();
         host.status("Preview ready · Label wording is for this print job only. Print Letter paper at 100% / actual size.");
       } catch(error) {
-        if (!isCurrent(identity,rev)) return;
-        $("psPrintPreview").innerHTML='<p id="psBagFit" class="ps-status" data-tone="error" role="alert">'+esc(error.message)+'</p>';
+        if (ownedFrame) {ownedFrame.remove();frames.delete(ownedFrame);host.frames.delete(ownedFrame);}
+        if (ready?.resources === resources) ready = null;
+        const currentJob = isCurrent(identity,rev);
+        try {if(currentJob)$("psPrintPreview").innerHTML='<p id="psBagFit" class="ps-status" data-tone="error" role="alert">'+esc(error.message)+'</p>';}
+        finally {releaseResources(resources);}
+        if (!currentJob) return;
         host.status("Labels need an adjustment before printing.","error");
       }
     }
@@ -212,9 +239,9 @@
     }
     function print() {
       if (!ready || !isCurrent(ready.identity,ready.revision) || !ready.frame.isConnected) return;
-      const frame=ready.frame,fit=renderer.inspectOverflow(frame.contentDocument);
+      const frame=ready.frame,resources=ready.resources,fit=renderer.inspectOverflow(frame.contentDocument);
       if(!fit.ok){invalidate("Label content changed. Select Preview layout to check it again.");return;}
-      frame.contentWindow.addEventListener("afterprint",()=>{frame.remove();frames.delete(frame);host.frames.delete(frame);if(ready?.frame===frame){ready=null;$("psPrintNow")?.remove();}},{once:true});
+      frame.contentWindow.addEventListener("afterprint",()=>{frame.remove();frames.delete(frame);host.frames.delete(frame);if(ready?.frame===frame)invalidate("Print dialog closed · Select Preview layout to print again.");else releaseResources(resources);},{once:true});
       frame.contentWindow.focus();frame.contentWindow.print();
     }
     $("psBagProduct").addEventListener("change",()=>{active=$("psBagProduct").value;uploadRevision++;loadEditor();renderPreview();});

@@ -30,7 +30,7 @@
       <aside id="psBagSettings" class="ps-bag-settings" aria-labelledby="psBagSettingsTitle">
         <h3 id="psBagSettingsTitle">Label setup</h3>
         <label><span>Product</span><select id="psBagProduct"><option value="">Choose products to print first</option></select></label>
-        <label><span>Logo</span><select id="psBagLogoMode"><option value="automatic">Automatic product logo</option><option value="manufacturer">Manufacturer logo</option><option value="usFoodsEb">US Foods Exclusive Brand</option><option value="syscoEb">Sysco Exclusive Brand</option><option value="none">No logo</option><option value="custom">Upload a logo</option></select></label>
+        <label><span>Logo for this product</span><select id="psBagLogoMode"><option value="automatic">Automatic product logo</option><option value="manufacturer">Manufacturer logo</option><option value="usFoodsEb">US Foods Exclusive Brand</option><option value="syscoEb">Sysco Exclusive Brand</option><option value="none">No logo</option><option value="custom">Upload a logo</option></select></label>
         <label><span>Choose logo</span><select id="psBagLogoChoice"><option value="">Automatic for this product</option></select></label>
         <p id="psBagLogoStatus" class="ps-bag-logo-status" role="status" aria-live="polite"></p>
         <div class="ps-bag-logo-upload" hidden><label><span>Logo image · up to 4 MB</span><input id="psBagLogoFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" /></label><button type="button" id="psBagClearLogo">Remove uploaded logo</button><p class="ps-hint">Uploaded logos are used only for this print job.</p></div>
