@@ -231,6 +231,10 @@ const cloudSectionRevisions = new Map();
 let cloudAutoRefreshTimer = null;
 let cloudLastRowFingerprint = "";
 let cloudRowCache = new Map();
+const directoryCloudSectionKeys = new Set([peopleContactsStorageKey,addressBookStorageKey]);
+const directoryCloudBaseStoragePrefix = "foodBrokerBaseDirectoryWriteBases";
+let directoryCloudBaseUserId = "";
+let directoryCloudWriteBases = new Map();
 let cloudRefreshChecking = false;
 let pendingCloudSections = readPendingCloudSections();
 let lastCloudError = "";
@@ -1500,6 +1504,11 @@ function normalizeTodo(todo) {
   };
 }
 
+function normalizeAddressContactExtras(contact) {
+  const person=window.foodBrokerContactDirectory.normalizeContact(contact || {});
+  return {schoolName:person.schoolName,groups:person.groups,extraFields:person.extraFields,location:person.location || '',address:person.address || '',website:person.website || '',notes:person.notes || ''};
+}
+
 function normalizeAddressBookEntry(entry) {
   return {
     id: entry.id || crypto.randomUUID(),
@@ -1512,12 +1521,14 @@ function normalizeAddressBookEntry(entry) {
     usfSalesRep: entry.usfSalesRep || "",
     syscoSalesRep: entry.syscoSalesRep || "",
     primaryContact: {
+      ...normalizeAddressContactExtras(entry.primaryContact),
       name: typeof entry.primaryContact?.name === "string" ? entry.primaryContact.name : (typeof entry.primaryContact === "string" ? entry.primaryContact : ""),
       role: entry.primaryContact?.role || "",
       email: entry.primaryContact?.email || entry.email || "",
       phone: entry.primaryContact?.phone || entry.phone || ""
     },
     secondaryContact: {
+      ...normalizeAddressContactExtras(entry.secondaryContact),
       name: entry.secondaryContact?.name || "",
       role: entry.secondaryContact?.role || "",
       email: entry.secondaryContact?.email || "",
@@ -1527,6 +1538,7 @@ function normalizeAddressBookEntry(entry) {
     notes: entry.notes || [entry.chef && `Chef: ${entry.chef}`, entry.owner && `Owner: ${entry.owner}`].filter(Boolean).join("\n"),
     contacts: Array.isArray(entry.contacts)
       ? entry.contacts.map((contact) => ({
+          ...normalizeAddressContactExtras(contact),
           id: contact.id || crypto.randomUUID(),
           name: contact.name || "",
           role: contact.role || "",
@@ -1974,6 +1986,35 @@ function extractCloudValue(row) {
   return row?.data;
 }
 
+function getDirectoryCloudWriteBases(userId = getCloudUser()?.id || "") {
+  if(directoryCloudBaseUserId===userId)return directoryCloudWriteBases;
+  directoryCloudBaseUserId=userId;directoryCloudWriteBases=new Map();
+  if(!userId)return directoryCloudWriteBases;
+  try {
+    const saved=JSON.parse(localStorage.getItem(directoryCloudBaseStoragePrefix+":"+encodeURIComponent(userId)) || "[]");
+    if(Array.isArray(saved))for(const entry of saved){if(Array.isArray(entry) && directoryCloudSectionKeys.has(entry[0]) && (entry[1]===null || typeof entry[1]==="string" && entry[1]))directoryCloudWriteBases.set(entry[0],entry[1]);}
+  } catch(error) {console.warn("Could not read contact sync versions.",error);}
+  return directoryCloudWriteBases;
+}
+
+function rememberDirectoryCloudWriteBase(sectionKey,version,userId) {
+  if(!directoryCloudSectionKeys.has(sectionKey) || !userId || getCloudUser()?.id!==userId)return false;
+  if(version!==null && (typeof version!=="string" || !version))throw new Error("Could not confirm the contact sync version.");
+  const bases=getDirectoryCloudWriteBases(userId);bases.set(sectionKey,version);
+  try {localStorage.setItem(directoryCloudBaseStoragePrefix+":"+encodeURIComponent(userId),JSON.stringify([...bases]));}
+  catch(error){window.foodBrokerSaveStatus?.recordError(error,{operation:"Keep contact sync versions"});console.warn("Could not keep contact sync versions.",error);}
+  return true;
+}
+
+async function saveDirectoryCloudPayload(client,user,payload) {
+  const bases=getDirectoryCloudWriteBases(user.id);
+  if(!bases.has(payload.record_key))throw {name:"DirectorySyncConflictError",code:"DIRECTORY_BASE_REQUIRED",message:"Could not confirm the cloud version for contacts or operators. Your changes remain saved in this browser."};
+  if(getCloudUser()?.id!==user.id)throw {code:"DIRECTORY_ACCOUNT_CHANGED",message:"Sign in again before syncing contact changes."};
+  const {data,error,status}=await client.rpc("save_team_directory_section",{section_key:payload.record_key,section_value:payload.data,expected_updated_at:bases.get(payload.record_key)});
+  if(error)throw {name:error.code==="40001"?"DirectorySyncConflictError":error.name,code:error.code,status:error.status || status,message:error.code==="40001"?"A teammate changed contacts or operators while you were editing. Your changes remain saved in this browser and need to be reviewed before syncing.":error.message};
+  if(typeof data?.updatedAt!=="string" || !data.updatedAt || !rememberDirectoryCloudWriteBase(payload.record_key,data.updatedAt,user.id))throw {code:"DIRECTORY_VERSION_UNCONFIRMED",message:"Could not confirm the saved contact version. Your browser copy has been kept."};
+}
+
 function mergeCloudSectionValues(localValue, cloudValue) {
   if (!Array.isArray(localValue)) return cloudValue;
   if (!Array.isArray(cloudValue)) return localValue;
@@ -2159,7 +2200,7 @@ async function performCloudSaveSections(sectionKeys, options) {
         }
       }));
     const teamPayload = sections
-      .filter((section) => section.scope === "team")
+      .filter((section) => section.scope === "team" && !directoryCloudSectionKeys.has(section.key))
       .map((section) => ({
         record_type: teamCloudRecordType,
         record_key: section.key,
@@ -2172,8 +2213,9 @@ async function performCloudSaveSections(sectionKeys, options) {
           savedAt: now
         }
       }));
+    const directoryPayload = sections.filter(section=>section.scope==="team" && directoryCloudSectionKeys.has(section.key)).map(section=>({record_type:teamCloudRecordType,record_key:section.key,updated_by:user.id,data:{label:section.label,value:correctContactNames(section.get()),backupVersion,savedAt:now}}));
   
-    if (!personalPayload.length && !teamPayload.length) return true;
+    if (!personalPayload.length && !teamPayload.length && !directoryPayload.length) return true;
   
     if (personalPayload.length) {
       const { error, status } = await client.from("app_records").upsert(personalPayload, {
@@ -2187,6 +2229,7 @@ async function performCloudSaveSections(sectionKeys, options) {
       });
       if (error) throw { name: error.name, message: error.message, code: error.code, status: error.status || status };
     }
+    for(const payload of directoryPayload)await saveDirectoryCloudPayload(client,user,payload);
     lastCloudError = "";
     revisions.forEach((revision, key) => {
       // Edits made during this request must still be sent in the next request.
@@ -2285,6 +2328,7 @@ function stopCloudAutoRefresh() {
   cloudAutoRefreshTimer = null;
   cloudLastRowFingerprint = "";
   cloudRowCache.clear();
+  directoryCloudBaseUserId="";directoryCloudWriteBases.clear();
 }
 
 function cloudRowCacheKey(row) {
@@ -2333,6 +2377,8 @@ async function loadCloudSections(options = {}) {
   cloudSyncLoading = true;
   cloudSyncReady = false;
   cloudSyncUserId = user.id;
+  const directoryBases=getDirectoryCloudWriteBases(user.id);
+  let directorySaveFailed=false;
 
   try {
     await syncSavedTeamInitials().catch(error => console.warn("Saved initials will retry on next sync:", error.message));
@@ -2343,6 +2389,16 @@ async function loadCloudSections(options = {}) {
     if (isAppEditing()) { cloudSyncReady = true; return false; }
     const personalRows = rows.filter(row => row.scope === "personal");
     const teamRows = rows.filter(row => row.scope === "team");
+    if(!rows.length){
+      const cleared=[];
+      for(const key of directoryCloudSectionKeys){
+        if(pendingCloudSections.has(key))continue;
+        const wasPresent=directoryBases.has(key) && directoryBases.get(key)!==null;
+        rememberDirectoryCloudWriteBase(key,null,user.id);
+        if(wasPresent){getCloudConfig(key)?.set([]);cleared.push(key);}
+      }
+      if(cleared.length)writeCloudSectionsToLocalStorage(cleared);
+    }
     if (rows.length) {
       const personalRowMap = new Map(personalRows.map((row) => [row.record_key, row]));
       const teamRowMap = new Map(teamRows.map((row) => [row.record_key, row]));
@@ -2350,6 +2406,20 @@ async function loadCloudSections(options = {}) {
       const localUploadKeys = [];
       cloudSectionConfigs.forEach((section) => {
         const cloudResult = getCloudSectionValue(section, personalRowMap, teamRowMap);
+        if(directoryCloudSectionKeys.has(section.key)){
+          if(pendingCloudSections.has(section.key)){localUploadKeys.push(section.key);return;}
+          const remote=teamRowMap.get(section.key);
+          if(!cloudResult.found){
+            const wasPresent=directoryBases.has(section.key) && directoryBases.get(section.key)!==null;
+            rememberDirectoryCloudWriteBase(section.key,null,user.id);
+            if(wasPresent){section.set([]);appliedKeys.push(section.key);}
+            else if(Array.isArray(section.get()) && section.get().length)localUploadKeys.push(section.key);
+            return;
+          }
+          section.set(cloudResult.value);appliedKeys.push(section.key);
+          rememberDirectoryCloudWriteBase(section.key,remote?.data?.directoryRevision || remote?.updated_at,user.id);
+          return;
+        }
         if (!cloudResult.found) {
           const localValue = section.get();
           if (Array.isArray(localValue) && localValue.length) localUploadKeys.push(section.key);
@@ -2374,7 +2444,8 @@ async function loadCloudSections(options = {}) {
       writeCloudSectionsToLocalStorage(appliedKeys);
       renderAfterCloudSync();
       if (localUploadKeys.length) {
-        await saveCloudSections(localUploadKeys, { force: true });
+        const saved=await saveCloudSections(localUploadKeys, { force: true });
+        if(!saved && localUploadKeys.some(key=>directoryCloudSectionKeys.has(key)))directorySaveFailed=true;
         // saveCloudSections acknowledges only revisions actually uploaded.
       }
     }
@@ -2383,14 +2454,18 @@ async function loadCloudSections(options = {}) {
     cloudLastRowFingerprint = getCloudRowFingerprint(rows);
     cloudSyncReady = true;
     if (!rows.length && hasLocalAppData()) {
-      await saveCloudSections(undefined, { force: true });
+      const saved=await saveCloudSections(undefined, { force: true });
+      if(!saved && [...pendingCloudSections].some(key=>directoryCloudSectionKeys.has(key)))directorySaveFailed=true;
       // Newer local edits stay queued if they were made during this upload.
     }
-    if (pendingCloudSections.size) await pushPendingCloudSections();
+    if (pendingCloudSections.size && !directorySaveFailed) {
+      const saved=await pushPendingCloudSections();
+      if(!saved && [...pendingCloudSections].some(key=>directoryCloudSectionKeys.has(key)))directorySaveFailed=true;
+    }
     if (!rows.length && options.reportIfEmpty) {
       alert("No FoodBrokerBase cloud data was found for this login yet. Use the browser where your data is visible and click Merge This Browser with Cloud.");
     }
-    lastCloudError = "";
+    if(!directorySaveFailed)lastCloudError = "";
     return rows.length > 0;
   } catch (error) {
     lastCloudError = error?.message || "Unknown cloud load error.";
@@ -2477,6 +2552,7 @@ async function mergeCloudDataIntoThisBrowser() {
     const cloudResult = getCloudSectionValue(section, personalRows, teamRows);
     if (!cloudResult.found) return;
     const cloudValue = cloudResult.value;
+    if(directoryCloudSectionKeys.has(section.key) && pendingCloudSections.has(section.key))return;
     section.set(mergeCloudSectionValues(section.get(), cloudValue));
     mergedKeys.push(section.key);
   });
@@ -4605,12 +4681,14 @@ function saveAddressBookEntry() {
     usfSalesRep: elements.addressUsfSalesRep.value.trim(),
     syscoSalesRep: elements.addressSyscoSalesRep.value.trim(),
     primaryContact: {
+      ...normalizeAddressContactExtras(existing?.primaryContact),
       name: elements.addressPrimaryName.value.trim(),
       role: elements.addressPrimaryRole.value.trim(),
       email: elements.addressPrimaryEmail.value.trim(),
       phone: elements.addressPrimaryPhone.value.trim()
     },
     secondaryContact: {
+      ...normalizeAddressContactExtras(existing?.secondaryContact),
       name: elements.addressSecondaryName.value.trim(),
       role: elements.addressSecondaryRole.value.trim(),
       email: elements.addressSecondaryEmail.value.trim(),
@@ -4675,6 +4753,7 @@ function addAddressContactRow(contact = { name: "", role: "", email: "", phone: 
   const row = document.createElement("div");
   row.className = "address-contact-row";
   row.dataset.contactId = contact.id || crypto.randomUUID();
+  row.contactDirectoryExtras = normalizeAddressContactExtras(contact);
   row.innerHTML = `
     <label><span>Name</span><input class="address-contact-name" autocomplete="off" value="${escapeAttribute(contact.name)}" /></label>
     <label><span>Role</span><input class="address-contact-role" autocomplete="off" value="${escapeAttribute(contact.role)}" /></label>
@@ -4689,6 +4768,7 @@ function addAddressContactRow(contact = { name: "", role: "", email: "", phone: 
 function readAddressContacts() {
   return [...elements.addressContactList.querySelectorAll(".address-contact-row")]
     .map((row) => ({
+      ...row.contactDirectoryExtras,
       id: row.dataset.contactId || crypto.randomUUID(),
       name: row.querySelector(".address-contact-name").value.trim(),
       role: row.querySelector(".address-contact-role").value.trim(),

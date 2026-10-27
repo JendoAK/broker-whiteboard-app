@@ -58,8 +58,45 @@
 #addressBookFormDialog .address-contact-row { grid-template-columns:repeat(4,minmax(0,1fr)) auto; }
 #addressBookFormDialog .address-contact-grid label,
 #addressBookFormDialog .address-contact-row label { min-width:0; }
+.contact-person-details { flex:1;min-width:0; }
+.contact-person-details>summary { cursor:pointer; }
+.contact-person-details>summary::marker { color:#376981; }
+.contact-detail-list { margin:9px 6px 5px;display:grid;gap:8px;min-width:0; }
+.contact-detail-list>div { display:grid;grid-template-columns:minmax(80px,.65fr) minmax(0,1.35fr);gap:8px;border-top:1px solid #d9e4e9;padding-top:7px; }
+.contact-detail-list dt { margin:0;color:#536b78;font-size:11px;font-weight:700;overflow-wrap:anywhere; }
+.contact-detail-list dd { margin:0;font-size:12px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere; }
+.school-contact-group { grid-column:1/-1;border:1px solid #a8c9c1;border-radius:10px;background:#f8fcf9;overflow:hidden;min-width:0; }
+.school-contact-group>summary { display:flex;align-items:center;gap:10px;padding:13px 15px;background:#dceee5;color:#245b50;cursor:pointer;list-style:none; }
+.school-contact-group>summary::-webkit-details-marker { display:none; }
+.school-contact-group>summary::before { content:'';width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:6px solid currentColor;flex-shrink:0; }
+.school-contact-group[open]>summary::before { transform:rotate(90deg); }
+.school-contact-group>summary strong { font-size:15px;line-height:1.35;overflow-wrap:anywhere; }
+.school-contact-group>summary span { margin-left:auto;white-space:nowrap;font-size:12px;font-weight:600; }
+.school-contact-people { display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));align-items:start;gap:12px;padding:12px; }
+.school-contact-person { background:white;border:1px solid #cbded6;border-radius:8px;padding:12px;min-width:0; }
+.school-contact-person>header { display:flex;align-items:flex-start;justify-content:space-between;gap:8px; }
+.school-contact-person h3 { margin:0;color:#254f46;font-size:14px;overflow-wrap:anywhere; }
+.school-contact-person header p { margin:4px 0 0;color:#536b61;font-size:12px;overflow-wrap:anywhere; }
+.school-contact-person .contact-card-actions { flex-direction:row; }
+.school-contact-person .contact-detail-list { margin-left:0;margin-right:0; }
+.contact-extra-editor { margin:15px 0;padding:12px;border:1px solid #bdd2ca;border-radius:8px;background:#f5f9f6; }
+.contact-extra-editor>summary { cursor:pointer;font-size:14px;font-weight:700; }
+.contact-extra-editor>p { font-size:12px;color:#536b61; }
+.contact-extra-field { display:grid;grid-template-columns:minmax(100px,1fr) minmax(140px,2fr) 32px;align-items:end;gap:10px;margin:10px 0; }
+.contact-extra-field label { display:grid;gap:5px;min-width:0;font-size:12px; }
+.contact-extra-field input,.contact-extra-field textarea { width:100%;max-width:100%;min-width:0;box-sizing:border-box; }
+.contact-extra-field textarea { resize:vertical;min-height:42px; }
+.contact-extra-field>button { margin-bottom:4px; }
+.contact-filter-buttons [data-contact-filter="admin"] { --filter-color:#8a6831; }
+.contact-filter-buttons [data-contact-custom] { --filter-color:#426f66; }
 @media (max-width:650px) {
   #addressBookFormDialog .address-contact-grid,
   #addressBookFormDialog .address-contact-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
   #addressBookFormDialog .address-contact-row > button { grid-column:2; justify-self:end; }
+  .school-contact-people { grid-template-columns:1fr;padding:9px; }
+  .school-contact-group>summary { padding:11px;flex-wrap:wrap; }
+  .school-contact-group>summary span { margin-left:16px; }
+  .contact-extra-field { grid-template-columns:minmax(0,1fr) 32px; }
+  .contact-extra-field label { grid-column:1; }
+  .contact-extra-field>button { grid-column:2;grid-row:1/3;align-self:center; }
 }

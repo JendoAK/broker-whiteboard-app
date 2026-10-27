@@ -7,7 +7,7 @@
   <title>Product Support · FoodBrokerBase</title>
   <link rel="icon" href="broker-whiteboard-logo.png" />
   <link rel="stylesheet" href="product-support.css?v=20261026-adminnumbers1" />
-<link rel="stylesheet" href="account-settings.css?v=20261023-account1" /></head>
+<link rel="stylesheet" href="account-settings.css?v=20261023-account1" /><link rel="stylesheet" href="support-directory.css?v=20261026-supportcontacts1" /></head>
 <body data-product-support-page>
   <div class="app-shell">
     <header class="topbar">
@@ -19,7 +19,7 @@
         <button type="button" data-view="products" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5v8l-9 5-9-5V8l9-5Z M3 8l9 5 9-5 M12 13v8 M7.5 5.5l9 5" /></svg>Products</button>
         <button type="button" data-view="events"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4 M8 3v4 M3 11h18 M7 15h2 M12 15h2 M7 18h2"/></svg>Events &amp; Calendar</button>
         <button type="button" data-view="printing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6 M6 17H3V9h18v8h-3 M6 14h12v7H6z M17 11h1"/></svg>Print center</button>
-        <span class="ps-nav-help">Event schedules: view only</span>
+        <button type="button" data-view="contacts">Contacts</button><button type="button" data-view="operators">Operators</button><span class="ps-nav-help">Event schedules: view only</span>
         <button type="button" id="psRefresh" class="ps-quiet">↻ Refresh</button>
       </nav>
       <p id="psStatus" class="ps-status" role="status" aria-live="polite"></p>
@@ -50,7 +50,7 @@
         <div class="ps-toolbar ps-event-toolbar"><div class="ps-segment" role="group" aria-label="Event dates"><button type="button" data-date="upcoming" aria-pressed="true">Upcoming</button><button type="button" data-date="week">This week</button><button type="button" data-date="month">This month</button><button type="button" data-date="past">Past</button><button type="button" data-date="all">All dates</button></div><label><span class="sr-only">Event type</span><select id="psEventType"><option value="">All event types</option><option value="personal">Market visits</option><option value="vendor">Vendor visits</option><option value="foodshow">Foodshows</option><option value="testkitchen">Test kitchens</option></select></label><label class="ps-search"><span class="sr-only">Search events</span><input id="psEventSearch" type="search" placeholder="Event or location…" /></label></div>
         <div id="psEventList" class="ps-event-list"></div>
       </section>
-      <section id="psPrinting" aria-labelledby="psPrintingTitle" hidden>
+      <section id="psContacts" hidden aria-label="Shared contacts"></section><section id="psOperators" hidden aria-label="Shared operators"></section><section id="psPrinting" aria-labelledby="psPrintingTitle" hidden>
         <div class="ps-section-heading"><div><h2 id="psPrintingTitle">Print center</h2><p>Labels, product lists, and presentation cards in one place.</p></div></div>
         <div class="ps-print-options">
           <label><span>Products to print</span><select id="psPrintSource"><option value="selected">Selected products</option><option value="shown">Current product search</option></select></label>
@@ -115,6 +115,6 @@
   <script src="product-bag-labels.js?v=20261026-nooutlines1"></script>
   <script src="product-print-logos.js?v=20261023-baglabels1"></script>
   <script src="product-support-labels.js?v=20261026-nooutlines1"></script>
-  <script src="product-support.js?v=20261026-adminnumbers1"></script>
+  <script src="contact-directory-model.js?v=20261026-supportcontacts1"></script><script src="support-directory.js?v=20261026-supportcontacts1"></script><script src="product-support.js?v=20261026-supportcontacts1"></script>
 </body>
 </html>

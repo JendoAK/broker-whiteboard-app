@@ -22,9 +22,15 @@ function attachContactValueSuggestions(form) {
     input.setAttribute('list',list.id); input.placeholder = 'Choose or type a new ' + (key === 'organization' ? 'company' : 'role'); input.after(list);
   }
 }
+function peopleContactKey(person) {
+  const model=window.foodBrokerContactDirectory;
+  return !String(person.name || '').trim() && model.isSchool(person) && model.schoolName(person) ? JSON.stringify(['school-details',normalizeOperatorKey(model.schoolName(person))]) : kitchenPersonKey(person);
+}
+function peopleContactDisplayName(person) { return person.name || window.foodBrokerContactDirectory.schoolName(person) || 'School details'; }
 function normalizePeopleContact(person) {
   person = { ...person, name: typeof person.name === 'string' && person.name !== '[object Object]' ? person.name : '' };
-  return { ...normalizeEventAttendee(person), ...contactCommunicationFields(person), name: correctPeteName(person.name || ''),
+  const base = normalizeEventAttendee(person);
+  return { ...base, ...window.foodBrokerContactDirectory.normalizeContact(person), id:base.id, ...contactCommunicationFields(person), name: correctPeteName(person.name || ''),
     previousNames: Array.isArray(person.previousNames) ? person.previousNames : [],
     updatedAt: person.updatedAt || '', archivedAt: person.archivedAt || '' };
 }
@@ -34,7 +40,7 @@ function loadPeopleContacts() {
 }
 function rememberPeopleContact(person) {
   person = {...person, ...contactCommunicationFields(person)};
-  const existing = peopleContacts.find(item => kitchenPersonKey(item) === kitchenPersonKey(person));
+  const existing = peopleContacts.find(item => peopleContactKey(item) === peopleContactKey(person));
   const next = normalizePeopleContact({ ...existing, ...person, id: existing?.id || crypto.randomUUID(), updatedAt: new Date().toISOString() });
   peopleContacts = existing ? peopleContacts.map(item => item.id === existing.id ? next : item) : [...peopleContacts,next];
   persistPeopleContacts();
@@ -50,9 +56,9 @@ function getPeopleDirectory() {
   const add = value => {
     if (!value) return;
     const person = normalizePeopleContact(value);
-    if (!person.name.trim() || person.archivedAt) return;
-    const key = kitchenPersonKey(person);
-    if (deleted.some(item => kitchenPersonKey(item) === key || (!person.organization && normalizeOperatorKey(item.name) === normalizeOperatorKey(person.name)))) return;
+    if ((!person.name.trim() && !(window.foodBrokerContactDirectory.isSchool(person) && window.foodBrokerContactDirectory.schoolName(person))) || person.archivedAt) return;
+    const key = peopleContactKey(person);
+    if (deleted.some(item => peopleContactKey(item) === key || (!person.organization && person.name.trim() && normalizeOperatorKey(item.name) === normalizeOperatorKey(person.name)))) return;
     if (!result.has(key)) result.set(key, person);
   };
   peopleContacts.forEach(add);
@@ -72,61 +78,87 @@ function getPeopleDirectory() {
     normalizeStringList(card.salesRep).forEach(name => add({ name, organization: 'US Foods', role: 'Sales rep', category: 'Distributor' }));
     normalizeStringList(card.syscoSalesRep).forEach(name => add({ name, organization: 'Sysco', role: 'Sales rep', category: 'Distributor' }));
   });
-  const known = new Set([...result.values()].filter(p => p.organization).map(p => p.name.toLowerCase()));
-  return [...result.values()].filter(p => p.organization || !known.has(p.name.toLowerCase())).sort((a,b) => a.name.localeCompare(b.name));
+  const known = new Set([...result.values()].filter(p => p.organization && p.name.trim()).map(p => p.name.toLowerCase()));
+  return [...result.values()].filter(p => !p.name.trim() && window.foodBrokerContactDirectory.isSchool(p) || p.organization || !known.has(p.name.toLowerCase())).sort((a,b) => a.name.localeCompare(b.name));
 }
 
 let activeContactFilter = 'all';
 function isSchoolContact(person) {
-  return person.category === 'School' || /\bschools?\b|\bschool[\s-]*district\b|\bk[\s-]*12\b/i.test(String(person.organization || ''));
+  return window.foodBrokerContactDirectory.isSchool(person);
 }
 function contactMatchesFilter(person, filter = activeContactFilter) {
-  const organization = normalizeOperatorKey(person.organization).replace(/[^a-z0-9]/g, '');
-  const role = normalizeOperatorKey(person.role);
-  if (filter === 'usfoods') return organization.startsWith('usfoods') || organization === 'usf';
-  if (filter === 'sysco') return organization.startsWith('sysco');
-  if (filter === 'regional') return /regional.*manager/.test(role);
-  if (filter === 'pc') return organization === 'pc' || organization.includes('piercecartwright') || person.category === 'Our team';
-  if (filter === 'school') return isSchoolContact(person);
-  return true;
+  return window.foodBrokerContactDirectory.matchesGroup(person,filter);
+}
+function renderContactDetails(person,schoolContext = '') {
+  const model=window.foodBrokerContactDirectory;
+  const same=(a,b)=>normalizeOperatorKey(a)===normalizeOperatorKey(b),groups=model.groupsFor(person).filter(group=>!schoolContext || !['school','operator / restaurant','other'].includes(normalizeOperatorKey(group)));
+  const rows=[['Organization',schoolContext && same(person.organization,schoolContext)?'':person.organization],['School',schoolContext || same(person.schoolName,person.organization)?'':person.schoolName],['Role',schoolContext?'':person.role],['Email',person.email],['Phone',person.phone],['Location',person.location],['Address',person.address],['Website',person.website],['Groups',groups.join(', ')],['Notes',person.notes],...(person.extraFields || []).map(field=>[field.label,field.value])].filter(([,value])=>value!=='' && value!=null);
+  return '<dl class="contact-detail-list">'+rows.map(([label,value])=>'<div><dt>'+escapeHtml(label)+'</dt><dd>'+escapeHtml(String(value))+'</dd></div>').join('')+'</dl>';
+}
+function renderContactActions(person) {
+  return `<div class="contact-card-actions"><button class="contact-icon-action" type="button" data-edit-person-key="${escapeAttribute(peopleContactKey(person))}" aria-label="Edit ${escapeAttribute(peopleContactDisplayName(person))}" title="Edit contact">${icons.edit}</button><button type="button" class="contact-icon-action contact-delete" data-delete-person-key="${escapeAttribute(peopleContactKey(person))}" aria-label="Delete ${escapeAttribute(peopleContactDisplayName(person))}" title="Delete contact">${icons.trash}</button></div>`;
+}
+function renderContactGroupButtons(directory) {
+  const toolbar=document.querySelector('.contact-filter-buttons');
+  if(!toolbar)return;
+  toolbar.querySelectorAll('[data-contact-custom]').forEach(button=>button.remove());
+  const known=new Set([...toolbar.querySelectorAll('[data-contact-filter]')].map(button=>normalizeOperatorKey(button.textContent)));
+  known.add('our team');known.add('distributor');known.add('vendor');known.add('operator / restaurant');known.add('other');
+  const groups=new Map();
+  directory.forEach(person=>[...(person.groups || []),person.category].filter(Boolean).forEach(group=>{const key=normalizeOperatorKey(group);if(!known.has(key))groups.set(key,group);}));
+  [...groups.values()].sort((a,b)=>a.localeCompare(b)).forEach(group=>{const button=document.createElement('button');button.type='button';button.dataset.contactFilter='group:'+group;button.dataset.contactCustom='true';button.textContent=group;button.setAttribute('aria-pressed',String(button.dataset.contactFilter===activeContactFilter));toolbar.append(button);});
 }
 function renderPeopleContacts() {
   const panel = document.querySelector('#peopleContactsPanel');
   if (!panel) return;
+  const openSchools=new Set([...panel.querySelectorAll('[data-school-key][open]')].map(node=>node.dataset.schoolKey));
+  const openPeople=new Set([...panel.querySelectorAll('[data-person-key][open]')].map(node=>node.dataset.personKey));
   const query = normalizeOperatorKey(document.querySelector('#peopleContactSearch')?.value || '');
-  const people = getPeopleDirectory().filter(person => person.category !== 'Operator / Restaurant' || activeContactFilter === 'school' && isSchoolContact(person)).filter(person => contactMatchesFilter(person)).filter(person => normalizeOperatorKey([person.name, person.organization, person.role, person.contact].join(' ')).includes(query));
+  const directory=getPeopleDirectory(),model=window.foodBrokerContactDirectory;
+  renderContactGroupButtons(directory);
+  const people = directory.filter(person => person.category !== 'Operator / Restaurant' || activeContactFilter === 'school' && isSchoolContact(person)).filter(person => contactMatchesFilter(person)).filter(person => normalizeOperatorKey(model.searchText(person)).includes(query));
   document.querySelectorAll('[data-contact-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.contactFilter === activeContactFilter)));
   const count = document.getElementById('contactMatchCount');
-  if (count) count.textContent = people.length + (people.length === 1 ? ' contact' : ' contacts');
-  panel.innerHTML = people.map(person => `<div class="person-contact-card"><div class="contact-card-summary"><strong>${escapeHtml(person.name)}</strong><span>${escapeHtml([person.role,person.organization].filter(Boolean).join(' · '))}</span></div><div class="contact-card-actions"><button class="contact-icon-action" type="button" data-edit-person-key="${escapeAttribute(kitchenPersonKey(person))}" aria-label="Edit ${escapeAttribute(person.name)}" title="Edit contact">${icons.edit}</button><button type="button" class="contact-icon-action contact-delete" data-delete-person-key="${escapeAttribute(kitchenPersonKey(person))}" aria-label="Delete ${escapeAttribute(person.name)}" title="Delete contact">${icons.trash}</button></div></div>`).join('') || '<p>No matching people. Add a contact to save their details.</p>';
+  const schools=model.groupSchools(people.filter(isSchoolContact)),others=people.filter(person=>!isSchoolContact(person));
+  if (count) count.textContent = people.length + (people.length === 1 ? ' contact' : ' contacts')+(schools.length?' · '+schools.length+' school'+(schools.length===1?'':'s'):'');
+  panel.innerHTML = schools.map(school=>`<details class="school-contact-group" data-school-key="${escapeAttribute(school.key)}"${openSchools.has(school.key)||query?' open':''}><summary><strong>${escapeHtml(school.name)}</strong><span>${school.contacts.length} contact${school.contacts.length===1?'':'s'}</span></summary><div class="school-contact-people">${school.contacts.map(person=>`<article class="school-contact-person"><header><div><h3>${escapeHtml(person.name || 'School details')}</h3><p>${escapeHtml(person.role || 'Contact')}</p></div>${renderContactActions(person)}</header>${renderContactDetails(person,school.name)}</article>`).join('')}</div></details>`).join('')+others.map(person=>`<article class="person-contact-card"><details class="contact-person-details" data-person-key="${escapeAttribute(peopleContactKey(person))}"${openPeople.has(peopleContactKey(person))?' open':''}><summary class="contact-card-summary"><strong>${escapeHtml(person.name)}</strong><span>${escapeHtml([person.role,person.organization].filter(Boolean).join(' · '))}</span></summary>${renderContactDetails(person)}</details>${renderContactActions(person)}</article>`).join('') || '<p>No matching people. Add a contact to save their details.</p>';
   const deleted = peopleContacts.filter(person => person.archivedAt);
   if (deleted.length) panel.insertAdjacentHTML('beforeend', '<details class="deleted-contacts"><summary>Deleted contacts (' + deleted.length + ')</summary>' + deleted.map(person => `<div><span>${escapeHtml(person.name)} · ${escapeHtml(person.organization)}</span><button type="button" class="edit-card" data-restore-person="${escapeAttribute(person.id)}">Restore</button></div>`).join('') + '</details>');
   panel.querySelectorAll('[data-delete-person-key]').forEach(button => button.onclick = () => deletePeopleContact(button.dataset.deletePersonKey));
   panel.querySelectorAll('[data-restore-person]').forEach(button => button.onclick = () => { peopleContacts = peopleContacts.map(person => person.id === button.dataset.restorePerson ? {...person, archivedAt:'', updatedAt:new Date().toISOString()} : person); persistPeopleContacts(); });
-  panel.querySelectorAll('[data-edit-person-key]').forEach(button => button.onclick = () => openPeopleContactForm(getPeopleDirectory().find(person => kitchenPersonKey(person) === button.dataset.editPersonKey)));
+  panel.querySelectorAll('[data-edit-person-key]').forEach(button => button.onclick = () => openPeopleContactForm(getPeopleDirectory().find(person => peopleContactKey(person) === button.dataset.editPersonKey)));
 }
 
 function deletePeopleContact(key) {
-  const person = getPeopleDirectory().find(item => kitchenPersonKey(item) === key);
-  if (!person || !confirm('Delete ' + person.name + ' from the shared contact list and name suggestions? Existing leads and event records will keep their details. You can restore this contact under Deleted contacts.')) return;
-  const existing = peopleContacts.find(item => kitchenPersonKey(item) === key);
+  const person = getPeopleDirectory().find(item => peopleContactKey(item) === key);
+  if (!person || !confirm('Delete ' + peopleContactDisplayName(person) + ' from the shared contact list and name suggestions? Existing leads and event records will keep their details. You can restore this contact under Deleted contacts.')) return;
+  const existing = peopleContacts.find(item => peopleContactKey(item) === key);
   const deleted = normalizePeopleContact({...person, id:existing?.id || crypto.randomUUID(), archivedAt:new Date().toISOString(), updatedAt:new Date().toISOString()});
   peopleContacts = existing ? peopleContacts.map(item => item.id === existing.id ? deleted : item) : [...peopleContacts,deleted];
   persistPeopleContacts();
 }
+function renderContactExtraField(field = {}) {
+  return `<div class="contact-extra-field"><label><span>Detail name</span><input data-extra-label value="${escapeAttribute(String(field.label || ''))}" maxlength="160" placeholder="Column name" /></label><label><span>Value</span><textarea data-extra-value rows="2" maxlength="10000">${escapeHtml(String(field.value == null ? '' : field.value))}</textarea></label><button type="button" class="contact-icon-action contact-delete" data-remove-extra aria-label="Remove detail" title="Remove detail">${icons.trash}</button></div>`;
+}
 function openPeopleContactForm(person = {}) {
-  person = { ...person, ...contactCommunicationFields(person) };
-  const category = person.category || (activeContactFilter === 'school' ? 'School' : 'Distributor');
-  const existing = peopleContacts.find(item => kitchenPersonKey(item) === kitchenPersonKey(person));
+  const selectedCategory=person.category;
+  person = { ...person, ...window.foodBrokerContactDirectory.normalizeContact(person), ...contactCommunicationFields(person) };
+  const category = selectedCategory ? person.category : activeContactFilter === 'school' ? 'School' : activeContactFilter === 'admin' ? 'Admin Contact' : 'Distributor';
+  const existing = peopleContacts.find(item => peopleContactKey(item) === peopleContactKey(person));
   const dialog = createVisitDialog(existing ? 'Edit shared contact' : 'Save shared contact');
   const body = dialog.querySelector('[data-visit-entry-body]');
-  body.innerHTML = `<p>Shared with your team. Available in name suggestions, attendee lists, leads, and visits.</p><form><div class="field-grid">${['name','organization','role','email','phone'].map(key => `<label><span>${({name:'Name',organization:'Company / distributor',role:'Role',email:'Email',phone:'Phone'})[key]}</span><input name="${key}" type="${key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}" value="${escapeAttribute(person[key] || '')}" ${['name','organization'].includes(key) ? 'required' : ''} /></label>`).join('')}<label><span>Contact type</span><select name="category">${['Distributor','Vendor','Our team','School','Operator / Restaurant','Other'].map(value=>`<option ${value===category?'selected':''}>${value}</option>`).join('')}</select></label></div><p role="alert" data-contact-error></p><div class="form-actions"><button class="primary-action" type="submit">Save contact</button></div></form>`;
+  body.innerHTML = `<p>Shared with your team. School contacts appear together under their school name.</p><form><div class="field-grid">${['name','organization','role','email','phone','schoolName','location','address','website'].map(key => `<label><span>${({name:'Name',organization:'Company / organization',role:'Role',email:'Email',phone:'Phone',schoolName:'School name (if applicable)',location:'Location',address:'Address',website:'Website'})[key]}</span><input name="${key}" type="${key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}" value="${escapeAttribute(person[key] || (key === 'organization' && window.foodBrokerContactDirectory.isSchool(person) ? window.foodBrokerContactDirectory.schoolName(person) : ''))}" ${key === 'organization' || key === 'name' && category !== 'School' && !window.foodBrokerContactDirectory.isSchool(person) ? 'required' : ''} /></label>`).join('')}<label><span>Contact type</span><select name="category">${[...new Set(['Distributor','Vendor','Our team','School','Admin Contact','Operator / Restaurant','Other',category])].map(value=>`<option${value===category?' selected':''}>${escapeHtml(value)}</option>`).join('')}</select></label><label><span>Groups (separate with commas)</span><input name="groups" value="${escapeAttribute((person.groups?.length?person.groups:activeContactFilter.startsWith('group:')?[activeContactFilter.slice(6)]:[]).join(', '))}" placeholder="Admin Contact, School, or a new group" /></label><label><span>Notes</span><textarea name="notes" rows="3" maxlength="10000">${escapeHtml(person.notes || '')}</textarea></label></div><details class="contact-extra-editor"${person.extraFields?.length?' open':''}><summary>Additional details${person.extraFields?.length?' ('+person.extraFields.length+')':''}</summary><p>Keep the original column names and values from your contact list.</p><div data-contact-extra-fields>${(person.extraFields || []).map(renderContactExtraField).join('')}</div><button type="button" data-add-extra class="ghost-action">+ Add detail</button></details><p role="alert" data-contact-error></p><div class="form-actions"><button class="primary-action" type="submit">Save contact</button></div></form>`;
   attachContactValueSuggestions(body.querySelector('form'));
+  body.querySelector('[data-add-extra]').onclick=()=>body.querySelector('[data-contact-extra-fields]').insertAdjacentHTML('beforeend',renderContactExtraField());
+  body.querySelector('[data-contact-extra-fields]').addEventListener('click',event=>{const button=event.target.closest('[data-remove-extra]');if(button)button.closest('.contact-extra-field').remove();});
   body.querySelector('form').onsubmit = event => {
     event.preventDefault();
     const values = Object.fromEntries(new FormData(event.currentTarget));
-    const next = normalizePeopleContact({ ...existing, ...values, name: values.name.trim(), organization: values.organization.trim(), updatedAt: new Date().toISOString(), previousNames: [...(existing?.previousNames || []), ...(person.name && person.name !== values.name.trim() ? [person.name] : [])] });
-    const duplicate = peopleContacts.find(item => item.id !== existing?.id && kitchenPersonKey(item) === kitchenPersonKey(next));
+    const extraFields=[...body.querySelectorAll('.contact-extra-field')].map(row=>({label:row.querySelector('[data-extra-label]').value.trim(),value:row.querySelector('[data-extra-value]').value})).filter(field=>field.label || field.value);
+    if(extraFields.some(field=>!field.label)){body.querySelector('[data-contact-error]').textContent='Give each additional detail a name.';return;}
+    const next = normalizePeopleContact({ ...person, ...existing, ...values, id:existing?.id || crypto.randomUUID(), groups:values.groups.split(',').map(value=>value.trim()).filter(Boolean), extraFields, name: values.name.trim(), organization: values.organization.trim(), updatedAt: new Date().toISOString(), previousNames: [...(existing?.previousNames || []), ...(person.name && person.name !== values.name.trim() ? [person.name] : [])] });
+    if(!next.name.trim() && !(window.foodBrokerContactDirectory.isSchool(next) && window.foodBrokerContactDirectory.schoolName(next))){body.querySelector('[data-contact-error]').textContent='Enter a contact name, or a school name for school details.';return;}
+    const duplicate = peopleContacts.find(item => item.id !== existing?.id && peopleContactKey(item) === peopleContactKey(next));
     if (duplicate) { body.querySelector('[data-contact-error]').textContent = 'This person is already saved for that organization.'; return; }
     peopleContacts = existing ? peopleContacts.map(item => item.id === existing.id ? next : item) : [...peopleContacts,next];
     persistPeopleContacts(); applyContactNameCorrections(); renderPeopleContacts(); dialog.close();
@@ -143,7 +175,7 @@ function attachPeopleSuggestions(input, onPick) {
     const value = input.value.split(',').at(-1).trim().toLowerCase();
     const prefix = input.value.includes(',') ? input.value.slice(0, input.value.lastIndexOf(',') + 1) + ' ' : '';
     const names = new Map();
-    getPeopleDirectory().forEach(person => { if (!names.has(person.name) && person.name.toLowerCase().includes(value)) names.set(person.name,person); });
+    getPeopleDirectory().forEach(person => { if (person.name.trim() && !names.has(person.name) && person.name.toLowerCase().includes(value)) names.set(person.name,person); });
     datalist.innerHTML = [...names.values()].map(person => `<option value="${escapeAttribute(prefix + person.name)}" label="${escapeAttribute([person.organization,person.role].filter(Boolean).join(' · '))}"></option>`).join('');
   };
   input.addEventListener('input',refresh); input.addEventListener('focus',refresh);
@@ -182,9 +214,11 @@ async function correctPeteTeamRecords() {
   for (const table of ['app_records','team_app_records']) {
     let offset = 0;
     while (true) {
-      const {data,error} = await client.from(table).select('id,data,updated_at').eq('record_type',table==='app_records'?cloudRecordType:teamCloudRecordType).order('id').range(offset,offset+99);
+      const {data,error} = await client.from(table).select('id,data,updated_at,record_key').eq('record_type',table==='app_records'?cloudRecordType:teamCloudRecordType).order('id').range(offset,offset+99);
       if (error) throw error;
       for (const row of data || []) {
+        // Directory corrections use the normal version-checked save path.
+        if (table === 'team_app_records' && ['broker-whiteboard-people-contacts','broker-whiteboard-address-book'].includes(row.record_key)) continue;
         const corrected = correctContactNames(row.data);
         if (JSON.stringify(corrected) === JSON.stringify(row.data)) continue;
         const saved = await client.from(table).update({data:corrected}).eq('id',row.id).eq('updated_at',row.updated_at).select('id');
@@ -209,7 +243,7 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('showOperatorsView').onclick = () => setContactsView('operators');
   document.getElementById('showOtherContactsView').onclick = () => setContactsView('contacts');
   document.querySelector('#addPeopleContact')?.addEventListener('click',()=>{ setContactsView('contacts'); openPeopleContactForm(); });
-  document.querySelectorAll('[data-contact-filter]').forEach(button => button.onclick = () => { activeContactFilter = button.dataset.contactFilter; renderPeopleContacts(); });
+  document.querySelector('.contact-filter-buttons')?.addEventListener('click',event=>{const button=event.target.closest('[data-contact-filter]');if(button){activeContactFilter=button.dataset.contactFilter;renderPeopleContacts();}});
   document.querySelector('#peopleContactSearch')?.addEventListener('input',renderPeopleContacts);
   ['salesRepInput','syscoSalesRepInput'].forEach(id=>attachPeopleSuggestions(document.getElementById(id)));
   attachPeopleSuggestions(elements.marketSalesReps);
