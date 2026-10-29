@@ -265,6 +265,10 @@ h1 {
   white-space: nowrap;
 }
 
+.print-center-nav-action {
+  font-weight: 800;
+}
+
 .nav-icon {
   display: inline-grid;
   place-items: center;
