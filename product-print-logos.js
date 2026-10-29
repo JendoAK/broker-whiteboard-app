@@ -484,9 +484,9 @@
           "alt": "Cattleman's Selection logo",
           "widthPt": 45.302,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
           "cropBottom": 0.006666666666666667
         }
       ]
@@ -499,12 +499,12 @@
         {
           "src": "print-logos/usf-chefs-line.webp",
           "alt": "Chef's Line logo",
-          "widthPt": 45.0,
+          "widthPt": 45,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
@@ -518,9 +518,9 @@
           "alt": "Cross Valley Farms logo",
           "widthPt": 45.302,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
           "cropBottom": 0.006666666666666667
         }
       ]
@@ -535,10 +535,10 @@
           "alt": "Del Pasado logo",
           "widthPt": 42.6,
           "heightPt": 45,
-          "cropLeft": 0.0,
+          "cropLeft": 0,
           "cropRight": 0.05333333333333334,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
@@ -550,12 +550,12 @@
         {
           "src": "print-logos/usf-devonshire-bake-shop.webp",
           "alt": "Devonshire Bake Shop logo",
-          "widthPt": 45.0,
+          "widthPt": 45,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
@@ -569,9 +569,9 @@
           "alt": "Glenview Farms logo",
           "widthPt": 55.102,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
           "cropBottom": 0.18333333333333332
         }
       ]
@@ -586,9 +586,9 @@
           "alt": "Harbor Banks Seafood logo",
           "widthPt": 45.302,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
           "cropBottom": 0.006666666666666667
         }
       ]
@@ -603,9 +603,9 @@
           "alt": "Harvest Value logo",
           "widthPt": 62.791,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
           "cropBottom": 0.2833333333333333
         }
       ]
@@ -620,9 +620,9 @@
           "alt": "Hilltop Hearth logo",
           "widthPt": 52.734,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
           "cropBottom": 0.14666666666666667
         }
       ]
@@ -635,12 +635,12 @@
         {
           "src": "print-logos/usf-metro-deli.webp",
           "alt": "Metro Deli logo",
-          "widthPt": 45.0,
+          "widthPt": 45,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
@@ -667,9 +667,9 @@
           "alt": "Molly's Kitchen logo",
           "widthPt": 45.302,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
           "cropBottom": 0.006666666666666667
         }
       ]
@@ -682,11 +682,11 @@
         {
           "src": "print-logos/usf-monarch.webp",
           "alt": "Monarch logo",
-          "widthPt": 50.0,
+          "widthPt": 50,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
           "cropBottom": 0.1
         }
       ]
@@ -701,9 +701,9 @@
           "alt": "Monogram logo",
           "widthPt": 69.588,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
           "cropBottom": 0.35333333333333333
         }
       ]
@@ -718,9 +718,9 @@
           "alt": "Monogram Clean Force logo",
           "widthPt": 45.302,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
           "cropBottom": 0.006666666666666667
         }
       ]
@@ -735,9 +735,9 @@
           "alt": "Pacific Jade logo",
           "widthPt": 45.302,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
           "cropBottom": 0.006666666666666667
         }
       ]
@@ -752,9 +752,9 @@
           "alt": "Patuxent Farms logo",
           "widthPt": 45.608,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
           "cropBottom": 0.013333333333333334
         }
       ]
@@ -769,9 +769,9 @@
           "alt": "Rituals logo",
           "widthPt": 50.186,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
           "cropBottom": 0.10333333333333333
         }
       ]
@@ -801,12 +801,12 @@
         {
           "src": "print-logos/usf-rykoff-sexton.webp",
           "alt": "Rykoff Sexton logo",
-          "widthPt": 45.0,
+          "widthPt": 45,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
@@ -818,12 +818,12 @@
         {
           "src": "print-logos/usf-stock-yards.webp",
           "alt": "Stock Yards logo",
-          "widthPt": 45.0,
+          "widthPt": 45,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
@@ -837,9 +837,9 @@
           "alt": "Superior logo",
           "widthPt": 57.447,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
           "cropBottom": 0.21666666666666667
         }
       ]
@@ -854,9 +854,9 @@
           "alt": "Thirster logo",
           "widthPt": 72.973,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
           "cropBottom": 0.38333333333333336
         }
       ]
@@ -871,9 +871,9 @@
           "alt": "Valu+Plus logo",
           "widthPt": 61.086,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
           "cropBottom": 0.2633333333333333
         }
       ]
@@ -888,10 +888,10 @@
           "alt": "Arrezzio logo",
           "widthPt": 45.67,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
@@ -905,10 +905,10 @@
           "alt": "Baker's Source logo",
           "widthPt": 45.67,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
@@ -922,10 +922,10 @@
           "alt": "Block & Barrel logo",
           "widthPt": 45.67,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
@@ -939,8 +939,8 @@
           "alt": "Buckhead Newport Pride logo",
           "widthPt": 86.554,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
           "cropTop": 0.2357142857142857,
           "cropBottom": 0.2357142857142857
         }
@@ -956,10 +956,10 @@
           "alt": "Butcher's Block logo",
           "widthPt": 45.67,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
@@ -973,10 +973,10 @@
           "alt": "Casa Solana logo",
           "widthPt": 45.67,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
@@ -994,23 +994,6 @@
           "cropRight": 0.1288056206088993,
           "cropTop": 0.20476190476190476,
           "cropBottom": 0.19047619047619047
-        }
-      ]
-    },
-    {
-      "id": "sysco-sysco-earth-plus",
-      "name": "Sysco Earth Plus",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-sysco-earth-plus.png",
-          "alt": "Sysco Earth Plus logo",
-          "widthPt": 51.516,
-          "heightPt": 45,
-          "cropLeft": 0.12903225806451613,
-          "cropRight": 0.12903225806451613,
-          "cropTop": 0.17261904761904762,
-          "cropBottom": 0.16964285714285715
         }
       ]
     },
@@ -1039,7 +1022,7 @@
         {
           "src": "print-logos/sysco-house-recipe.jpg",
           "alt": "House Recipe logo",
-          "widthPt": 63.0,
+          "widthPt": 63,
           "heightPt": 45,
           "cropLeft": 0.1436950146627566,
           "cropRight": 0.17888563049853373,
@@ -1058,10 +1041,10 @@
           "alt": "Jade Mountain logo",
           "widthPt": 45.67,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
@@ -1075,8 +1058,8 @@
           "alt": "Keystone logo",
           "widthPt": 128,
           "heightPt": 28.178,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
           "cropTop": 0.3880952380952381,
           "cropBottom": 0.3880952380952381
         }
@@ -1092,10 +1075,27 @@
           "alt": "Pasta La Bella logo",
           "widthPt": 68.138,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
           "cropTop": 0.16428571428571428,
           "cropBottom": 0.16428571428571428
+        }
+      ]
+    },
+    {
+      "id": "sysco-portico",
+      "name": "Portico Seafood",
+      "family": "syscoEb",
+      "logos": [
+        {
+          "src": "print-logos/sysco-portico.png",
+          "alt": "Portico Seafood logo",
+          "widthPt": 45.668,
+          "heightPt": 45,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
@@ -1117,23 +1117,6 @@
       ]
     },
     {
-      "id": "sysco-portico",
-      "name": "Portico Seafood",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-portico.png",
-          "alt": "Portico Seafood logo",
-          "widthPt": 45.668,
-          "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
-        }
-      ]
-    },
-    {
       "id": "sysco-riserva",
       "name": "Riserva",
       "family": "syscoEb",
@@ -1143,10 +1126,44 @@
           "alt": "Riserva logo",
           "widthPt": 45.67,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
+        }
+      ]
+    },
+    {
+      "id": "sysco-sysco-classic",
+      "name": "Sysco Classic",
+      "family": "syscoEb",
+      "logos": [
+        {
+          "src": "print-logos/sysco-sysco-classic.png",
+          "alt": "Sysco Classic logo",
+          "widthPt": 128,
+          "heightPt": 42.923,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
+        }
+      ]
+    },
+    {
+      "id": "sysco-sysco-earth-plus",
+      "name": "Sysco Earth Plus",
+      "family": "syscoEb",
+      "logos": [
+        {
+          "src": "print-logos/sysco-sysco-earth-plus.png",
+          "alt": "Sysco Earth Plus logo",
+          "widthPt": 51.516,
+          "heightPt": 45,
+          "cropLeft": 0.12903225806451613,
+          "cropRight": 0.12903225806451613,
+          "cropTop": 0.17261904761904762,
+          "cropBottom": 0.16964285714285715
         }
       ]
     },
@@ -1160,44 +1177,44 @@
           "alt": "Sysco Freshpoint Natural logo",
           "widthPt": 45.67,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
     {
-      "id": "sysco-sysco-supplies",
-      "name": "Sysco Supplies",
+      "id": "sysco-sysco-premium",
+      "name": "Sysco Premium",
       "family": "syscoEb",
       "logos": [
         {
-          "src": "print-logos/sysco-sysco-supplies.jpg",
-          "alt": "Sysco Supplies logo",
-          "widthPt": 42.843,
-          "heightPt": 45,
-          "cropLeft": 0.1288056206088993,
-          "cropRight": 0.17330210772833723,
-          "cropTop": 0.14523809523809525,
-          "cropBottom": 0.10952380952380952
+          "src": "print-logos/sysco-sysco-premium.png",
+          "alt": "Sysco Premium logo",
+          "widthPt": 128,
+          "heightPt": 42.752,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
     {
-      "id": "sysco-sysco-simply-plant-based",
-      "name": "Sysco Simply Plant Based",
+      "id": "sysco-sysco-reliance",
+      "name": "Sysco Reliance",
       "family": "syscoEb",
       "logos": [
         {
-          "src": "print-logos/sysco-sysco-simply-plant-based.jpg",
-          "alt": "Sysco Simply Plant Based logo",
-          "widthPt": 114.375,
+          "src": "print-logos/sysco-sysco-reliance.png",
+          "alt": "Sysco Reliance logo",
+          "widthPt": 109.184,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.3047619047619048,
-          "cropBottom": 0.29523809523809524
+          "cropLeft": 0.19333333333333333,
+          "cropRight": 0.192,
+          "cropTop": 0.1610337972166998,
+          "cropBottom": 0.08349900596421471
         }
       ]
     },
@@ -1219,6 +1236,40 @@
       ]
     },
     {
+      "id": "sysco-sysco-simply-plant-based",
+      "name": "Sysco Simply Plant Based",
+      "family": "syscoEb",
+      "logos": [
+        {
+          "src": "print-logos/sysco-sysco-simply-plant-based.jpg",
+          "alt": "Sysco Simply Plant Based logo",
+          "widthPt": 114.375,
+          "heightPt": 45,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0.3047619047619048,
+          "cropBottom": 0.29523809523809524
+        }
+      ]
+    },
+    {
+      "id": "sysco-sysco-supplies",
+      "name": "Sysco Supplies",
+      "family": "syscoEb",
+      "logos": [
+        {
+          "src": "print-logos/sysco-sysco-supplies.jpg",
+          "alt": "Sysco Supplies logo",
+          "widthPt": 42.843,
+          "heightPt": 45,
+          "cropLeft": 0.1288056206088993,
+          "cropRight": 0.17330210772833723,
+          "cropTop": 0.14523809523809525,
+          "cropBottom": 0.10952380952380952
+        }
+      ]
+    },
+    {
       "id": "sysco-white-marble-farms",
       "name": "White Marble Farms",
       "family": "syscoEb",
@@ -1228,8 +1279,8 @@
           "alt": "White Marble Farms logo",
           "widthPt": 63.626,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
+          "cropLeft": 0,
+          "cropRight": 0,
           "cropTop": 0.14047619047619048,
           "cropBottom": 0.14047619047619048
         }
@@ -1245,61 +1296,83 @@
           "alt": "Wholesome Farms logo",
           "widthPt": 45.67,
           "heightPt": 45,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
     {
-      "id": "sysco-sysco-premium",
-      "name": "Sysco Premium",
-      "family": "syscoEb",
+      "id": "manufacturer-alaskachipcompany",
+      "name": "Alaska Chip Company",
+      "family": "manufacturer",
       "logos": [
         {
-          "src": "print-logos/sysco-sysco-premium.png",
-          "alt": "Sysco Premium logo",
-          "widthPt": 128,
-          "heightPt": 42.752,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "src": "print-logos/alaska-chip-company.png",
+          "alt": "Alaska Chip Company logo",
+          "widthPt": 80.319,
+          "heightPt": 50.4,
+          "cropLeft": 0,
+          "cropTop": 0.1975,
+          "cropRight": 0,
+          "cropBottom": 0.175
         }
       ]
     },
     {
-      "id": "sysco-sysco-classic",
-      "name": "Sysco Classic",
-      "family": "syscoEb",
+      "id": "manufacturer-avieta",
+      "name": "Avieta",
+      "family": "manufacturer",
       "logos": [
         {
-          "src": "print-logos/sysco-sysco-classic.png",
-          "alt": "Sysco Classic logo",
-          "widthPt": 128,
-          "heightPt": 42.923,
-          "cropLeft": 0.0,
-          "cropRight": 0.0,
-          "cropTop": 0.0,
-          "cropBottom": 0.0
+          "src": "print-logos/avieta.png",
+          "alt": "Avieta logo",
+          "widthPt": 47.235,
+          "heightPt": 50.4
         }
       ]
     },
     {
-      "id": "sysco-sysco-reliance",
-      "name": "Sysco Reliance",
-      "family": "syscoEb",
+      "id": "manufacturer-dawnfoods",
+      "name": "Dawn Foods",
+      "family": "manufacturer",
       "logos": [
         {
-          "src": "print-logos/sysco-sysco-reliance.png",
-          "alt": "Sysco Reliance logo",
-          "widthPt": 109.184,
-          "heightPt": 45,
-          "cropLeft": 0.19333333333333333,
-          "cropRight": 0.192,
-          "cropTop": 0.1610337972166998,
-          "cropBottom": 0.08349900596421471
+          "src": "print-logos/dawn-foods.png",
+          "alt": "Dawn Foods logo",
+          "widthPt": 120,
+          "heightPt": 46.957
+        }
+      ]
+    },
+    {
+      "id": "manufacturer-dymabrands",
+      "name": "DYMA Brands",
+      "family": "manufacturer",
+      "logos": [
+        {
+          "src": "print-logos/dyma-brands.webp",
+          "alt": "DYMA Brands logo",
+          "widthPt": 97.395,
+          "heightPt": 50.4
+        }
+      ]
+    },
+    {
+      "id": "manufacturer-longhornbbq",
+      "name": "Longhorn BBQ",
+      "family": "manufacturer",
+      "logos": [
+        {
+          "src": "print-logos/longhorn-bbq.png",
+          "alt": "Longhorn BBQ logo",
+          "widthPt": 79.936,
+          "heightPt": 50.4,
+          "cropLeft": 0.179375,
+          "cropTop": 0.1826086956521739,
+          "cropRight": 0.21,
+          "cropBottom": 0.2222222222222222
         }
       ]
     }
@@ -1366,7 +1439,20 @@
     "wheatmontana": "manufacturer-wheatmontanastonegroundbakery",
     "stonegroundbakery": "manufacturer-wheatmontanastonegroundbakery",
     "nestlevitality": "manufacturer-nestle",
-    "idahoanfoods": "manufacturer-idahoan"
+    "idahoanfoods": "manufacturer-idahoan",
+    "campbellsreserve": "manufacturer-campbellsfoodservice",
+    "campbellsculinaryreserve": "manufacturer-campbellsfoodservice",
+    "culinaryreserve": "manufacturer-campbellsfoodservice",
+    "alaskachipcompany": "manufacturer-alaskachipcompany",
+    "alaskachip": "manufacturer-alaskachipcompany",
+    "alaskachipco": "manufacturer-alaskachipcompany",
+    "avieta": "manufacturer-avieta",
+    "dawnfoods": "manufacturer-dawnfoods",
+    "dawn": "manufacturer-dawnfoods",
+    "dymabrands": "manufacturer-dymabrands",
+    "dyma": "manufacturer-dymabrands",
+    "longhornbbq": "manufacturer-longhornbbq",
+    "longhornbarbecue": "manufacturer-longhornbbq"
   },
   "brandAliases": {
     "papettis": "papettis",
@@ -1430,11 +1516,43 @@
     "syscofreshpoint": "sysco-sysco-freshpoint",
     "freshpointnatural": "sysco-sysco-freshpoint",
     "jademountainclassic": "sysco-jade-mountain",
-    "jademountainimperial": "sysco-jade-mountain"
+    "jademountainimperial": "sysco-jade-mountain",
+    "arrezzioclassic": "sysco-arrezzio",
+    "arrezzioimperial": "sysco-arrezzio",
+    "arrezzioriserva": "sysco-riserva",
+    "bakerssourceclassic": "sysco-bakers-source",
+    "blockandbarrelclassic": "sysco-block-and-barrel",
+    "blockandbarrelimperial": "sysco-block-and-barrel",
+    "blockandbarrelreliance": "sysco-block-and-barrel",
+    "casasolanaclassic": "sysco-casa-solana",
+    "casasolanaimperial": "sysco-casa-solana",
+    "citavoclassic": "sysco-citavo",
+    "houserecipeclassic": "sysco-house-recipe",
+    "porticoclassic": "sysco-portico",
+    "porticoimperial": "sysco-portico",
+    "porticosimply": "sysco-portico",
+    "wholesomefarmsclassic": "sysco-wholesome-farms",
+    "wholesomefarmsimperial": "sysco-wholesome-farms"
   },
   "brandAliasNotices": {
     "jademountainclassic": "Showing the Jade Mountain family logo for “Jade Mountain Classic”.",
-    "jademountainimperial": "Showing the Jade Mountain family logo for “Jade Mountain Imperial”."
+    "jademountainimperial": "Showing the Jade Mountain family logo for “Jade Mountain Imperial”.",
+    "arrezzioclassic": "Showing the Arrezzio family logo for “Arrezzio Classic”.",
+    "arrezzioimperial": "Showing the Arrezzio family logo for “Arrezzio Imperial”.",
+    "arrezzioriserva": "Showing the Riserva from Arrezzio logo for “Arrezzio Riserva”.",
+    "bakerssourceclassic": "Showing the Baker's Source family logo for “Baker's Source Classic”.",
+    "blockandbarrelclassic": "Showing the Block & Barrel family logo for “Block & Barrel Classic”.",
+    "blockandbarrelimperial": "Showing the Block & Barrel family logo for “Block & Barrel Imperial”.",
+    "blockandbarrelreliance": "Showing the Block & Barrel family logo for “Block & Barrel Reliance”.",
+    "casasolanaclassic": "Showing the Casa Solana family logo for “Casa Solana Classic”.",
+    "casasolanaimperial": "Showing the Casa Solana family logo for “Casa Solana Imperial”.",
+    "citavoclassic": "Showing the Citavo family logo for “Citavo Classic”.",
+    "houserecipeclassic": "Showing the House Recipe family logo for “House Recipe Classic”.",
+    "porticoclassic": "Showing the Portico Seafood family logo for “Portico Classic”.",
+    "porticoimperial": "Showing the Portico Seafood family logo for “Portico Imperial”.",
+    "porticosimply": "Showing the Portico Seafood family logo for “Portico Simply”.",
+    "wholesomefarmsclassic": "Showing the Wholesome Farms family logo for “Wholesome Farms Classic”.",
+    "wholesomefarmsimperial": "Showing the Wholesome Farms family logo for “Wholesome Farms Imperial”."
   }
 } );
   const byId = new Map(data.entries.map(entry => [entry.id, entry]));
@@ -1469,5 +1587,5 @@
     if (maker) return result(maker, mode === "automatic" && brand ? "No logo is available for “" + brand + "”; showing the " + maker.name + " manufacturer logo." : mode === "automatic" && key(product.brandType) === "eb" ? "No Exclusive Brand name is recorded; showing the " + maker.name + " manufacturer logo." : "");
     return missing(mode, manufacturer ? "No manufacturer logo is available for “" + manufacturer + "”. Choose a logo or upload your own." : "No manufacturer logo is available. Choose a logo or upload your own.");
   }
-  scope.foodBrokerPrintLogos = Object.freeze({version:"20261023-labels1",resolve,options});
+  scope.foodBrokerPrintLogos = Object.freeze({version:"20261029-logocoverage1",resolve,options});
 })(typeof window !== "undefined" ? window : globalThis);
