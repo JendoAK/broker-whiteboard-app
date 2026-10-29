@@ -13,7 +13,7 @@
   const operatorFields = ["id","operation","accountNumber","syscoAccountNumber","locations","address","website","notes","deliveryDays","usfSalesRep","syscoSalesRep"];
   const fixedGroups = [["all","All"],["usfoods","US Foods"],["sysco","Sysco"],["regional","Regional Managers"],["pc","Pierce Cartwright"],["school","School"],["admin","Admin Contact"]];
   const operatorContactSources = new Map();
-  const state = {uid:"",generation:0,request:0,view:"",loaded:false,contacts:[],operators:[],contactSearch:"",operatorSearch:"",filter:"all",contactsReadOnly:true,operatorsReadOnly:true,dialog:null,saving:false};
+  const state = {uid:"",generation:0,request:0,view:"",loaded:false,contacts:[],operators:[],contactSearch:"",operatorSearch:"",filter:"all",contactsReadOnly:true,operatorsReadOnly:true,dialog:null,returnFocus:null,saving:false};
   function identity() {
     const auth=window.foodBrokerBaseAuth,user=auth?.getCurrentUser?.(),profile=auth?.getCurrentProfile?.();
     return user?.id && text(profile?.id)===text(user.id) && profile?.role==="product_support" && !auth?.isPasswordRecovery?.() ? text(user.id) : "";
@@ -48,18 +48,64 @@
       section.addEventListener("click",event=>{
         if(!allowed())return;
         const group=event.target.closest("[data-dir-group]");if(group){state.filter=group.dataset.dirGroup;renderContacts();return;}
+        const school=event.target.closest("[data-dir-open-school]");if(school){openSchool(school.dataset.dirOpenSchool,school);return;}
+        const person=event.target.closest("[data-dir-open-contact]");if(person){openContact(person.dataset.dirOpenContact,person);return;}
+        const operatorCard=event.target.closest("[data-dir-open-operator]");if(operatorCard){openOperator(operatorCard.dataset.dirOpenOperator,operatorCard);return;}
         const add=event.target.closest("[data-dir-add]");if(add){if(add.dataset.dirAdd==="contacts"&&!state.contactsReadOnly)editContact();if(add.dataset.dirAdd==="operators"&&!state.operatorsReadOnly)editOperator();return;}
-        const contact=event.target.closest("[data-dir-edit-contact]");if(contact){const key=contact.dataset.dirEditContact,operatorId=operatorContactSources.get(key);if(operatorId&&!state.operatorsReadOnly){const operator=state.operators.find(item=>item.id===operatorId);if(operator)editOperator(operator);}else if(!operatorId&&!state.contactsReadOnly){const person=state.contacts.find(person=>person.id===key);if(person)editContact(person);}return;}
+        const contact=event.target.closest("[data-dir-edit-contact]");if(contact){editDirectoryContact(contact.dataset.dirEditContact);return;}
         const operator=event.target.closest("[data-dir-edit-operator]");if(operator&&!state.operatorsReadOnly){const item=state.operators.find(item=>item.id===operator.dataset.dirEditOperator);if(item)editOperator(item);}
       });
     }
     return section;
   }
   function field(label,value) {return value===undefined || value===null || value==="" ? "" : '<div><dt>'+esc(label)+'</dt><dd>'+esc(Array.isArray(value)?value.map(text).join(", "):value)+'</dd></div>';}
-  function details(person) {
-    return '<dl class="ps-directory-details">'+field("Organization",person.organization)+field("Role",person.role)+field("Email",person.email)+field("Phone",person.phone)+(!person.email&&!person.phone?field("Contact",person.contact):"")+field("School",person.schoolName)+field("Groups",person.groups)+field("Location",person.location)+field("Address",person.address)+field("Website",person.website)+field("Notes",person.notes)+(person.extraFields||[]).map(item=>'<div><dt>'+esc(item.label || "Additional detail")+'</dt><dd>'+esc(item.value || "—")+'</dd></div>').join("")+'</dl>';
+  function detailFields(fields) {return fields.length?'<dl class="ps-directory-details">'+fields.map(item=>field(item.label,item.value)).join("")+'</dl>':"";}
+  function editDirectoryContact(key) {
+    if(!allowed()||state.saving)return;const operatorId=operatorContactSources.get(key);
+    if(operatorId&&!state.operatorsReadOnly){const operator=state.operators.find(item=>item.id===operatorId);if(operator)editOperator(operator);}
+    else if(!operatorId&&!state.contactsReadOnly){const person=state.contacts.find(person=>person.id===key);if(person)editContact(person);}
   }
-  function contactBody(person,editable=true) {const derived=operatorContactSources.has(person.id),canEdit=derived?!state.operatorsReadOnly:!state.contactsReadOnly;return '<article class="ps-directory-person"><div class="ps-directory-person-heading"><h3>'+esc(person.name || "School details")+'</h3>'+(editable&&canEdit?'<button type="button" class="ps-text" data-dir-edit-contact="'+esc(person.id)+'">'+(derived?'Edit operator contact':'Edit contact')+'</button>':"")+'</div>'+details(person)+'</article>';}
+  function contactBody(entry,title,editable=true,single=false) {
+    const person=entry.person,derived=operatorContactSources.has(person.id),canEdit=derived?!state.operatorsReadOnly:!state.contactsReadOnly;
+    const heading=single&&normal(person.name || person.organization)===normal(title)?"":'<h3>'+esc(person.name || "School details")+'</h3>';
+    return '<article class="ps-directory-view-person"><div class="ps-directory-person-heading"><div>'+heading+(person.role?'<p class="ps-directory-person-role">'+esc(person.role)+'</p>':"")+'</div>'+(editable&&canEdit?'<button type="button" class="ps-text" data-dir-edit-contact="'+esc(person.id)+'">'+(derived?'Edit operator contact':'Edit contact')+'</button>':"")+'</div>'+detailFields([{label:"Email",value:person.email},{label:"Phone",value:person.phone}].filter(item=>item.value))+detailFields(entry.fields)+'</article>';
+  }
+  function dismissDialog(element,restore=true) {
+    if(element.open)element.close();element.remove();if(state.dialog!==element)return;state.dialog=null;
+    const target=state.returnFocus;if(restore){state.returnFocus=null;restoreDirectoryFocus(target);}
+  }
+  function restoreDirectoryFocus(target) {
+    if(!allowed()||!target)return;let next=target;
+    if(!next.isConnected)for(const name of ["data-dir-open-school","data-dir-open-contact","data-dir-open-operator"]){const value=target.getAttribute(name);if(value!==null){next=[...document.querySelectorAll("["+name+"]")].find(node=>node.getAttribute(name)===value);break;}}
+    if(next?.isConnected)next.focus({preventScroll:true});
+  }
+  function openDetail(title,people,trigger,{fields=[],operator=null}={}) {
+    if(!allowed()||state.saving)return;if(state.dialog)dismissDialog(state.dialog,false);
+    const token=capture(),presentation=model.presentation(people,{title}),element=document.createElement("dialog");
+    element.className="ps-directory-dialog ps-directory-detail-dialog";element.dataset.supportDirectoryDialog="details";state.returnFocus=trigger || document.activeElement;
+    const comparable=value=>normal(value).replace(/s$/,"");
+    const notRepeated=item=>!fields.some(existing=>comparable(existing.label)===comparable(item.label)&&normal(existing.value)===normal(item.value));
+    const shared=presentation.fields.filter(notRepeated),shownPeople=presentation.people.map(entry=>({...entry,fields:entry.fields.filter(notRepeated)}));
+    const titleId="ps-directory-detail-title";element.setAttribute("aria-labelledby",titleId);
+    element.innerHTML='<div class="ps-directory-view-shell"><div class="ps-directory-dialog-heading"><h2 id="'+titleId+'">'+esc(title)+'</h2><button type="button" data-directory-close aria-label="Close">×</button></div><div class="ps-directory-view-content">'+detailFields(fields)+'<div class="ps-directory-view-people">'+shownPeople.map(entry=>contactBody(entry,title,!operator,shownPeople.length===1)).join("")+'</div>'+(shared.length?'<section class="ps-directory-shared-details" aria-label="Shared details"><h3>'+(!operator&&people.every(model.isSchool)?'School details':'Additional details')+'</h3>'+detailFields(shared)+'</section>':"")+(presentation.sources.length?'<div class="ps-directory-import-details"><button type="button" class="ps-text" data-directory-import aria-expanded="false" aria-controls="ps-directory-import-fields">Import details</button><div id="ps-directory-import-fields" data-directory-sources hidden>'+detailFields(presentation.sources)+'</div></div>':"")+'</div><div class="ps-directory-dialog-actions">'+(operator&&!state.operatorsReadOnly?'<button type="button" class="primary-action" data-dir-edit-operator="'+esc(operator.id)+'">Edit operator</button>':"")+'<button type="button" data-directory-close>Close</button></div></div>';
+    document.body.appendChild(element);state.dialog=element;
+    element.addEventListener("click",event=>{
+      if(!valid(token)||state.dialog!==element)return;
+      if(event.target.closest("[data-directory-close]")){dismissDialog(element);return;}
+      const source=event.target.closest("[data-directory-import]");if(source){const target=element.querySelector("[data-directory-sources]");target.hidden=!target.hidden;source.setAttribute("aria-expanded",String(!target.hidden));return;}
+      const contact=event.target.closest("[data-dir-edit-contact]");if(contact){const key=contact.dataset.dirEditContact;dismissDialog(element,false);editDirectoryContact(key);return;}
+      const edit=event.target.closest("[data-dir-edit-operator]");if(edit&&!state.operatorsReadOnly){const item=state.operators.find(item=>item.id===edit.dataset.dirEditOperator);if(item){dismissDialog(element,false);editOperator(item);}}
+    });
+    element.addEventListener("cancel",event=>{event.preventDefault();dismissDialog(element);});element.showModal();element.querySelector("[data-directory-close]").focus({preventScroll:true});
+  }
+  function openSchool(key,trigger) {const school=model.groupSchools(displayContacts()).find(item=>item.key===key);if(school)openDetail(school.name,school.contacts,trigger);}
+  function openContact(id,trigger) {const person=displayContacts().find(item=>item.id===id);if(person)openDetail(person.name || person.organization || "Contact",[person],trigger);}
+  function openOperator(id,trigger) {
+    const item=state.operators.find(operator=>operator.id===id);if(!item)return;
+    const fields=[["US Foods account",item.accountNumber],["Sysco account",item.syscoAccountNumber],["Locations",item.locations],["Address",item.address],["Website",item.website],["Delivery days",join(item.deliveryDays)],["US Foods sales reps",join(item.usfSalesRep)],["Sysco sales reps",join(item.syscoSalesRep)],["Notes",item.notes]].filter(([,value])=>value!=="").map(([label,value])=>({label,value}));
+    openDetail(item.operation || "Operator",operatorPeople(item),trigger,{fields,operator:item});
+  }
+  function preview(values) {return values.filter(Boolean).slice(0,3).join(" · ");}
   function displayContacts() {
     operatorContactSources.clear();
     const actual=state.contacts.filter(person=>!person.archivedAt),result=actual.map(person=>({...person,groups:person.groups.slice(),extraFields:person.extraFields.slice()})),seen=new Map(actual.map((person,index)=>[normal(person.name)+"\n"+normal(model.schoolName(person)),index]));
@@ -93,7 +139,8 @@
     const query=normal(state.contactSearch),people=directory.filter(person=>model.matchesGroup(person,state.filter)&&(!query||normal(model.searchText(person)).includes(query)));
     const schools=model.groupSchools(people),others=people.filter(person=>!model.isSchool(person));
     section.querySelector("[data-dir-count]").textContent=people.length+" contact"+(people.length===1?"":"s")+(schools.length?" · "+schools.length+" school"+(schools.length===1?"":"s"):"")+(state.loaded&&state.contactsReadOnly?" · View only":"");
-    section.querySelector("[data-dir-list]").innerHTML=schools.map(school=>'<details class="ps-directory-school"><summary><span><strong>'+esc(school.name)+'</strong><small>'+school.contacts.length+' contact'+(school.contacts.length===1?'':'s')+'</small></span></summary><div class="ps-directory-school-contacts">'+school.contacts.map(person=>contactBody(person)).join("")+'</div></details>').join("")+others.map(person=>'<details class="ps-directory-contact"><summary><span><strong>'+esc(person.name || person.organization || "Contact")+'</strong><small>'+esc([person.role,person.organization].filter(Boolean).join(" · "))+'</small></span></summary>'+contactBody(person)+'</details>').join("") || '<p class="ps-empty">'+(state.loaded?'No contacts match these choices.':'Loading the shared contacts…')+'</p>';
+    const allSchools=new Map(model.groupSchools(directory).map(school=>[school.key,school]));
+    section.querySelector("[data-dir-list]").innerHTML=schools.map(match=>{const school=allSchools.get(match.key)||match;return '<button type="button" class="ps-directory-card ps-directory-school" data-dir-open-school="'+esc(school.key)+'" aria-haspopup="dialog"><span class="ps-directory-card-title">'+esc(school.name)+'</span><span class="ps-directory-card-count">'+school.contacts.length+' contact'+(school.contacts.length===1?'':'s')+'</span><span class="ps-directory-card-preview">'+esc(preview(school.contacts.map(person=>person.name || person.role)))+(school.contacts.length>3?' …':"")+'</span><span class="ps-directory-card-action">View contacts <span aria-hidden="true">›</span></span></button>';}).join("")+others.map(person=>'<button type="button" class="ps-directory-card ps-directory-contact" data-dir-open-contact="'+esc(person.id)+'" aria-haspopup="dialog"><span class="ps-directory-card-title">'+esc(person.name || person.organization || "Contact")+'</span><span class="ps-directory-card-meta">'+esc(preview([person.role,normal(person.organization)===normal(person.name)?"":person.organization]))+'</span><span class="ps-directory-card-preview">'+esc(person.email || person.phone || "")+'</span><span class="ps-directory-card-action">View contact <span aria-hidden="true">›</span></span></button>').join("") || '<p class="ps-empty">'+(state.loaded?'No contacts match these choices.':'Loading the shared contacts…')+'</p>';
     section.querySelector("[data-dir-add]").hidden=!state.loaded||state.contactsReadOnly;
   }
   function safeOperator(value) {
@@ -107,7 +154,7 @@
     if(!allowed())return;const section=ensure("operators");if(!section)return;
     section.querySelector("[data-dir-search]").value=state.operatorSearch;const query=normal(state.operatorSearch),items=state.operators.filter(item=>!query||normal(operatorSearch(item)).includes(query));
     section.querySelector("[data-dir-count]").textContent=items.length+" operator"+(items.length===1?"":"s")+(state.loaded&&state.operatorsReadOnly?" · View only":"");
-    section.querySelector("[data-dir-list]").innerHTML=items.map(item=>'<details class="ps-directory-operator"><summary><span><strong>'+esc(item.operation || "Operator")+'</strong><small>'+esc([item.locations,item.address,operatorPeople(item).length+" contacts"].filter(Boolean).join(" · "))+'</small></span></summary><div class="ps-directory-operator-body">'+(!state.operatorsReadOnly?'<button type="button" class="ps-text" data-dir-edit-operator="'+esc(item.id)+'">Edit operator</button>':"")+'<dl class="ps-directory-details">'+[["US Foods account",item.accountNumber],["Sysco account",item.syscoAccountNumber],["Locations",item.locations],["Address",item.address],["Website",item.website],["Delivery days",item.deliveryDays],["US Foods sales reps",item.usfSalesRep],["Sysco sales reps",item.syscoSalesRep],["Notes",item.notes]].map(([name,value])=>field(name,value)).join("")+'</dl><div class="ps-directory-operator-contacts">'+operatorPeople(item).map(person=>contactBody(person,false)).join("")+'</div></div></details>').join("") || '<p class="ps-empty">'+(state.loaded?'No operators match this search.':'Loading the shared operators…')+'</p>';
+    section.querySelector("[data-dir-list]").innerHTML=items.map(item=>'<button type="button" class="ps-directory-card ps-directory-operator" data-dir-open-operator="'+esc(item.id)+'" aria-haspopup="dialog"><span class="ps-directory-card-title">'+esc(item.operation || "Operator")+'</span><span class="ps-directory-card-count">'+operatorPeople(item).length+' contact'+(operatorPeople(item).length===1?'':'s')+'</span><span class="ps-directory-card-preview">'+esc(preview([item.locations,item.address]))+'</span><span class="ps-directory-card-action">View operator <span aria-hidden="true">›</span></span></button>').join("") || '<p class="ps-empty">'+(state.loaded?'No operators match this search.':'Loading the shared operators…')+'</p>';
     section.querySelector("[data-dir-add]").hidden=!state.loaded||state.operatorsReadOnly;
   }
   function render() {renderContacts();renderOperators();}
@@ -127,7 +174,7 @@
   function refresh() {if(allowed()&&(state.loaded||["contacts","operators"].includes(state.view)))return load();}
   function clear() {
     state.generation++;state.request++;state.uid="";state.loaded=false;state.contacts=[];state.operators=[];state.contactSearch="";state.operatorSearch="";state.filter="all";state.view="";state.contactsReadOnly=true;state.operatorsReadOnly=true;state.saving=false;operatorContactSources.clear();
-    if(state.dialog){state.dialog.remove();state.dialog=null;}["psContacts","psOperators"].forEach(id=>$(id)?.replaceChildren());
+    if(state.dialog){state.dialog.remove();state.dialog=null;}state.returnFocus=null;["psContacts","psOperators"].forEach(id=>$(id)?.replaceChildren());
   }
   function input(name,title,value="",wide=false,type="text") {return '<label'+(wide?' class="ps-directory-wide"':'')+'><span>'+esc(title)+'</span><input name="'+esc(name)+'" type="'+esc(type)+'" value="'+esc(value)+'" /></label>';}
   function area(name,title,value="",rows=2) {return '<label class="ps-directory-wide"><span>'+esc(title)+'</span><textarea name="'+esc(name)+'" rows="'+rows+'">'+esc(value)+'</textarea></label>';}
@@ -143,11 +190,11 @@
     const normalized=model.normalizeContact(source),result={};for(const key of contactFields)if(key!=="id"||normalized.id)result[key]=normalized[key];return result;
   }
   function dialog(title,kind) {
-    if(state.dialog)state.dialog.remove();const element=document.createElement("dialog");element.className="ps-directory-dialog";element.dataset.supportDirectoryDialog=kind;
+    if(state.dialog)dismissDialog(state.dialog,false);state.returnFocus=state.returnFocus || document.activeElement;const element=document.createElement("dialog");element.className="ps-directory-dialog";element.dataset.supportDirectoryDialog=kind;
     element.innerHTML='<form><div class="ps-directory-dialog-heading"><h2>'+esc(title)+'</h2><button type="button" data-directory-close aria-label="Close">×</button></div><div data-directory-form-body></div><p data-dir-status class="ps-status" role="status" aria-live="polite"></p><details data-dir-error class="ps-error" hidden><summary>Error details</summary><pre></pre></details><div class="ps-directory-dialog-actions"><button type="button" data-directory-close>Cancel</button><button type="submit" class="primary-action">Save '+kind+'</button></div></form>';
     document.body.appendChild(element);state.dialog=element;
-    element.addEventListener("click",event=>{if(event.target.closest("[data-directory-close]")){if(!state.saving){element.close();element.remove();if(state.dialog===element)state.dialog=null;}return;}const remove=event.target.closest("[data-remove-extra]");if(remove){remove.closest(".ps-directory-extra-row").remove();return;}const add=event.target.closest("[data-add-extra]");if(add){add.closest(".ps-directory-extra-fields").querySelector("[data-extra-rows]").insertAdjacentHTML("beforeend",extraRows([{label:"",value:""}]));return;}if(event.target.closest("[data-remove-operator-contact]")){event.target.closest(".ps-directory-contact-editor").remove();return;}if(event.target.closest("[data-add-operator-contact]")){element.querySelector("[data-operator-more-contacts]").insertAdjacentHTML("beforeend",nestedEditor(model.normalizeContact({}),"",true));}});
-    element.addEventListener("cancel",event=>{if(state.saving){event.preventDefault();return;}element.remove();if(state.dialog===element)state.dialog=null;});
+    element.addEventListener("click",event=>{if(event.target.closest("[data-directory-close]")){if(!state.saving)dismissDialog(element);return;}const remove=event.target.closest("[data-remove-extra]");if(remove){remove.closest(".ps-directory-extra-row").remove();return;}const add=event.target.closest("[data-add-extra]");if(add){add.closest(".ps-directory-extra-fields").querySelector("[data-extra-rows]").insertAdjacentHTML("beforeend",extraRows([{label:"",value:""}]));return;}if(event.target.closest("[data-remove-operator-contact]")){event.target.closest(".ps-directory-contact-editor").remove();return;}if(event.target.closest("[data-add-operator-contact]")){element.querySelector("[data-operator-more-contacts]").insertAdjacentHTML("beforeend",nestedEditor(model.normalizeContact({}),"",true));}});
+    element.addEventListener("cancel",event=>{event.preventDefault();if(!state.saving)dismissDialog(element);});
     return element;
   }
   function busy(element,value) {state.saving=value;element.querySelectorAll("input,select,textarea,button").forEach(control=>{control.disabled=value;});}
@@ -159,7 +206,7 @@
       if(!valid(token)||state.dialog!==element)return;if(error)throw error;if(!data||typeof data!=="object"||!text(data.id))throw new Error("The save response was incomplete. Refresh the directory to confirm the saved record before trying again.");
       const saved=kind==="contact"?model.normalizeContact(data):safeOperator(data),collection=kind==="contact"?"contacts":"operators";
       state[collection]=state[collection].some(item=>item.id===saved.id)?state[collection].map(item=>item.id===saved.id?saved:item):[...state[collection],saved];
-      state.saving=false;element.close();element.remove();state.dialog=null;render();setStatus(ensure(kind==="contact"?"contacts":"operators"),"Saved");
+      state.saving=false;dismissDialog(element,false);render();const target=state.returnFocus;state.returnFocus=null;restoreDirectoryFocus(target);setStatus(ensure(kind==="contact"?"contacts":"operators"),"Saved");
     }catch(error){if(valid(token)&&state.dialog===element){busy(element,false);setStatus(element,message(error),"error",error);}}
   }
   function editContact(existing=null) {

@@ -100,3 +100,53 @@
   .contact-extra-field label { grid-column:1; }
   .contact-extra-field>button { grid-column:2;grid-row:1/3;align-self:center; }
 }
+
+/* Directory cards show a quick scan; full contact details open in a dialog. */
+#otherContactsView #peopleContactsPanel { display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));align-content:start;align-items:stretch;overflow:auto;padding:8px 4px; }
+#peopleContactsPanel .contact-directory-card { position:relative;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;gap:5px;width:100%;min-width:0;min-height:98px;padding:14px 34px 14px 14px;border:1px solid #b3cbd9;border-left:4px solid #50869e;border-radius:9px;background:#f9fcff;color:#203f52;box-shadow:0 1px 3px #24445912;text-align:left;white-space:normal;cursor:pointer; }
+#peopleContactsPanel .contact-directory-card:hover { background:#edf6fa;border-color:#50869e;box-shadow:0 2px 6px #24445920; }
+#peopleContactsPanel .contact-directory-card:focus-visible { outline:3px solid #32627e;outline-offset:2px; }
+#peopleContactsPanel .contact-school-card { background:#f4fbf7;border-color:#b5d2c7;border-left-color:#358276;color:#245b50; }
+#peopleContactsPanel .contact-school-card:hover { background:#e5f3ec;border-color:#358276; }
+.contact-directory-card strong { font-size:15px;line-height:1.35;overflow-wrap:anywhere; }
+.contact-card-kind { font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#4b7467; }
+.contact-card-preview,.contact-card-communication { font-size:12px;font-weight:400;line-height:1.4;color:#536b78;overflow-wrap:anywhere; }
+.contact-card-communication { color:#315d76; }
+.contact-card-open { position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:27px;font-weight:400;line-height:1;color:#5d8494; }
+.contact-view-dialog { width:min(780px,calc(100vw - 28px));max-width:calc(100vw - 28px);max-height:90dvh;box-sizing:border-box;overflow:auto; }
+.contact-view-dialog .note-form { padding:18px; }
+.contact-view-dialog .form-header { margin-bottom:12px; }
+.contact-view-dialog .form-header h2 { font-size:23px;line-height:1.25;overflow-wrap:anywhere; }
+.contact-view-dialog [hidden] { display:none!important; }
+.contact-view-intro { display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;color:#527269;font-size:12px; }
+.contact-view-intro>span { font-weight:700; }
+.contact-view-intro p { margin:0; }
+.contact-view-people { display:grid;gap:12px; }
+.contact-view-person { padding:14px;border:1px solid #d1dfda;border-radius:9px;background:#fffefa;min-width:0; }
+.contact-view-person>header { display:flex;justify-content:space-between;align-items:flex-start;gap:12px; }
+.contact-view-person h3 { margin:0;color:#244e46;font-size:16px;line-height:1.35;overflow-wrap:anywhere; }
+.contact-view-role { margin:3px 0 0;color:#596d65;font-size:12px;line-height:1.4;overflow-wrap:anywhere; }
+.contact-view-person .contact-card-actions { flex-direction:row; }
+.contact-view-communication { display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px 16px;margin-top:10px; }
+.contact-view-communication>div { display:grid;gap:3px;min-width:0; }
+.contact-view-communication span { color:#677c73;font-size:10px;font-weight:700; }
+.contact-view-communication strong { font-size:13px;font-weight:600;line-height:1.4;overflow-wrap:anywhere; }
+.contact-view-communication a { color:#285f74;text-underline-offset:3px; }
+.contact-view-dialog .contact-detail-list { margin:12px 0;gap:8px; }
+.contact-view-dialog .contact-detail-list>div { grid-template-columns:minmax(100px,.6fr) minmax(0,1.4fr); }
+.contact-view-dialog .contact-detail-list dd { font-size:13px; }
+.contact-view-import { margin-top:14px;padding-top:10px;border-top:1px solid #dae4df; }
+.contact-view-dialog .contact-view-import>button.ghost-action { min-height:30px;padding:4px 8px;border:0;box-shadow:none;background:transparent;color:#527269;font-size:12px;text-decoration:underline;text-underline-offset:3px; }
+.contact-view-import [data-contact-import-details] { padding:0 8px; }
+.contact-view-footer { display:flex;justify-content:flex-end;margin-top:16px; }
+@media (max-width:650px) {
+  #otherContactsView #peopleContactsPanel { grid-template-columns:1fr; }
+  .contact-view-dialog .note-form { padding:13px; }
+  .contact-view-dialog .form-header h2 { font-size:20px; }
+  .contact-view-person { padding:11px; }
+  .contact-view-communication { grid-template-columns:1fr; }
+  .contact-view-dialog .contact-detail-list>div { grid-template-columns:1fr;gap:3px; }
+}
+
+.contact-view-common { margin-top:16px; }
+.contact-view-common>h3 { margin:0;color:#527269;font-size:13px;font-weight:700; }

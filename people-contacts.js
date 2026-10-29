@@ -89,15 +89,62 @@ function isSchoolContact(person) {
 function contactMatchesFilter(person, filter = activeContactFilter) {
   return window.foodBrokerContactDirectory.matchesGroup(person,filter);
 }
-function renderContactDetails(person,schoolContext = '') {
-  const model=window.foodBrokerContactDirectory;
-  const same=(a,b)=>normalizeOperatorKey(a)===normalizeOperatorKey(b),groups=model.groupsFor(person).filter(group=>!schoolContext || !['school','operator / restaurant','other'].includes(normalizeOperatorKey(group)));
-  const rows=[['Organization',schoolContext && same(person.organization,schoolContext)?'':person.organization],['School',schoolContext || same(person.schoolName,person.organization)?'':person.schoolName],['Role',schoolContext?'':person.role],['Email',person.email],['Phone',person.phone],['Location',person.location],['Address',person.address],['Website',person.website],['Groups',groups.join(', ')],['Notes',person.notes],...(person.extraFields || []).map(field=>[field.label,field.value])].filter(([,value])=>value!=='' && value!=null);
-  return '<dl class="contact-detail-list">'+rows.map(([label,value])=>'<div><dt>'+escapeHtml(label)+'</dt><dd>'+escapeHtml(String(value))+'</dd></div>').join('')+'</dl>';
-}
 function renderContactActions(person) {
   return `<div class="contact-card-actions"><button class="contact-icon-action" type="button" data-edit-person-key="${escapeAttribute(peopleContactKey(person))}" aria-label="Edit ${escapeAttribute(peopleContactDisplayName(person))}" title="Edit contact">${icons.edit}</button><button type="button" class="contact-icon-action contact-delete" data-delete-person-key="${escapeAttribute(peopleContactKey(person))}" aria-label="Delete ${escapeAttribute(peopleContactDisplayName(person))}" title="Delete contact">${icons.trash}</button></div>`;
 }
+let peopleContactViewDialog = null;
+function closePeopleContactView() {
+  const dialog = peopleContactViewDialog;
+  peopleContactViewDialog = null;
+  if (!dialog) return;
+  if (dialog.open) dialog.close();
+  dialog.replaceChildren();
+  dialog.remove();
+}
+function renderContactViewFields(fields = []) {
+  return fields.length ? '<dl class="contact-detail-list">'+fields.map(field=>'<div><dt>'+escapeHtml(field.label)+'</dt><dd>'+escapeHtml(String(field.value))+'</dd></div>').join('')+'</dl>' : '';
+}
+function renderContactCommunication(person) {
+  const values = [['Email',person.email],['Phone',person.phone]];
+  return values.filter(([,value])=>value).map(([label,value])=>{
+    const email=label==='Email' && /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(value);
+    const shown=email?'<a href="mailto:'+escapeAttribute(encodeURIComponent(value))+'">'+escapeHtml(value)+'</a>':escapeHtml(value);
+    return '<div><span>'+escapeHtml(label)+'</span><strong>'+shown+'</strong></div>';
+  }).join('');
+}
+function openPeopleContactView(key,school = false) {
+  const model=window.foodBrokerContactDirectory,directory=getPeopleDirectory();
+  const group=school?model.groupSchools(directory).find(item=>item.key===key):null;
+  const person=school?null:directory.find(item=>peopleContactKey(item)===key);
+  const people=group?group.contacts:person?[person]:[];
+  if (!people.length) return;
+  closePeopleContactView();
+  const title=group?group.name:peopleContactDisplayName(person),view=model.presentation(people,{title});
+  const dialog=createVisitDialog(title);dialog.classList.add('contact-view-dialog');dialog.dataset.peopleContactView='true';peopleContactViewDialog=dialog;
+  const body=dialog.querySelector('[data-visit-entry-body]');
+  body.innerHTML='<div class="contact-view-intro"><span>'+(school?'School contacts':escapeHtml(person.category && !['Other','Operator / Restaurant'].includes(person.category)?person.category:'Contact'))+'</span>'+(school?'<p>'+people.length+' contact'+(people.length===1?'':'s')+'</p>':'')+'</div>'+'<div class="contact-view-people">'+view.people.map(item=>{
+    const p=item.person;
+    return '<article class="contact-view-person"><header><div>'+(school?'<h3>'+escapeHtml(peopleContactDisplayName(p))+'</h3>':'')+(p.role?'<p class="contact-view-role">'+escapeHtml(p.role)+'</p>':'')+'</div>'+renderContactActions(p)+'</header><div class="contact-view-communication">'+renderContactCommunication(p)+'</div>'+renderContactViewFields(item.fields)+'</article>';
+  }).join('')+'</div>'+(view.fields.length?'<section class="contact-view-common"><h3>'+(school?'School details':'Additional details')+'</h3>'+renderContactViewFields(view.fields)+'</section>':'')+(view.sources.length?'<div class="contact-view-import"><button type="button" class="ghost-action" data-contact-import-toggle aria-expanded="false">Import details</button><div data-contact-import-details hidden>'+renderContactViewFields(view.sources)+'</div></div>':'')+'<div class="contact-view-footer"><button type="button" class="ghost-action" data-contact-view-close>Close</button></div>';
+  body.querySelector('[data-contact-view-close]').onclick=closePeopleContactView;
+  body.querySelector('[data-contact-import-toggle]')?.addEventListener('click',event=>{
+    const open=event.currentTarget.getAttribute('aria-expanded')!=='true';
+    event.currentTarget.setAttribute('aria-expanded',String(open));
+    body.querySelector('[data-contact-import-details]').hidden=!open;
+  });
+  body.querySelectorAll('[data-edit-person-key]').forEach(button=>button.onclick=()=>{
+    const selected=getPeopleDirectory().find(item=>peopleContactKey(item)===button.dataset.editPersonKey);
+    closePeopleContactView();if(selected)openPeopleContactForm(selected);
+  });
+  body.querySelectorAll('[data-delete-person-key]').forEach(button=>button.onclick=()=>{
+    const selected=button.dataset.deletePersonKey;
+    deletePeopleContact(selected);
+    if(!getPeopleDirectory().some(item=>peopleContactKey(item)===selected))closePeopleContactView();
+  });
+  dialog.addEventListener('close',()=>{if(peopleContactViewDialog===dialog)peopleContactViewDialog=null;dialog.replaceChildren();dialog.remove();});
+  dialog.showModal();
+}
+window.addEventListener('foodbrokerbase:workspace-leaving',closePeopleContactView,true);
 function renderContactGroupButtons(directory) {
   const toolbar=document.querySelector('.contact-filter-buttons');
   if(!toolbar)return;
@@ -109,24 +156,25 @@ function renderContactGroupButtons(directory) {
   [...groups.values()].sort((a,b)=>a.localeCompare(b)).forEach(group=>{const button=document.createElement('button');button.type='button';button.dataset.contactFilter='group:'+group;button.dataset.contactCustom='true';button.textContent=group;button.setAttribute('aria-pressed',String(button.dataset.contactFilter===activeContactFilter));toolbar.append(button);});
 }
 function renderPeopleContacts() {
-  const panel = document.querySelector('#peopleContactsPanel');
-  if (!panel) return;
-  const openSchools=new Set([...panel.querySelectorAll('[data-school-key][open]')].map(node=>node.dataset.schoolKey));
-  const openPeople=new Set([...panel.querySelectorAll('[data-person-key][open]')].map(node=>node.dataset.personKey));
-  const query = normalizeOperatorKey(document.querySelector('#peopleContactSearch')?.value || '');
+  const panel=document.querySelector('#peopleContactsPanel');
+  if(!panel)return;
+  const query=normalizeOperatorKey(document.querySelector('#peopleContactSearch')?.value || '');
   const directory=getPeopleDirectory(),model=window.foodBrokerContactDirectory;
   renderContactGroupButtons(directory);
-  const people = directory.filter(person => person.category !== 'Operator / Restaurant' || activeContactFilter === 'school' && isSchoolContact(person)).filter(person => contactMatchesFilter(person)).filter(person => normalizeOperatorKey(model.searchText(person)).includes(query));
-  document.querySelectorAll('[data-contact-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.contactFilter === activeContactFilter)));
-  const count = document.getElementById('contactMatchCount');
-  const schools=model.groupSchools(people.filter(isSchoolContact)),others=people.filter(person=>!isSchoolContact(person));
-  if (count) count.textContent = people.length + (people.length === 1 ? ' contact' : ' contacts')+(schools.length?' · '+schools.length+' school'+(schools.length===1?'':'s'):'');
-  panel.innerHTML = schools.map(school=>`<details class="school-contact-group" data-school-key="${escapeAttribute(school.key)}"${openSchools.has(school.key)||query?' open':''}><summary><strong>${escapeHtml(school.name)}</strong><span>${school.contacts.length} contact${school.contacts.length===1?'':'s'}</span></summary><div class="school-contact-people">${school.contacts.map(person=>`<article class="school-contact-person"><header><div><h3>${escapeHtml(person.name || 'School details')}</h3><p>${escapeHtml(person.role || 'Contact')}</p></div>${renderContactActions(person)}</header>${renderContactDetails(person,school.name)}</article>`).join('')}</div></details>`).join('')+others.map(person=>`<article class="person-contact-card"><details class="contact-person-details" data-person-key="${escapeAttribute(peopleContactKey(person))}"${openPeople.has(peopleContactKey(person))?' open':''}><summary class="contact-card-summary"><strong>${escapeHtml(person.name)}</strong><span>${escapeHtml([person.role,person.organization].filter(Boolean).join(' · '))}</span></summary>${renderContactDetails(person)}</details>${renderContactActions(person)}</article>`).join('') || '<p>No matching people. Add a contact to save their details.</p>';
-  const deleted = peopleContacts.filter(person => person.archivedAt);
-  if (deleted.length) panel.insertAdjacentHTML('beforeend', '<details class="deleted-contacts"><summary>Deleted contacts (' + deleted.length + ')</summary>' + deleted.map(person => `<div><span>${escapeHtml(person.name)} · ${escapeHtml(person.organization)}</span><button type="button" class="edit-card" data-restore-person="${escapeAttribute(person.id)}">Restore</button></div>`).join('') + '</details>');
-  panel.querySelectorAll('[data-delete-person-key]').forEach(button => button.onclick = () => deletePeopleContact(button.dataset.deletePersonKey));
-  panel.querySelectorAll('[data-restore-person]').forEach(button => button.onclick = () => { peopleContacts = peopleContacts.map(person => person.id === button.dataset.restorePerson ? {...person, archivedAt:'', updatedAt:new Date().toISOString()} : person); persistPeopleContacts(); });
-  panel.querySelectorAll('[data-edit-person-key]').forEach(button => button.onclick = () => openPeopleContactForm(getPeopleDirectory().find(person => peopleContactKey(person) === button.dataset.editPersonKey)));
+  const people=directory.filter(person=>person.category!=='Operator / Restaurant' || activeContactFilter==='school' && isSchoolContact(person)).filter(person=>contactMatchesFilter(person)).filter(person=>normalizeOperatorKey(model.searchText(person)).includes(query));
+  document.querySelectorAll('[data-contact-filter]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.contactFilter===activeContactFilter)));
+  const schools=model.groupSchools(people.filter(isSchoolContact)),fullSchools=new Map(model.groupSchools(directory).map(school=>[school.key,school])),others=people.filter(person=>!isSchoolContact(person));
+  const count=document.getElementById('contactMatchCount');
+  if(count)count.textContent=people.length+(people.length===1?' contact':' contacts')+(schools.length?' · '+schools.length+' school'+(schools.length===1?'':'s'):'');
+  panel.innerHTML=schools.map(match=>{
+    const school=fullSchools.get(match.key) || match,names=school.contacts.map(person=>person.name).filter(Boolean),preview=names.slice(0,2).join(' · ')+(names.length>2?' +'+(names.length-2)+' more':'');
+    return '<button class="contact-directory-card contact-school-card" type="button" data-open-school-key="'+escapeAttribute(school.key)+'" aria-haspopup="dialog" aria-label="View contacts for '+escapeAttribute(school.name)+'"><span class="contact-card-kind">School · '+school.contacts.length+' contact'+(school.contacts.length===1?'':'s')+'</span><strong>'+escapeHtml(school.name)+'</strong>'+(preview?'<span class="contact-card-preview">'+escapeHtml(preview)+'</span>':'')+'<span class="contact-card-open" aria-hidden="true">›</span></button>';
+  }).join('')+others.map(person=>'<button class="contact-directory-card" type="button" data-open-person-key="'+escapeAttribute(peopleContactKey(person))+'" aria-haspopup="dialog" aria-label="View '+escapeAttribute(peopleContactDisplayName(person))+'"><strong>'+escapeHtml(peopleContactDisplayName(person))+'</strong><span class="contact-card-preview">'+escapeHtml([person.role,normalizeOperatorKey(person.organization)!==normalizeOperatorKey(peopleContactDisplayName(person))?person.organization:''].filter(Boolean).join(' · '))+'</span>'+(person.email || person.phone?'<span class="contact-card-communication">'+escapeHtml(person.email || person.phone)+'</span>':'')+'<span class="contact-card-open" aria-hidden="true">›</span></button>').join('') || '<p>No matching people. Add a contact to save their details.</p>';
+  const deleted=peopleContacts.filter(person=>person.archivedAt);
+  if(deleted.length)panel.insertAdjacentHTML('beforeend','<details class="deleted-contacts"><summary>Deleted contacts ('+deleted.length+')</summary>'+deleted.map(person=>'<div><span>'+escapeHtml(peopleContactDisplayName(person))+' · '+escapeHtml(person.organization)+'</span><button type="button" class="edit-card" data-restore-person="'+escapeAttribute(person.id)+'">Restore</button></div>').join('')+'</details>');
+  panel.querySelectorAll('[data-open-school-key]').forEach(button=>button.onclick=()=>openPeopleContactView(button.dataset.openSchoolKey,true));
+  panel.querySelectorAll('[data-open-person-key]').forEach(button=>button.onclick=()=>openPeopleContactView(button.dataset.openPersonKey));
+  panel.querySelectorAll('[data-restore-person]').forEach(button=>button.onclick=()=>{peopleContacts=peopleContacts.map(person=>person.id===button.dataset.restorePerson?{...person,archivedAt:'',updatedAt:new Date().toISOString()}:person);persistPeopleContacts();});
 }
 
 function deletePeopleContact(key) {
