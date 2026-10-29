@@ -7,7 +7,7 @@
   <title>Product Support · FoodBrokerBase</title>
   <link rel="icon" href="broker-whiteboard-logo.png" />
   <link rel="stylesheet" href="product-support.css?v=20261026-adminnumbers1" />
-<link rel="stylesheet" href="account-settings.css?v=20261023-account1" /><link rel="stylesheet" href="support-directory.css?v=20261029-contactcards1" /></head>
+<link rel="stylesheet" href="account-settings.css?v=20261023-account1" /><link rel="stylesheet" href="support-directory.css?v=20261029-contactcards1" /><link rel="stylesheet" href="print-center-navigation.css?v=20261029-printnavigation1" /></head>
 <body data-product-support-page>
   <div class="app-shell">
     <header class="topbar">
@@ -52,20 +52,52 @@
       </section>
       <section id="psContacts" hidden aria-label="Shared contacts"></section><section id="psOperators" hidden aria-label="Shared operators"></section><section id="psPrinting" aria-labelledby="psPrintingTitle" hidden>
         <div class="ps-section-heading"><div><h2 id="psPrintingTitle">Print center</h2><p>Labels, product lists, and presentation cards in one place.</p></div></div>
+        <div class="pc-navigation">
+          <h3 class="pc-step-heading">1. Choose what to print</h3>
+          <div class="pc-mode-bar" role="group" aria-label="Choose how to find products to print">
+            <button type="button" class="pc-mode-option" data-psp-mode="products" aria-pressed="true"><strong>Products</strong><small>Choose one product or several</small></button>
+            <button type="button" class="pc-mode-option" data-psp-mode="event" aria-pressed="false"><strong>From an event</strong><small>Use a visit, test kitchen or foodshow</small></button>
+          </div>
+          <section id="pspCatalogPanel" class="pc-source-panel" aria-label="Find products to print">
+            <div class="pc-catalog-toolbar">
+              <label class="pc-search"><span>Search products</span><input id="pspSearch" type="search" placeholder="Product, brand, MF#, APN or SUPC…" /></label>
+              <label><span>Product list</span><select id="pspCollection"><option value="stock">Stocked products</option><option value="new">New products</option></select></label>
+              <label><span>Distributor</span><select id="pspDistributor"><option value="">All distributors</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales">Quality Sales</option><option value="other">Other</option></select></label>
+              <label class="pc-vendor-select"><span>Vendor</span><select id="pspVendor"><option value="">All vendors</option></select></label>
+            </div>
+            <div class="pc-catalog-layout">
+              <aside class="pc-vendors"><h3>Vendors</h3><div id="pspVendorButtons"></div></aside>
+              <div class="pc-catalog-main">
+                <div class="pc-catalog-actions"><span id="pspCount" role="status" aria-live="polite"></span><button id="pspSelectedOnly" type="button" class="ps-text" aria-pressed="false">Selected only</button><button id="pspSelectShown" type="button" class="ps-text">Select shown</button><button id="pspClearSelection" type="button" class="ps-text">Clear selection</button></div>
+                <div id="pspProductList" class="pc-catalog-products"></div>
+                <button id="pspLoadMore" type="button" class="ps-text" hidden>Load more products</button>
+              </div>
+            </div>
+          </section>
+          <section id="pspEventPanel" class="pc-event-panel" aria-label="Choose an event product lineup" hidden>
+            <label><span>Event or visit</span><select id="pspEventPicker"><option value="event:">Choose an upcoming event…</option></select></label>
+            <p class="ps-hint">Upcoming and ongoing events only. Choose which products from the lineup to print.</p>
+        <section id="psPrintProducts" class="ps-print-products pc-event-products">
+          <h3 class="pc-event-selection-heading">Event products <span id="psPrintProductCount" role="status" aria-live="polite"></span></h3>
+          <div class="ps-print-product-toolbar"><label class="ps-print-product-search"><span class="ps-print-sr-only">Find a product in this print job</span><input id="psPrintProductSearch" type="search" placeholder="Find a product in this print job…" /></label><button id="psPrintSelectAll" type="button" class="ps-text">Select all</button><button id="psPrintSelectNone" type="button" class="ps-text">Clear</button></div>
+          <div id="psPrintProductList" class="ps-print-product-list"></div>
+        </section>
+          </section>
+          <div class="pc-selected-summary"><strong id="pspSelectedCount" role="status" aria-live="polite">0 products selected</strong><span>Your choices stay selected when you change vendors or search.</span></div>
+          <p id="pspEmptySelection" class="pc-empty-job">Choose products above to start a print job.</p>
+        </div>
+        <div class="pc-format-panel">
+          <h3 class="pc-step-heading">2. Format &amp; print</h3>
         <div class="ps-print-options">
-          <label><span>Products to print</span><select id="psPrintSource"><option value="selected">Selected products</option><option value="shown">Current product search</option></select></label>
+          <label hidden aria-hidden="true"><span>Print source</span><select id="psPrintSource" tabindex="-1"><option value="selected">Selected products</option><option value="shown">Current product search</option><option value="event:">Choose an upcoming event…</option></select></label>
           <label><span>Format</span><select id="psPrintFormat"><option value="list">Product list</option><option value="labels">Sample bag labels · 4 × 2 in (Avery 8163)</option><option value="cards">4 × 6 inch presentation cards</option></select></label>
           <label data-print-document><span>Distributor logo</span><select id="psPrintLogo"><option value="none">No distributor logo</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales">Quality Sales</option></select></label>
           <label data-print-document><span>Heading</span><input id="psPrintHeading" value="Product presentation" maxlength="120" /></label>
-          <label data-print-document><span>Copies of each label</span><input id="psPrintCopies" type="number" min="1" max="20" value="1" /></label>
+          <label data-print-document><span>Copies of each card</span><input id="psPrintCopies" type="number" min="1" max="20" value="1" /></label>
           <button type="button" id="psPreparePrint" class="primary-action">Preview layout</button>
         </div>
         <p id="psPrintSummary" class="ps-hint"></p><p class="ps-hint">Labels use Letter paper at 100% / actual size. Presentation cards are 6 inches wide × 4 inches tall. Check a plain-paper sheet before using label stock.</p>
-        <details id="psPrintProducts" class="ps-print-products" open>
-          <summary>Choose products to print <span id="psPrintProductCount" role="status" aria-live="polite"></span></summary>
-          <div class="ps-print-product-toolbar"><label class="ps-print-product-search"><span class="ps-print-sr-only">Find a product in this print job</span><input id="psPrintProductSearch" type="search" placeholder="Find a product in this print job…" /></label><button id="psPrintSelectAll" type="button" class="ps-text">Select all</button><button id="psPrintSelectNone" type="button" class="ps-text">Clear</button></div>
-          <div id="psPrintProductList" class="ps-print-product-list"></div>
-        </details>
+
         <div id="psBagQuantity" class="ps-bag-quantity"><span>Labels for selected products</span><div class="ps-bag-quantity-buttons" role="group" aria-label="Labels for selected products"><button id="psBagOneEach" type="button" aria-pressed="true">1 per product</button><button id="psBagFullSheet" type="button" aria-pressed="false">10 per product</button></div><small>Automatic fitting is on for every selected product. Change quantities in Label setup.</small></div>
         <details id="psPrintErrors" class="ps-print-errors" hidden><summary>Last print error</summary><pre id="psPrintErrorDetails"></pre><div class="ps-print-error-actions"><button id="psPrintCopyError" type="button">Copy error details</button><button id="psPrintDismissError" type="button" class="ps-text">Dismiss</button></div><p id="psPrintCopyStatus" role="status" aria-live="polite"></p></details>
         <div id="psPrintLayout" class="ps-print-layout">
@@ -83,6 +115,7 @@
             <p id="psBagHelp" class="ps-hint">Preview the full sheet to check each label before printing.</p>
           </aside>
           <div id="psPrintPreview" class="ps-print-preview"><p class="ps-empty">Choose products, then select Preview layout.</p></div>
+        </div>
         </div>
       </section>
     </main>
@@ -115,6 +148,6 @@
   <script src="product-bag-labels.js?v=20261026-nooutlines1"></script>
   <script src="product-print-logos.js?v=20261023-baglabels1"></script>
   <script src="product-support-labels.js?v=20261026-nooutlines1"></script>
-  <script src="contact-directory-model.js?v=20261029-contactcards1"></script><script src="support-directory.js?v=20261029-contactcards1"></script><script src="product-support.js?v=20261026-supportcontacts1"></script>
+  <script src="contact-directory-model.js?v=20261029-contactcards1"></script><script src="support-directory.js?v=20261029-contactcards1"></script><script src="product-support.js?v=20261029-printnavigation1"></script>
 </body>
 </html>

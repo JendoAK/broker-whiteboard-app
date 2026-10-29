@@ -9,7 +9,7 @@
   const productFields = ["description","vendor","brandName","brandType","distributor","distributorNumber","manufacturerNumber","apn","supc","gtin","packaging","storage","updatedAt"];
   const distributorLogos = {usFoods:["us-foods-logo.svg","US Foods"],sysco:["sysco-logo.png?v=20260917-official1","Sysco"],linford:["linford-logo.svg","Linford"],qualitySales:["quality-sales-logo.png","Quality Sales"]};
   let dialog, labels;
-  const state = {uid:"",role:"",generation:0,stock:[],new:[],all:new Map(),events:[],eventProducts:new Map(),selected:new Set(),visibleLimit:pageSize,frames:new Set()};
+  const state = {uid:"",role:"",generation:0,stock:[],new:[],all:new Map(),events:[],eventProducts:new Map(),selected:new Set(),mode:"products",eventChoice:"",selectedOnly:false,visibleLimit:pageSize,frames:new Set()};
   const $ = id => document.getElementById(id);
   const auth = () => window.foodBrokerBaseAuth;
   function teamIdentity() {
@@ -89,17 +89,32 @@
     refreshPrintSources();
     state.visibleLimit=pageSize;renderPicker();
   }
-  function refreshPrintSources() {
-    if(!allowed())return;
-    const source=$("psPrintSource").value;
-    const events=window.foodBrokerSupportLabels.printableEvents(state.events);
-    $("psPrintSource").innerHTML='<option value="selected">Selected products</option><option value="shown">Current product search</option>'+events.map(event=>'<option value="event:'+esc(event.id)+'">'+esc(event.name)+' · '+esc((event.startDate || event.date || event.endDate).slice(0,10))+'</option>').join("");
-    if([...$("psPrintSource").options].some(option=>option.value===source))$("psPrintSource").value=source;
-    if(source.startsWith("event:") && $("psPrintSource").value!==source)$("tpCatalogPicker").open=true;
+  function vendorName(product) {return text(product.vendor).trim() || "Other / no vendor";}
+  function catalogProducts() {
+    const source=$("tpCollection").value==="new"?state.new:state.stock,words=normal($("tpSearch").value).split(/\s+/).filter(Boolean),distributor=$("tpDistributor").value;
+    return source.filter(product=>(!distributor || family(product)===distributor) && words.every(word=>normal([product.description,product.vendor,product.brandName,product.distributor,codes(product),product.packaging,product.storage].join(" ")).includes(word)));
   }
   function shownProducts() {
-    const source=$("tpCollection").value==="new"?state.new:state.stock,query=normal($("tpSearch").value),distributor=$("tpDistributor").value;
-    return source.filter(product=>(!distributor || family(product)===distributor) && (!query || normal([product.description,product.vendor,product.brandName,product.distributor,codes(product),product.packaging,product.storage].join(" ")).includes(query)));
+    const vendor=$("tpVendor").value;
+    return catalogProducts().filter(product=>(!vendor || normal(vendorName(product))===vendor) && (!state.selectedOnly || state.selected.has(productKey(product)))).sort((a,b)=>vendorName(a).localeCompare(vendorName(b),undefined,{sensitivity:"base",numeric:true}) || sortProducts(a,b));
+  }
+  function renderMode() {
+    state.mode=$("psPrintSource").value.startsWith("event:")?"event":"products";
+    dialog.querySelectorAll("[data-tp-mode]").forEach(button=>button.setAttribute("aria-pressed",String(button.dataset.tpMode===state.mode)));
+    $("tpCatalogPicker").hidden=state.mode!=="products";$("tpEventPanel").hidden=state.mode!=="event";
+    $("psPrintProducts").hidden=state.mode!=="event" || !$("tpEventPicker").value;
+  }
+  function refreshPrintSources() {
+    if(!allowed())return;
+    const source=$("psPrintSource").value,events=window.foodBrokerSupportLabels.printableEvents(state.events);
+    const options=events.map(event=>'<option value="event:'+esc(event.id)+'">'+esc(event.name)+' · '+esc((event.startDate || event.date || event.endDate).slice(0,10))+'</option>').join("");
+    $("psPrintSource").innerHTML='<option value="selected">Selected products</option><option value="shown">Current product search</option><option value="event:">Choose an event</option>'+options;
+    $("psPrintSource").value=[...$("psPrintSource").options].some(option=>option.value===source)?source:source.startsWith("event:")?"event:":"selected";
+    if(source.startsWith("event:"))state.eventChoice=$("psPrintSource").value.slice(6);
+    if(!events.some(event=>event.id===state.eventChoice))state.eventChoice="";
+    $("tpEventPicker").innerHTML='<option value="">Choose an upcoming or ongoing event</option>'+events.map(event=>'<option value="'+esc(event.id)+'">'+esc(event.name)+' · '+esc((event.startDate || event.date || event.endDate).slice(0,10))+'</option>').join("");
+    $("tpEventPicker").value=state.eventChoice;
+    renderMode();
   }
   function printProducts() {
     if(!allowed())return [];
@@ -115,27 +130,51 @@
   }
   function renderPrintCount() {
     if(!allowed())return;
-    const count=labels?.getProducts().length || 0;
-    $("psPrintSummary").textContent=count+" product"+(count===1?"":"s")+" selected to print. "+($("psPrintFormat").value==="labels"?"One label per product is the default. Choose products below; edit individual wording, logos and quantities in Label setup.":"Choose products below and a distributor logo before printing.");
+    const count=labels?.getProducts().length || 0,isLabels=$("psPrintFormat").value==="labels";
+    $("psPrintSummary").textContent=count?(isLabels?"Labels fit automatically. Adjust wording, logos and quantities in Label setup.":"Choose a distributor logo and heading, then preview your "+(count===1?"product.":"products.")):"";
+    $("tpSelectedCount").textContent=state.selected.size+" product"+(state.selected.size===1?"":"s")+" selected across your product lists";
+    const event=state.events.find(event=>event.id===$("tpEventPicker").value);
+    $("tpEventSummary").textContent=event?"Choose the products you need from this event.":"Choose an event, then select the products you need.";
+    $("psPrintSummary").hidden=!count;$("psPrintLayout").hidden=!count;$("psBagQuantity").hidden=!count || !isLabels;$("tpPrintEmpty").hidden=Boolean(count);
+    $("psPreparePrint").disabled=!count;renderMode();
+  }
+  function renderVendors() {
+    const products=$("tpCollection").value==="new"?state.new:state.stock,distributor=$("tpDistributor").value,groups=new Map();
+    products.filter(product=>!distributor || family(product)===distributor).forEach(product=>{const name=vendorName(product),key=normal(name);if(!groups.has(key))groups.set(key,{key,name,count:0});groups.get(key).count++;});
+    const vendor=$("tpVendor").value,entries=[...groups.values()].sort((a,b)=>a.name.localeCompare(b.name,undefined,{sensitivity:"base",numeric:true}));
+    $("tpVendor").innerHTML='<option value="">All vendors</option>'+entries.map(group=>'<option value="'+esc(group.key)+'">'+esc(group.name)+' ('+group.count+')</option>').join("");
+    $("tpVendor").value=groups.has(vendor)?vendor:"";
+    const active=$("tpVendor").value,total=entries.reduce((sum,group)=>sum+group.count,0);
+    $("tpVendorButtons").innerHTML=[{key:"",name:"All vendors",count:total},...entries].map(group=>'<button type="button" class="pc-vendor-button" data-tp-vendor="'+esc(group.key)+'" aria-pressed="'+(active===group.key)+'"><span>'+esc(group.name)+'</span><small>'+group.count+'</small></button>').join("");
   }
   function renderPicker() {
     if(!allowed())return;
+    renderVendors();
     const found=shownProducts(),visible=found.slice(0,state.visibleLimit);
-    $("tpProductList").innerHTML=visible.length ? visible.map(product=>'<label class="tp-product-row"><input type="checkbox" data-tp-product="'+esc(productKey(product))+'"'+(state.selected.has(productKey(product))?' checked':'')+' /><span class="tp-product-info"><strong>'+esc(product.description)+'</strong><small>'+esc([product.vendor,product.brandName,product.distributor,codes(product),product.packaging,product.storage].filter(Boolean).join(" · "))+'</small></span></label>').join("") : '<p class="ps-empty">No products match this search.</p>';
-    $("tpCount").textContent=found.length+" products"+(visible.length<found.length?" · first "+visible.length+" shown":"");
-    $("tpSelectedCount").textContent=state.selected.size+" selected";
+    let previous="";
+    $("tpProductList").innerHTML=visible.length ? visible.map(product=>{
+      const vendor=vendorName(product),heading=normal(vendor)!==previous?'<h4 class="pc-vendor-heading">'+esc(vendor)+'</h4>':"";previous=normal(vendor);
+      return heading+'<label class="tp-product-row pc-product-row"><input type="checkbox" data-tp-product="'+esc(productKey(product))+'"'+(state.selected.has(productKey(product))?' checked':'')+' /><span class="tp-product-info pc-product-info"><strong>'+esc(product.description)+'</strong><small>'+esc([product.brandName,product.distributor,codes(product),product.packaging,product.storage].filter(Boolean).join(" · "))+'</small></span></label>';
+    }).join("") : '<p class="ps-empty">'+(state.selectedOnly?"No selected products match these filters.":"No products match. Try All vendors or a different search.")+'</p>';
+    $("tpCount").textContent=found.length+" product"+(found.length===1?"":"s")+(visible.length<found.length?" · first "+visible.length+" shown":"");
+    $("tpSelectedOnly").setAttribute("aria-pressed",String(state.selectedOnly));$("tpSelectedOnly").textContent="Selected only ("+state.selected.size+")";
     $("tpLoadMore").hidden=visible.length>=found.length;$("tpClearSelection").disabled=!state.selected.size;$("tpSelectShown").disabled=!visible.length;
     updateSummary();
+  }
+  function chooseMode(mode) {
+    if(!allowed())return;
+    $("psPrintSource").value=mode==="event"?"event:"+state.eventChoice:"selected";
+    $("psPrintProductSearch").value="";cleanupFrames();updateSummary();
   }
   function cleanupFrames() {state.frames.forEach(frame=>frame.remove());state.frames.clear();}
   function clear() {
     state.generation++;state.uid="";state.role="";
-    labels?.clear();cleanupFrames();state.stock=[];state.new=[];state.all.clear();state.events=[];state.eventProducts.clear();state.selected.clear();state.visibleLimit=pageSize;
-    $("tpSearch").value="";$("tpCollection").value="stock";$("tpDistributor").value="";
+    labels?.clear();cleanupFrames();state.stock=[];state.new=[];state.all.clear();state.events=[];state.eventProducts.clear();state.selected.clear();state.mode="products";state.eventChoice="";state.selectedOnly=false;state.visibleLimit=pageSize;
+    $("tpSearch").value="";$("tpCollection").value="stock";$("tpDistributor").value="";$("tpVendor").innerHTML='<option value="">All vendors</option>';$("tpVendorButtons").replaceChildren();$("tpSelectedOnly").setAttribute("aria-pressed","false");$("tpSelectedOnly").textContent="Selected only (0)";$("tpEventPicker").innerHTML='<option value="">Choose an upcoming or ongoing event</option>';$("tpEventSummary").textContent="Choose an event, then select the products you need.";
     $("tpProductList").replaceChildren();$("tpCount").textContent="";$("tpSelectedCount").textContent="";
-    $("psPrintSource").innerHTML='<option value="selected">Selected products</option><option value="shown">Current product search</option>';
-    $("psPrintFormat").value="labels";$("psPrintLogo").value="none";$("psPrintHeading").value="Product presentation";$("psPrintCopies").value="1";$("psPrintSummary").textContent="";status("");
-    $("tpLoadMore").hidden=true;$("tpClearSelection").disabled=true;
+    $("psPrintSource").innerHTML='<option value="selected">Selected products</option><option value="shown">Current product search</option><option value="event:">Choose an event</option>';
+    $("psPrintFormat").value="labels";$("psPrintLogo").value="none";$("psPrintHeading").value="Product presentation";$("psPrintCopies").value="1";$("psPrintSummary").textContent="";$("psPrintSummary").hidden=true;status("");
+    $("tpLoadMore").hidden=true;$("tpClearSelection").disabled=true;$("psPrintLayout").hidden=true;$("psPrintProducts").hidden=true;$("psBagQuantity").hidden=true;$("tpPrintEmpty").hidden=false;$("psPreparePrint").disabled=true;renderMode();
   }
   function close() {clear();if(dialog.open)dialog.close();}
   function open() {
@@ -143,7 +182,7 @@
     if(!current){if(dialog.open)close();return;}
     if(dialog.open && allowed())return;
     clear();state.uid=current.uid;state.role=current.role;dialog.showModal();snapshot();
-    status("Choose products or an event lineup. Labels, product lists and presentation cards are available to every approved team member.");
+    status("");
   }
   const asset = value => new URL(value,window.location.href).href;
   function logoMarkup(choice) {return '<div class="ps-preview-logos"><img src="'+esc(asset("vendor-logos/pierce-cartwright.png"))+'" alt="Pierce Cartwright" />'+(distributorLogos[choice]?'<img src="'+esc(asset(distributorLogos[choice][0]))+'" alt="'+esc(distributorLogos[choice][1])+'" />':'')+'</div>';}
@@ -191,13 +230,18 @@
     labels=window.foodBrokerSupportLabels.create({allowed,identity,valid,beforeSync:refreshPrintSources,getProducts:printProducts,productKey,itemNumber,status,selectionChanged:renderPrintCount,frames:state.frames});
     triggers.forEach(trigger=>trigger.addEventListener("click",open));$("tpClose").addEventListener("click",close);dialog.addEventListener("close",()=>{if(!dialog.open)clear();});dialog.addEventListener("cancel",event=>{event.preventDefault();close();});
     $("teamPrintForm").addEventListener("submit",event=>event.preventDefault());
-    $("tpSearch").addEventListener("input",()=>{state.visibleLimit=pageSize;renderPicker();});
-    ["tpCollection","tpDistributor"].forEach(id=>$(id).addEventListener("change",()=>{state.visibleLimit=pageSize;renderPicker();}));
-    $("tpProductList").addEventListener("change",event=>{if(!allowed())return;const input=event.target.closest("[data-tp-product]");if(!input || !state.all.has(input.dataset.tpProduct))return;if(input.checked)state.selected.add(input.dataset.tpProduct);else state.selected.delete(input.dataset.tpProduct);renderPicker();});
-    $("tpSelectShown").addEventListener("click",()=>{if(!allowed())return;shownProducts().slice(0,state.visibleLimit).forEach(product=>state.selected.add(productKey(product)));renderPicker();});
-    $("tpClearSelection").addEventListener("click",()=>{state.selected.clear();renderPicker();});$("tpLoadMore").addEventListener("click",()=>{state.visibleLimit+=pageSize;renderPicker();});
+    $("tpSearch").addEventListener("input",()=>{if(!allowed())return;state.visibleLimit=pageSize;renderPicker();});
+    ["tpCollection","tpDistributor","tpVendor"].forEach(id=>$(id).addEventListener("change",()=>{if(!allowed())return;state.visibleLimit=pageSize;renderPicker();}));
+    $("tpVendorButtons").addEventListener("click",event=>{if(!allowed())return;const button=event.target.closest("[data-tp-vendor]");if(!button)return;$("tpVendor").value=button.dataset.tpVendor;state.visibleLimit=pageSize;renderPicker();});
+    $("tpSelectedOnly").addEventListener("click",()=>{if(!allowed())return;state.selectedOnly=!state.selectedOnly;state.visibleLimit=pageSize;renderPicker();});
+    dialog.querySelectorAll("[data-tp-mode]").forEach(button=>button.addEventListener("click",()=>chooseMode(button.dataset.tpMode)));
+    $("tpEventPicker").addEventListener("focus",updateSummary);
+    $("tpEventPicker").addEventListener("change",()=>{if(!allowed())return;state.eventChoice=$("tpEventPicker").value;$("psPrintSource").value="event:"+state.eventChoice;const event=state.events.find(event=>event.id===state.eventChoice);if(event)$("psPrintHeading").value=event.name || "Product presentation";$("psPrintProductSearch").value="";cleanupFrames();updateSummary();});
+    $("tpProductList").addEventListener("change",event=>{if(!allowed())return;const input=event.target.closest("[data-tp-product]");if(!input || !state.all.has(input.dataset.tpProduct))return;if(input.checked)state.selected.add(input.dataset.tpProduct);else state.selected.delete(input.dataset.tpProduct);$("psPrintSource").value="selected";renderPicker();});
+    $("tpSelectShown").addEventListener("click",()=>{if(!allowed())return;shownProducts().slice(0,state.visibleLimit).forEach(product=>state.selected.add(productKey(product)));$("psPrintSource").value="selected";renderPicker();});
+    $("tpClearSelection").addEventListener("click",()=>{if(!allowed())return;state.selected.clear();state.selectedOnly=false;renderPicker();});$("tpLoadMore").addEventListener("click",()=>{if(!allowed())return;state.visibleLimit+=pageSize;renderPicker();});
     $("tpRefresh").addEventListener("click",()=>{if(!allowed())return;labels.invalidate("Products refreshed · Prepare a new preview.");cleanupFrames();snapshot();status("Product choices refreshed. Your print-only label edits are kept.");});
-    $("psPrintSource").addEventListener("change",()=>{$("tpCatalogPicker").open=!$("psPrintSource").value.startsWith("event:");$("psPrintProductSearch").value="";updateSummary();});$("psPrintFormat").addEventListener("change",updateSummary);$("psPreparePrint").addEventListener("click",prepare);
+    $("psPrintSource").addEventListener("change",()=>{if(!allowed())return;$("psPrintProductSearch").value="";updateSummary();});$("psPrintFormat").addEventListener("change",updateSummary);$("psPreparePrint").addEventListener("click",prepare);
     $("psPrintSource").addEventListener("focus",updateSummary);
     // Clear print media before the workspace loader starts its auth-transition reload.
     window.addEventListener("foodbrokerbase:workspace-leaving",close);

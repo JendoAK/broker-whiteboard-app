@@ -6,31 +6,53 @@
   <form id="teamPrintForm">
     <div class="tp-dialog-header"><div><p class="tp-eyebrow">FoodBrokerBase</p><h2 id="tpPrintTitle">Print center</h2></div><button id="tpClose" class="ghost-action" type="button">Close</button></div>
     <p id="tpStatus" class="ps-status" role="status" aria-live="polite"></p>
-    <details id="tpCatalogPicker" class="tp-picker" open>
-      <summary>Choose from stock or new products <span id="tpSelectedCount" role="status" aria-live="polite">0 selected</span></summary>
-      <div class="tp-picker-filters">
-        <label class="tp-search"><span>Search products</span><input id="tpSearch" type="search" placeholder="Product, manufacturer, brand, MF#, APN or SUPC…" /></label>
-        <label><span>Product list</span><select id="tpCollection"><option value="stock">Stocked products</option><option value="new">New products</option></select></label>
-        <label><span>Distributor</span><select id="tpDistributor"><option value="">All distributors</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales">Quality Sales</option><option value="other">Other</option></select></label>
+    <div class="pc-navigation">
+      <h3 class="pc-step-heading">1. Choose what to print</h3>
+      <div id="tpPrintMode" class="pc-mode-bar" role="group" aria-label="Choose what to print">
+        <button type="button" class="pc-mode-option" data-tp-mode="products" aria-pressed="true"><strong>Products</strong><span>Choose one or several products</span></button>
+        <button type="button" class="pc-mode-option" data-tp-mode="event" aria-pressed="false"><strong>From an event</strong><span>Use a visit, test kitchen or foodshow</span></button>
       </div>
-      <div class="tp-picker-actions"><span id="tpCount" role="status" aria-live="polite"></span><button id="tpSelectShown" type="button" class="ps-text">Select shown</button><button id="tpClearSelection" type="button" class="ps-text">Clear selection</button><button id="tpRefresh" type="button" class="ghost-action">Refresh products</button></div>
-      <div id="tpProductList" class="tp-product-list"></div>
-      <div class="tp-load-more"><button id="tpLoadMore" type="button" class="ghost-action" hidden>Load more products</button></div>
-    </details>
+      <section id="tpCatalogPicker" class="pc-source-panel" aria-label="Choose products">
+        <div class="pc-catalog-toolbar">
+          <label class="pc-search"><span>Find a product</span><input id="tpSearch" type="search" placeholder="Product, vendor, brand, MF#, APN or SUPC…" /></label>
+          <label><span>Product list</span><select id="tpCollection"><option value="stock">Stocked products</option><option value="new">New products</option></select></label>
+          <label><span>Distributor</span><select id="tpDistributor"><option value="">All distributors</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales">Quality Sales</option><option value="other">Other</option></select></label>
+          <label class="pc-vendor-select"><span>Vendor</span><select id="tpVendor"><option value="">All vendors</option></select></label>
+        </div>
+        <div class="pc-catalog-layout">
+          <aside class="pc-vendors" aria-label="Browse vendors"><h4>Vendors</h4><div id="tpVendorButtons"></div></aside>
+          <div class="pc-catalog-main">
+            <div class="pc-catalog-actions"><span id="tpCount" role="status" aria-live="polite"></span><button id="tpSelectedOnly" type="button" class="ps-text" aria-pressed="false">Selected only</button><button id="tpSelectShown" type="button" class="ps-text">Select shown</button><button id="tpClearSelection" type="button" class="ps-text">Clear selection</button><button id="tpRefresh" type="button" class="ps-text">Refresh</button></div>
+            <div id="tpProductList" class="tp-product-list pc-catalog-products"></div>
+            <div class="tp-load-more"><button id="tpLoadMore" type="button" class="ghost-action" hidden>Load more products</button></div>
+          </div>
+        </div>
+        <p id="tpSelectedCount" class="pc-selected-summary" role="status" aria-live="polite">0 products selected</p>
+      </section>
+      <section id="tpEventPanel" class="pc-source-panel pc-event-panel" aria-label="Choose an event" hidden>
+        <label><span>Event or visit</span><select id="tpEventPicker"><option value="">Choose an upcoming or ongoing event</option></select></label>
+        <p id="tpEventSummary" class="ps-hint">Choose an event, then select the products you need.</p>
+    <section id="psPrintProducts" class="ps-print-products pc-event-products">
+          <h3 class="pc-event-selection-heading">Event products <span id="psPrintProductCount" role="status" aria-live="polite"></span></h3>
+          <div class="ps-print-product-toolbar"><label class="ps-print-product-search"><span class="ps-print-sr-only">Find a product in this print job</span><input id="psPrintProductSearch" type="search" placeholder="Find a product in this print job…" /></label><button id="psPrintSelectAll" type="button" class="ps-text">Select all</button><button id="psPrintSelectNone" type="button" class="ps-text">Clear</button></div>
+          <div id="psPrintProductList" class="ps-print-product-list"></div>
+        </section>
+      </section>
+    </div>
+    <label hidden><span>Print source</span><select id="psPrintSource" tabindex="-1"><option value="selected">Selected products</option><option value="shown">Current product search</option><option value="event:">Choose an event</option></select></label>
+    <section class="pc-format-panel">
+      <h3 class="pc-step-heading">2. Format &amp; print</h3>
     <div class="ps-print-options">
-      <label><span>Products to print</span><select id="psPrintSource"><option value="selected">Selected products</option><option value="shown">Current product search</option></select></label>
       <label><span>Format</span><select id="psPrintFormat"><option value="labels" selected>Sample bag labels · 4 × 2 in (Avery 8163)</option><option value="list">Product list</option><option value="cards">4 × 6 inch presentation cards</option></select></label>
       <label data-print-document hidden><span>Distributor logo</span><select id="psPrintLogo"><option value="none">No distributor logo</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales">Quality Sales</option></select></label>
       <label data-print-document hidden><span>Heading</span><input id="psPrintHeading" value="Product presentation" maxlength="120" /></label>
       <label data-print-document hidden><span>Copies of each card</span><input id="psPrintCopies" type="number" min="1" max="20" value="1" /></label>
       <button type="button" id="psPreparePrint" class="primary-action">Preview layout</button>
     </div>
+    </section>
+    <p id="tpPrintEmpty" class="pc-empty-job">Choose one or more products above. Then set the format and preview your print job.</p>
     <p id="psPrintSummary" class="ps-hint"></p>
-    <details id="psPrintProducts" class="ps-print-products" open>
-          <summary>Choose products to print <span id="psPrintProductCount" role="status" aria-live="polite"></span></summary>
-          <div class="ps-print-product-toolbar"><label class="ps-print-product-search"><span class="ps-print-sr-only">Find a product in this print job</span><input id="psPrintProductSearch" type="search" placeholder="Find a product in this print job…" /></label><button id="psPrintSelectAll" type="button" class="ps-text">Select all</button><button id="psPrintSelectNone" type="button" class="ps-text">Clear</button></div>
-          <div id="psPrintProductList" class="ps-print-product-list"></div>
-        </details>
+
         <div id="psBagQuantity" class="ps-bag-quantity"><span>Labels for selected products</span><div class="ps-bag-quantity-buttons" role="group" aria-label="Labels for selected products"><button id="psBagOneEach" type="button" aria-pressed="true">1 per product</button><button id="psBagFullSheet" type="button" aria-pressed="false">10 per product</button></div><small>Automatic fitting is on for every selected product. Change quantities in Label setup.</small></div>
         <details id="psPrintErrors" class="ps-print-errors" hidden><summary>Last print error</summary><pre id="psPrintErrorDetails"></pre><div class="ps-print-error-actions"><button id="psPrintCopyError" type="button">Copy error details</button><button id="psPrintDismissError" type="button" class="ps-text">Dismiss</button></div><p id="psPrintCopyStatus" role="status" aria-live="polite"></p></details>
         <div id="psPrintLayout" class="ps-print-layout" data-format="labels">
