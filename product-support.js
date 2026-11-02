@@ -99,15 +99,17 @@
   function showView(view) {
     if (!allowed()) return;
     state.view = view;
-    $("psStatus").hidden = view === "contacts" || view === "operators";
+    $("psStatus").hidden = view === "contacts" || view === "operators" || view === "samples";
     document.querySelectorAll("[data-view]").forEach(b => { if (b.dataset.view === view) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
-    ["products", "events", "printing", "contacts", "operators"].forEach(name => { $("ps" + name[0].toUpperCase() + name.slice(1)).hidden = name !== view; });
+    ["products", "events", "printing", "contacts", "operators", "samples"].forEach(name => { $("ps" + name[0].toUpperCase() + name.slice(1)).hidden = name !== view; });
     if (view === "events") renderEvents();
     if (view === "printing") updatePrintSummary();
     if (view === "contacts" || view === "operators") window.foodBrokerSupportDirectory?.show(view);
+    if (view === "samples") window.foodBrokerSupportSamples?.show();
   }
   function clearSensitive() {
     window.foodBrokerSupportDirectory?.clear();
+    window.foodBrokerSupportSamples?.clear();
     state.generation++; state.request++; state.userId = ""; state.stock = []; state.new = []; state.events = []; state.selected.clear(); state.editing = null; state.attachments = []; state.attachmentsChanged = false; state.importRows = []; state.importRunning = false; state.saving = false; state.readingFiles = false; state.loaded = false; state.eventId = ""; state.collection = "stock"; state.schoolOnly = false; state.visibleLimit = pageSize; state.date = "upcoming"; state.view = "products";
     state.frames.forEach(frame => frame.remove()); state.frames.clear();
     labelPrint?.clear();
@@ -124,7 +126,7 @@
     document.querySelectorAll("[data-collection]").forEach(b => b.setAttribute("aria-pressed", b.dataset.collection === "stock" ? "true" : "false"));
     document.querySelectorAll("[data-date]").forEach(b => b.setAttribute("aria-pressed", b.dataset.date === "upcoming" ? "true" : "false"));
     document.querySelectorAll("[data-view]").forEach(b => { if(b.dataset.view === "products") b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
-    $("psProducts").hidden = false; $("psEvents").hidden = true; $("psPrinting").hidden = true; $("psContacts").hidden = true; $("psOperators").hidden = true;
+    $("psProducts").hidden = false; $("psEvents").hidden = true; $("psPrinting").hidden = true; $("psContacts").hidden = true; $("psOperators").hidden = true; $("psSamples").hidden = true;
     $("psProductForm").querySelectorAll("input,select,textarea,button").forEach(control => {control.disabled = false;});
     $("psCsvInput").disabled = false; $("psRunImport").textContent = "Import products";
     ["psStatus", "psProductStatus", "psImportStatus"].forEach(id => status("", "", id)); errorDetails(null); errorDetails(null, "psProductError");
@@ -147,6 +149,7 @@
   }
   async function loadWorkspace() {
     if (!allowed()) return;
+    if (state.view === "samples") { window.foodBrokerSupportSamples?.refresh(); return; }
     if(state.view === "contacts" || state.view === "operators") window.foodBrokerSupportDirectory?.refresh();
     labelPrint?.invalidate("Refreshing products · Prepare a new preview when loading finishes.");
     const gen = state.generation, uid = state.userId, request = ++state.request;

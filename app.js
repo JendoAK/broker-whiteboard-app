@@ -231,7 +231,8 @@ const cloudSectionRevisions = new Map();
 let cloudAutoRefreshTimer = null;
 let cloudLastRowFingerprint = "";
 let cloudRowCache = new Map();
-const directoryCloudSectionKeys = new Set([peopleContactsStorageKey,addressBookStorageKey]);
+const sampleCloudSectionKeys = new Set([sampleStorageKey,dotOrderStorageKey]);
+const directoryCloudSectionKeys = new Set([peopleContactsStorageKey,addressBookStorageKey,...sampleCloudSectionKeys]);
 const directoryCloudBaseStoragePrefix = "foodBrokerBaseDirectoryWriteBases";
 let directoryCloudBaseUserId = "";
 let directoryCloudWriteBases = new Map();
@@ -2007,12 +2008,13 @@ function rememberDirectoryCloudWriteBase(sectionKey,version,userId) {
 }
 
 async function saveDirectoryCloudPayload(client,user,payload) {
+  const sampleSection=sampleCloudSectionKeys.has(payload.record_key), collectionName=sampleSection?"samples":"contacts or operators";
   const bases=getDirectoryCloudWriteBases(user.id);
-  if(!bases.has(payload.record_key))throw {name:"DirectorySyncConflictError",code:"DIRECTORY_BASE_REQUIRED",message:"Could not confirm the cloud version for contacts or operators. Your changes remain saved in this browser."};
-  if(getCloudUser()?.id!==user.id)throw {code:"DIRECTORY_ACCOUNT_CHANGED",message:"Sign in again before syncing contact changes."};
-  const {data,error,status}=await client.rpc("save_team_directory_section",{section_key:payload.record_key,section_value:payload.data,expected_updated_at:bases.get(payload.record_key)});
-  if(error)throw {name:error.code==="40001"?"DirectorySyncConflictError":error.name,code:error.code,status:error.status || status,message:error.code==="40001"?"A teammate changed contacts or operators while you were editing. Your changes remain saved in this browser and need to be reviewed before syncing.":error.message};
-  if(typeof data?.updatedAt!=="string" || !data.updatedAt || !rememberDirectoryCloudWriteBase(payload.record_key,data.updatedAt,user.id))throw {code:"DIRECTORY_VERSION_UNCONFIRMED",message:"Could not confirm the saved contact version. Your browser copy has been kept."};
+  if(!bases.has(payload.record_key))throw {name:"DirectorySyncConflictError",code:"DIRECTORY_BASE_REQUIRED",message:"Could not confirm the cloud version for "+collectionName+". Your changes remain saved in this browser."};
+  if(getCloudUser()?.id!==user.id)throw {code:"DIRECTORY_ACCOUNT_CHANGED",message:"Sign in again before syncing "+collectionName+" changes."};
+  const {data,error,status}=await client.rpc(sampleSection?"save_team_sample_section":"save_team_directory_section",{section_key:payload.record_key,section_value:payload.data,expected_updated_at:bases.get(payload.record_key)});
+  if(error)throw {name:error.code==="40001"?"DirectorySyncConflictError":error.name,code:error.code,status:error.status || status,message:error.code==="40001"?"A teammate changed "+collectionName+" while you were editing. Your changes remain saved in this browser and need to be reviewed before syncing.":error.message};
+  if(typeof data?.updatedAt!=="string" || !data.updatedAt || !rememberDirectoryCloudWriteBase(payload.record_key,data.updatedAt,user.id))throw {code:"DIRECTORY_VERSION_UNCONFIRMED",message:"Could not confirm the saved "+collectionName+" version. Your browser copy has been kept."};
 }
 
 function mergeCloudSectionValues(localValue, cloudValue) {
@@ -2213,7 +2215,7 @@ async function performCloudSaveSections(sectionKeys, options) {
           savedAt: now
         }
       }));
-    const directoryPayload = sections.filter(section=>section.scope==="team" && directoryCloudSectionKeys.has(section.key)).map(section=>({record_type:teamCloudRecordType,record_key:section.key,updated_by:user.id,data:{label:section.label,value:correctContactNames(section.get()),backupVersion,savedAt:now}}));
+    const directoryPayload = sections.filter(section=>section.scope==="team" && directoryCloudSectionKeys.has(section.key)).map(section=>({record_type:teamCloudRecordType,record_key:section.key,updated_by:user.id,data:{...(sharedTrackerKeys.has(section.key)?{migratedTrackerOwners:trackerMigrationOwners.get(section.key)||[]}:{}),label:section.label,value:correctContactNames(section.get()),backupVersion,savedAt:now}}));
   
     if (!personalPayload.length && !teamPayload.length && !directoryPayload.length) return true;
   
@@ -2417,7 +2419,8 @@ async function loadCloudSections(options = {}) {
             return;
           }
           section.set(cloudResult.value);appliedKeys.push(section.key);
-          rememberDirectoryCloudWriteBase(section.key,remote?.data?.directoryRevision || remote?.updated_at,user.id);
+          rememberDirectoryCloudWriteBase(section.key,remote?.data?.directoryRevision || remote?.updated_at || null,user.id);
+          if(cloudResult.usedLegacyRow)localUploadKeys.push(section.key);
           return;
         }
         if (!cloudResult.found) {
