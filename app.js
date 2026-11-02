@@ -232,6 +232,7 @@ let cloudAutoRefreshTimer = null;
 let cloudLastRowFingerprint = "";
 let cloudRowCache = new Map();
 const sampleCloudSectionKeys = new Set([sampleStorageKey,dotOrderStorageKey]);
+const sampleCloudSnapshots = new Map();
 const directoryCloudSectionKeys = new Set([peopleContactsStorageKey,addressBookStorageKey,...sampleCloudSectionKeys]);
 const directoryCloudBaseStoragePrefix = "foodBrokerBaseDirectoryWriteBases";
 let directoryCloudBaseUserId = "";
@@ -1841,12 +1842,22 @@ function persistStockProducts() {
 }
 
 function persistSamples() {
-  localStorage.setItem(sampleStorageKey, JSON.stringify(samples));
+  try { localStorage.setItem(sampleStorageKey, JSON.stringify(samples)); }
+  catch(error){
+    keepSampleMutationPending(sampleStorageKey);
+    window.foodBrokerSaveStatus?.recordError(error,{operation:"Keep sample changes in this browser",section:sampleStorageKey,localFailure:true});
+    throw error;
+  }
   scheduleCloudSave(sampleStorageKey);
 }
 
 function persistDotOrders() {
-  localStorage.setItem(dotOrderStorageKey, JSON.stringify(dotOrders));
+  try { localStorage.setItem(dotOrderStorageKey, JSON.stringify(dotOrders)); }
+  catch(error){
+    keepSampleMutationPending(dotOrderStorageKey);
+    window.foodBrokerSaveStatus?.recordError(error,{operation:"Keep DOT sample changes in this browser",section:dotOrderStorageKey,localFailure:true});
+    throw error;
+  }
   scheduleCloudSave(dotOrderStorageKey);
 }
 
@@ -1989,6 +2000,8 @@ function extractCloudValue(row) {
 
 function getDirectoryCloudWriteBases(userId = getCloudUser()?.id || "") {
   if(directoryCloudBaseUserId===userId)return directoryCloudWriteBases;
+  sampleCloudSnapshots.clear();
+  window.foodBrokerSampleSyncRecovery?.clear();
   directoryCloudBaseUserId=userId;directoryCloudWriteBases=new Map();
   if(!userId)return directoryCloudWriteBases;
   try {
@@ -2007,14 +2020,100 @@ function rememberDirectoryCloudWriteBase(sectionKey,version,userId) {
   return true;
 }
 
-async function saveDirectoryCloudPayload(client,user,payload) {
+function sampleSyncUserValid(user) {
+  return getCloudUser()?.id===user.id && ["member","admin","super_user"].includes(window.foodBrokerBaseAuth?.getCurrentProfile?.()?.role) && !window.foodBrokerBaseAuth?.isPasswordRecovery?.();
+}
+
+function sampleSyncSnapshot(row) {
+  if(!row)return {data:{value:[]},version:null};
+  if(!row.data || !Array.isArray(row.data.value))throw {code:"SAMPLE_SECTION_INVALID",message:"The cloud sample list needs review. Your current entries are kept in this open app."};
+  const version=row.data.directoryRevision || row.updated_at;
+  if(typeof version!=="string" || !version)throw {code:"SAMPLE_VERSION_UNCONFIRMED",message:"Could not confirm the cloud sample version. Keep this app open and try sync again."};
+  return {data:row.data,version};
+}
+
+function validateSampleSyncIds(items) {
+  const seen=new Set();
+  if(!Array.isArray(items))throw {code:"SAMPLE_SECTION_INVALID",message:"The sample list needs review before syncing. Your current entries are kept in this open app."};
+  for(const item of items){
+    const id=typeof item?.id==="string"?item.id.trim():"";
+    if(!id||seen.has(id))throw {code:"SAMPLE_SECTION_INVALID",message:"A blank or repeated sample identifier needs review before syncing. Export a backup of this open app."};
+    seen.add(id);
+  }
+}
+
+function keepSampleMutationPending(sectionKey) {
+  pendingCloudSections.add(sectionKey);
+  cloudSectionRevisions.set(sectionKey,(cloudSectionRevisions.get(sectionKey)||0)+1);
+  cloudSaveConfirmed=false;
+  storePendingCloudSections();
+  updateSaveStatus();
+}
+
+function keepRecoveredSampleView(sectionKey,items,originalItems,saveRevision) {
+  const section=getCloudConfig(sectionKey);
+  if(!section)return;
+  const current=section.get(),sameContent=JSON.stringify(correctContactNames(current))===JSON.stringify(originalItems);
+  if((cloudSectionRevisions.get(sectionKey)||0)===saveRevision&&sameContent)section.set(items);
+  else {
+    if((cloudSectionRevisions.get(sectionKey)||0)===saveRevision)keepSampleMutationPending(sectionKey);
+    // New local edits stay authoritative in this open app. Only add cloud-only
+    // IDs that were absent from the saved snapshot and are still absent now.
+    const originalIds=new Set(originalItems.map(item=>String(item.id)));
+    const currentIds=new Set(current.map(item=>String(item.id)));
+    section.set([...current,...items.filter(item=>!originalIds.has(String(item.id))&&!currentIds.has(String(item.id)))]);
+  }
+  writeCloudSectionsToLocalStorage([sectionKey]);
+  renderAfterCloudSync();
+}
+
+async function saveDirectoryCloudPayload(client,user,payload,saveRevision,options={}) {
   const sampleSection=sampleCloudSectionKeys.has(payload.record_key), collectionName=sampleSection?"samples":"contacts or operators";
   const bases=getDirectoryCloudWriteBases(user.id);
-  if(!bases.has(payload.record_key))throw {name:"DirectorySyncConflictError",code:"DIRECTORY_BASE_REQUIRED",message:"Could not confirm the cloud version for "+collectionName+". Your changes remain saved in this browser."};
+  let expected=bases.get(payload.record_key),recovered=null;
+  const originalItems=sampleSection?payload.data.value:null;
+  if(sampleSection){
+    if(!sampleSyncUserValid(user))throw {code:"DIRECTORY_ACCOUNT_CHANGED",message:"Sign in again before syncing sample changes."};
+    const recovery=window.foodBrokerSampleSyncRecovery;
+    if(!recovery)throw {code:"SAMPLE_RECOVERY_UNAVAILABLE",message:"The sample sync helper has not loaded. Keep this app open and export a backup before reopening it."};
+    let snapshot=sampleCloudSnapshots.get(payload.record_key);
+    if(!bases.has(payload.record_key)||!snapshot||snapshot.version!==expected){
+      const {data,error}=await client.from("team_app_records").select("record_key,data,updated_at")
+        .eq("record_type",teamCloudRecordType).eq("record_key",payload.record_key).maybeSingle();
+      if(!sampleSyncUserValid(user))throw {code:"DIRECTORY_ACCOUNT_CHANGED",message:"The signed-in account changed before sample sync finished."};
+      if(error)throw error;
+      snapshot=sampleSyncSnapshot(data);
+    }
+    const normalize=payload.record_key===dotOrderStorageKey?normalizeDotOrder:normalizeSample;
+    validateSampleSyncIds(originalItems);
+    validateSampleSyncIds(snapshot.data.value);
+    if(!bases.has(payload.record_key)||snapshot.version!==expected){
+      recovered=await recovery.reconcile({local:originalItems,remote:snapshot.data.value,normalize,
+        stamp:record=>stampSharedRecord(record,"Updated"),sectionKey:payload.record_key,
+        label:payload.record_key===dotOrderStorageKey?"DOT sample orders":"samples",allowReview:Boolean(options.reviewSamples),
+        valid:()=>sampleSyncUserValid(user),onBackup:()=>exportBackup(),
+        onReview:()=>saveCloudSections([payload.record_key],{force:true,reviewSamples:true})});
+      if(!sampleSyncUserValid(user))throw {code:"DIRECTORY_ACCOUNT_CHANGED",message:"The signed-in account changed before sample review finished."};
+      if(options.reviewSamples&&((cloudSectionRevisions.get(payload.record_key)||0)!==saveRevision||JSON.stringify(correctContactNames(getCloudConfig(payload.record_key).get()))!==JSON.stringify(originalItems)))
+        throw {code:"SAMPLE_REVIEW_STALE",message:"The browser sample list changed during review. Your current entries are kept; review the latest copies again."};
+      expected=snapshot.version;
+    }
+    const cloudById=new Map(snapshot.data.value.map(item=>[String(item.id),item]));
+    const items=recovered?recovered.items:originalItems.map(item=>recovery.mergeKnown(item,cloudById.get(String(item.id)),normalize));
+    payload.data={...snapshot.data,...payload.data,value:items,
+      migratedTrackerOwners:[...new Set([...(snapshot.data.migratedTrackerOwners||[]),...(payload.data.migratedTrackerOwners||[])])]};
+  }
+  else if(!bases.has(payload.record_key))throw {name:"DirectorySyncConflictError",code:"DIRECTORY_BASE_REQUIRED",message:"Could not confirm the cloud version for "+collectionName+". Your current entries are kept in this open app."};
   if(getCloudUser()?.id!==user.id)throw {code:"DIRECTORY_ACCOUNT_CHANGED",message:"Sign in again before syncing "+collectionName+" changes."};
-  const {data,error,status}=await client.rpc(sampleSection?"save_team_sample_section":"save_team_directory_section",{section_key:payload.record_key,section_value:payload.data,expected_updated_at:bases.get(payload.record_key)});
-  if(error)throw {name:error.code==="40001"?"DirectorySyncConflictError":error.name,code:error.code,status:error.status || status,message:error.code==="40001"?"A teammate changed "+collectionName+" while you were editing. Your changes remain saved in this browser and need to be reviewed before syncing.":error.message};
+  const {data,error,status}=await client.rpc(sampleSection?"save_team_sample_section":"save_team_directory_section",{section_key:payload.record_key,section_value:payload.data,expected_updated_at:expected});
+  if(sampleSection&&!sampleSyncUserValid(user))throw {code:"DIRECTORY_ACCOUNT_CHANGED",message:"The signed-in account changed before sample sync finished."};
+  if(error){if(sampleSection&&error.code==="40001")sampleCloudSnapshots.delete(payload.record_key);throw {name:error.code==="40001"?"DirectorySyncConflictError":error.name,code:error.code,status:error.status || status,message:error.code==="40001"?"A teammate changed "+collectionName+" while you were editing. Your current entries are kept in this open app and will be checked again before syncing.":error.message};}
   if(typeof data?.updatedAt!=="string" || !data.updatedAt || !rememberDirectoryCloudWriteBase(payload.record_key,data.updatedAt,user.id))throw {code:"DIRECTORY_VERSION_UNCONFIRMED",message:"Could not confirm the saved "+collectionName+" version. Your browser copy has been kept."};
+  if(sampleSection){
+    sampleCloudSnapshots.set(payload.record_key,{data:payload.data,version:data.updatedAt});
+    if(recovered)keepRecoveredSampleView(payload.record_key,recovered.items,originalItems,saveRevision);
+    window.foodBrokerSampleSyncRecovery?.clearSection(payload.record_key);
+  }
 }
 
 function mergeCloudSectionValues(localValue, cloudValue) {
@@ -2231,7 +2330,7 @@ async function performCloudSaveSections(sectionKeys, options) {
       });
       if (error) throw { name: error.name, message: error.message, code: error.code, status: error.status || status };
     }
-    for(const payload of directoryPayload)await saveDirectoryCloudPayload(client,user,payload);
+    for(const payload of directoryPayload)await saveDirectoryCloudPayload(client,user,payload,revisions.get(payload.record_key),options);
     lastCloudError = "";
     revisions.forEach((revision, key) => {
       // Edits made during this request must still be sent in the next request.
@@ -2331,6 +2430,8 @@ function stopCloudAutoRefresh() {
   cloudLastRowFingerprint = "";
   cloudRowCache.clear();
   directoryCloudBaseUserId="";directoryCloudWriteBases.clear();
+  sampleCloudSnapshots.clear();
+  window.foodBrokerSampleSyncRecovery?.clear();
 }
 
 function cloudRowCacheKey(row) {
@@ -2387,6 +2488,7 @@ async function loadCloudSections(options = {}) {
     await correctPeteTeamRecords().catch(() => { peteCorrectionUser = ""; });
     const summary = options.summary || await fetchCloudRowSummary();
     const rows = await downloadChangedCloudRows(client, user, summary, cloudRowCache);
+    if(!sampleSyncUserValid(user))return false;
     // A user may start typing while the network request is in flight.
     if (isAppEditing()) { cloudSyncReady = true; return false; }
     const personalRows = rows.filter(row => row.scope === "personal");
@@ -2409,6 +2511,7 @@ async function loadCloudSections(options = {}) {
       cloudSectionConfigs.forEach((section) => {
         const cloudResult = getCloudSectionValue(section, personalRowMap, teamRowMap);
         if(directoryCloudSectionKeys.has(section.key)){
+          if(sampleCloudSectionKeys.has(section.key))sampleCloudSnapshots.set(section.key,sampleSyncSnapshot(teamRowMap.get(section.key)));
           if(pendingCloudSections.has(section.key)){localUploadKeys.push(section.key);return;}
           const remote=teamRowMap.get(section.key);
           if(!cloudResult.found){
