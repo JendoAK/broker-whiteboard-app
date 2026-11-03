@@ -884,9 +884,9 @@
       "family": "syscoEb",
       "logos": [
         {
-          "src": "print-logos/sysco-arrezzio.png",
+          "src": "print-logos/sysco-arrezzio-20261103.png",
           "alt": "Arrezzio logo",
-          "widthPt": 45.67,
+          "widthPt": 46.488,
           "heightPt": 45,
           "cropLeft": 0,
           "cropRight": 0,
@@ -918,10 +918,10 @@
       "family": "syscoEb",
       "logos": [
         {
-          "src": "print-logos/sysco-block-and-barrel.png",
+          "src": "print-logos/block-barrel.png",
           "alt": "Block & Barrel logo",
-          "widthPt": 45.67,
-          "heightPt": 45,
+          "widthPt": 50.28,
+          "heightPt": 50.4,
           "cropLeft": 0,
           "cropRight": 0,
           "cropTop": 0,
@@ -969,9 +969,9 @@
       "family": "syscoEb",
       "logos": [
         {
-          "src": "print-logos/sysco-casa-solana.png",
+          "src": "print-logos/sysco-casa-solana-20261103.png",
           "alt": "Casa Solana logo",
-          "widthPt": 45.67,
+          "widthPt": 63.098,
           "heightPt": 45,
           "cropLeft": 0,
           "cropRight": 0,
@@ -1088,9 +1088,9 @@
       "family": "syscoEb",
       "logos": [
         {
-          "src": "print-logos/sysco-portico.png",
+          "src": "print-logos/sysco-portico-20261103.png",
           "alt": "Portico Seafood logo",
-          "widthPt": 45.668,
+          "widthPt": 56.314,
           "heightPt": 45,
           "cropLeft": 0,
           "cropRight": 0,
@@ -1122,9 +1122,9 @@
       "family": "syscoEb",
       "logos": [
         {
-          "src": "print-logos/sysco-riserva.png",
+          "src": "print-logos/sysco-riserva-20261103.png",
           "alt": "Riserva logo",
-          "widthPt": 45.67,
+          "widthPt": 49.091,
           "heightPt": 45,
           "cropLeft": 0,
           "cropRight": 0,
@@ -1207,14 +1207,14 @@
       "family": "syscoEb",
       "logos": [
         {
-          "src": "print-logos/sysco-sysco-reliance.png",
+          "src": "print-logos/sysco-reliance-20261103.png",
           "alt": "Sysco Reliance logo",
-          "widthPt": 109.184,
+          "widthPt": 112.005,
           "heightPt": 45,
-          "cropLeft": 0.19333333333333333,
-          "cropRight": 0.192,
-          "cropTop": 0.1610337972166998,
-          "cropBottom": 0.08349900596421471
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
         }
       ]
     },
@@ -1292,9 +1292,9 @@
       "family": "syscoEb",
       "logos": [
         {
-          "src": "print-logos/sysco-wholesome-farms.png",
+          "src": "print-logos/sysco-wholesome-farms-20261103.png",
           "alt": "Wholesome Farms logo",
-          "widthPt": 45.67,
+          "widthPt": 67.393,
           "heightPt": 45,
           "cropLeft": 0,
           "cropRight": 0,
@@ -1375,6 +1375,119 @@
           "cropBottom": 0.2222222222222222
         }
       ]
+    },
+    {
+      "id": "manufacturer-tastybrands",
+      "name": "Tasty Brands",
+      "family": "manufacturer",
+      "logos": [
+        {
+          "src": "print-logos/tasty-brands.png",
+          "alt": "Tasty Brands logo",
+          "widthPt": 50.4,
+          "heightPt": 50.4,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
+        }
+      ]
+    },
+    {
+      "id": "brand-proview",
+      "name": "ProView by Tasty Brands",
+      "family": "brand",
+      "logos": [
+        {
+          "src": "print-logos/proview.png",
+          "alt": "ProView by Tasty Brands logo",
+          "widthPt": 120,
+          "heightPt": 33.389,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
+        }
+      ]
+    },
+    {
+      "id": "manufacturer-brookwoodfarms",
+      "name": "Brookwood Farms",
+      "family": "manufacturer",
+      "logos": [
+        {
+          "src": "print-logos/brookwood-farms.png",
+          "alt": "Brookwood Farms logo",
+          "widthPt": 75.2,
+          "heightPt": 50.4,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
+        }
+      ]
+    },
+    {
+      "id": "brand-frootjooce",
+      "name": "Froot Jooce",
+      "family": "brand",
+      "logos": [
+        {
+          "src": "print-logos/froot-jooce.png",
+          "alt": "Froot Jooce logo",
+          "widthPt": 78.872,
+          "heightPt": 50.4,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
+        }
+      ]
+    },
+    {
+      "id": "manufacturer-albies",
+      "name": "Albie’s",
+      "family": "manufacturer",
+      "logos": [
+        {
+          "src": "print-logos/albies.png",
+          "alt": "Albie’s logo",
+          "widthPt": 120,
+          "heightPt": 33.12,
+          "cropTop": 0.15,
+          "cropBottom": 0.16
+        }
+      ]
+    },
+    {
+      "id": "manufacturer-snyderslance",
+      "name": "Snyder’s-Lance",
+      "family": "manufacturer",
+      "logos": [
+        {
+          "src": "print-logos/snyders-lance.png",
+          "alt": "Snyder’s-Lance logo",
+          "widthPt": 117.6,
+          "heightPt": 50.4
+        }
+      ]
+    },
+    {
+      "id": "brand-thatsit",
+      "name": "That’s it.",
+      "family": "brand",
+      "logos": [
+        {
+          "src": "print-logos/thats-it.png",
+          "alt": "That’s it. logo",
+          "widthPt": 120,
+          "heightPt": 40,
+          "cropLeft": 0,
+          "cropRight": 0,
+          "cropTop": 0,
+          "cropBottom": 0
+        }
+      ]
     }
   ],
   "manufacturerAliases": {
@@ -1452,7 +1565,11 @@
     "dymabrands": "manufacturer-dymabrands",
     "dyma": "manufacturer-dymabrands",
     "longhornbbq": "manufacturer-longhornbbq",
-    "longhornbarbecue": "manufacturer-longhornbbq"
+    "longhornbarbecue": "manufacturer-longhornbbq",
+    "tastybrands": "manufacturer-tastybrands",
+    "brookwoodfarms": "manufacturer-brookwoodfarms",
+    "albies": "manufacturer-albies",
+    "snyderslance": "manufacturer-snyderslance"
   },
   "brandAliases": {
     "papettis": "papettis",
@@ -1532,14 +1649,21 @@
     "porticoimperial": "sysco-portico",
     "porticosimply": "sysco-portico",
     "wholesomefarmsclassic": "sysco-wholesome-farms",
-    "wholesomefarmsimperial": "sysco-wholesome-farms"
+    "wholesomefarmsimperial": "sysco-wholesome-farms",
+    "proview": "brand-proview",
+    "proviewbytastybrands": "brand-proview",
+    "frootjooce": "brand-frootjooce",
+    "frootjoce": "brand-frootjooce",
+    "thatsit": "brand-thatsit",
+    "arrezzioriservapremium": "sysco-riserva",
+    "riservapremium": "sysco-riserva"
   },
   "brandAliasNotices": {
     "jademountainclassic": "Showing the Jade Mountain family logo for “Jade Mountain Classic”.",
     "jademountainimperial": "Showing the Jade Mountain family logo for “Jade Mountain Imperial”.",
     "arrezzioclassic": "Showing the Arrezzio family logo for “Arrezzio Classic”.",
     "arrezzioimperial": "Showing the Arrezzio family logo for “Arrezzio Imperial”.",
-    "arrezzioriserva": "Showing the Riserva from Arrezzio logo for “Arrezzio Riserva”.",
+    "arrezzioriserva": "Showing the Arrezzio Riserva Premium logo for “Arrezzio Riserva”.",
     "bakerssourceclassic": "Showing the Baker's Source family logo for “Baker's Source Classic”.",
     "blockandbarrelclassic": "Showing the Block & Barrel family logo for “Block & Barrel Classic”.",
     "blockandbarrelimperial": "Showing the Block & Barrel family logo for “Block & Barrel Imperial”.",
@@ -1584,8 +1708,11 @@
     }
     const manufacturer = String(product.vendor || product.manufacturer || product.vendorName || "").trim();
     const maker = byId.get(data.manufacturerAliases[key(manufacturer)]);
+    // A generic brand may be stored in the legacy vendor field. Match only that exact recorded name.
+    const legacyBrand = !brand && mode === "automatic" && !maker ? byId.get(data.brandAliases[key(manufacturer)]) : null;
+    if (legacyBrand?.family === "brand") return result(legacyBrand);
     if (maker) return result(maker, mode === "automatic" && brand ? "No logo is available for “" + brand + "”; showing the " + maker.name + " manufacturer logo." : mode === "automatic" && key(product.brandType) === "eb" ? "No Exclusive Brand name is recorded; showing the " + maker.name + " manufacturer logo." : "");
     return missing(mode, manufacturer ? "No manufacturer logo is available for “" + manufacturer + "”. Choose a logo or upload your own." : "No manufacturer logo is available. Choose a logo or upload your own.");
   }
-  scope.foodBrokerPrintLogos = Object.freeze({version:"20261029-logocoverage1",resolve,options});
+  scope.foodBrokerPrintLogos = Object.freeze({version:"20261103-logobatch1",resolve,options});
 })(typeof window !== "undefined" ? window : globalThis);

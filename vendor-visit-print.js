@@ -38,7 +38,7 @@ function renderOperatorProductPrint({ visit, operator, products, distributor }, 
   const operatorName = getMarketOperatorDisplayName(operator);
   const logo = getEventPrintLogo(options.logo);
   const logos = `${options.companyLogo !== false ? `<img src="${escapeAttribute(getPrintAssetUrl(printBrandLogos.pierceCartwright))}" alt="Pierce Cartwright">` : ""}${logo ? `<img src="${escapeAttribute(getPrintAssetUrl(logo.src))}" alt="${escapeAttribute(logo.name)}">` : ""}`;
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(operatorName)} – Product list</title><style>
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(operatorName)} – Product list</title><style>${renderPrintBrandStyles()}
     @page { size: letter landscape; margin: .4in; }
     * { box-sizing: border-box; }
     body { color: #241e18; font: 12px Arial, sans-serif; margin: 0; }
@@ -50,7 +50,7 @@ function renderOperatorProductPrint({ visit, operator, products, distributor }, 
     th { background: #f5e4c7; } th:first-child, td:first-child { width: 34%; }
     thead { display: table-header-group; } tr { break-inside: avoid; }
     @media screen { body { max-width: 1100px; margin: 24px auto; padding: 16px; } }
-  </style></head><body><header>${logos}<div><h1>${escapeHtml(operatorName)}</h1><p>Product list · ${products.length} selected</p><p>${escapeHtml(getMarketVisitDisplayName(visit))} · ${escapeHtml(formatDateRange(visit.startDate, visit.endDate))}</p></div></header>${renderVisitProductPrintTable(products, options.codes || (distributor === 'Quality Sales' ? ['manufacturerNumber', 'distributorNumber'] : 'all'))}</body></html>`;
+  </style></head><body><header>${logos}<div><h1>${escapeHtml(operatorName)}</h1><p>Product list · ${products.length} selected</p><p>${escapeHtml(getMarketVisitDisplayName(visit))} · ${escapeHtml(formatDateRange(visit.startDate, visit.endDate))}</p></div></header>${renderVisitProductPrintTable(products, options.codes || (distributor === 'Quality Sales' ? ['manufacturerNumber', 'distributorNumber'] : 'all'), false, true)}</body></html>`;
 }
 
 function renderVendorVisitCalendarPrint(visit, sections) {
@@ -75,8 +75,8 @@ function renderVendorVisitCalendarPrint(visit, sections) {
     });
     return `<section class="print-page">${header}${renderPreciseMarketWeek(visit, { weekStart: monday, dayCount: hasWeekendCalls ? 7 : 5, print: true })}</section>`;
   }) : [];
-  if (sections.products) pages.push(`<section class="product-page">${header}<h2>Products</h2>${renderVisitProductPrintTable(getMarketVisitProducts(visit), sections.codeMode)}</section>`);
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
+  if (sections.products) pages.push(`<section class="product-page">${header}<h2>Products</h2>${renderVisitProductPrintTable(getMarketVisitProducts(visit), sections.codeMode, false, true)}</section>`);
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${renderPrintBrandStyles()}
     @page { size: letter landscape; margin: .35in; }
     * { box-sizing: border-box; }
     body { margin: 0; color: #241e18; font: 12px Arial, sans-serif; }

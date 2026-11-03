@@ -107,3 +107,6 @@
 #psOtherProductNumbers summary{font-size:13px;font-weight:600;cursor:pointer;padding-bottom:8px}
 #psImportK12SupplierField{margin:10px 0}#psK12ProductHint{margin:0;font-size:12px}
 @media(max-width:650px){.ps-product-number-fields{grid-template-columns:1fr}}
+
+/* Exact manufacturer and brand artwork in product-list/card previews. */
+.print-product-logos{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 5px;white-space:normal;break-inside:avoid}.print-product-logo{display:block;width:auto;height:auto;max-width:110px;max-height:36px;object-fit:contain}.ps-preview-label .print-product-logo{max-width:150px;max-height:48px}

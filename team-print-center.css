@@ -118,3 +118,8 @@
 #teamPrintCenterDialog #psPrintCopyStatus:empty{display:none}
 @media(max-width:430px){#teamPrintCenterDialog .ps-print-product-search{flex-basis:100%;max-width:none}#teamPrintCenterDialog .ps-print-product-search input{font-size:16px}#teamPrintCenterDialog .ps-bag-quantity>span{flex-basis:100%}#teamPrintCenterDialog .ps-print-product-list{max-height:200px}}
 @media print{#teamPrintCenterDialog .ps-print-products,#teamPrintCenterDialog .ps-bag-quantity,#teamPrintCenterDialog .ps-print-errors{display:none!important}}
+
+/* Exact manufacturer and brand artwork in product-list/card previews. */
+#teamPrintCenterDialog .print-product-logos{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 5px;white-space:normal;break-inside:avoid}
+#teamPrintCenterDialog .print-product-logo{display:block;width:auto;height:auto;max-width:110px;max-height:36px;object-fit:contain}
+#teamPrintCenterDialog .ps-preview-label .print-product-logo{max-width:150px;max-height:48px}

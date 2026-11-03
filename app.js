@@ -7081,7 +7081,7 @@ function renderMarketVisitPrintDocument(visit, sections = { schedule: true, prod
             ${calls.map((call) => `<tr><td>${call.date ? formatDate(call.date) : ""}</td><td>${escapeHtml([call.startTime, call.endTime].filter(Boolean).join(" - "))}</td><td>${escapeHtml(getMarketCallTitle(call))}</td><td>${escapeHtml(call.location || visit.location || "")}</td><td>${escapeHtml(call.salesReps.join(", ") || visit.salesReps.join(", "))}</td><td>${escapeHtml(call.notes || "")}</td></tr>`).join("") || `<tr><td colspan="6">No calls scheduled yet.</td></tr>`}
           </tbody>
         </table>` : ""}
-        ${sections.products ? renderVisitProductPrintTable(sortedProducts, sections.codeMode) : ""}
+        ${sections.products ? renderVisitProductPrintTable(sortedProducts, sections.codeMode, false, true) : ""}
         ${visit.notes ? `<h2>General notes</h2><p>${escapeHtml(visit.notes)}</p>` : ""}
       </body>
     </html>`;
@@ -9606,7 +9606,10 @@ function printCurrentLead(mode) {
 function renderLeadPrintDocument(card, mode) {
   const isProductsOnly = mode === "products";
   const title = isProductsOnly ? `${card.account} - Product List` : `${card.account} - Lead`;
-  const products = normalizeProducts(card);
+  const products = normalizeProducts(card).map(product => {
+    const source = Array.isArray(card.products) ? card.products.find(item => item.id === product.id) : null;
+    return source?.brandName ? {...product, brandName:source.brandName} : product;
+  });
   const imageAttachments = (card.attachments || []).filter((file) => String(file.type || "").startsWith("image/"));
   return `<!doctype html>
     <html>
@@ -9661,6 +9664,15 @@ function renderLeadPrintMeta(card) {
     .join("")}</div>`;
 }
 
+// Print-only artwork; legacy vendor-as-brand names are matched exactly without changing products.
+function renderProductPrintLogos(product, mode = "automatic") {
+  const library = window.foodBrokerPrintLogos;
+  let artwork = library?.resolve?.(product, mode);
+  if (mode === "automatic" && artwork?.missing && !String(product.brandName || "").trim() && product.vendor) artwork = library.resolve({brandName:product.vendor}, "brand");
+  const images = artwork && !artwork.missing ? (artwork.logos || []) : [];
+  return images.length ? `<span class="print-product-logos">${images.map(image => `<img class="print-product-logo" src="${escapeAttribute(getPrintAssetUrl(image.src))}" alt="${escapeAttribute(image.alt || artwork.name)}" />`).join("")}</span>` : "";
+}
+
 function renderProductPrintTable(products, distributor = "US Foods") {
   if (!products.length) return `<div class="note">No products entered.</div>`;
   return `<table>
@@ -9668,7 +9680,7 @@ function renderProductPrintTable(products, distributor = "US Foods") {
     <tbody>${products
       .map(
         (product) =>
-          `<tr><td>${escapeHtml(getLeadItemNumber(product) || "")}</td><td>${escapeHtml(product.description || "")}</td><td>${escapeHtml(product.vendor || "")}</td></tr>`
+          `<tr><td>${escapeHtml(getLeadItemNumber(product) || "")}</td><td>${escapeHtml(product.description || "")}</td><td>${renderProductPrintLogos(product)}${escapeHtml([product.vendor, product.brandName].filter(Boolean).join(" · "))}</td></tr>`
       )
       .join("")}</tbody>
   </table>`;
@@ -9872,7 +9884,13 @@ function normalizeVendorLogoKey(value) {
 }
 
 function getVendorLogo(vendor) {
-  const src = window.foodBrokerVendors.logo(vendor) || vendorLogoFiles[normalizeVendorLogoKey(normalizeVendorName(vendor))];
+  let src = window.foodBrokerVendors.logo(vendor) || vendorLogoFiles[normalizeVendorLogoKey(normalizeVendorName(vendor))];
+  if (!src) {
+    const library = window.foodBrokerPrintLogos;
+    const maker = library?.resolve?.({vendor}, "manufacturer");
+    const artwork = maker && !maker.missing ? maker : library?.resolve?.({brandName:vendor}, "brand");
+    if (artwork && !artwork.missing) src = artwork.src;
+  }
   return src ? { src, absoluteSrc: new URL(src, window.location.href).href, alt: `${vendor} logo` } : null;
 }
 
@@ -9905,6 +9923,7 @@ function renderPrintBrandStyles() {
     .print-brand-logo { display: block; object-fit: contain; }
     .print-brand-pc { max-width: 175px; max-height: 34px; }
     .print-brand-usf { max-width: 82px; max-height: 38px; }
+    .print-product-logos{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 5px;white-space:normal;break-inside:avoid}.print-product-logo{display:block;width:auto;height:auto;max-width:110px;max-height:36px;object-fit:contain}.ps-preview-label .print-product-logo{max-width:150px;max-height:48px}
   `;
 }
 
@@ -9966,7 +9985,7 @@ function renderStockPrintDocument(products, selectedColumnKeys, selectedVendor =
                 <table>
                   <thead><tr>${columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}</tr></thead>
                   <tbody>${vendorProducts
-                    .map((product) => `<tr>${columns.map((column) => `<td>${escapeHtml((column.key === "distributorNumber" && activeStockList === "k12" ? product.k12QualitySalesNumber : product[column.key]) || "")}</td>`).join("")}</tr>`)
+                    .map((product) => `<tr>${columns.map((column) => `<td>${column.key === "brandName" ? renderProductPrintLogos(product, "brand") : ""}${escapeHtml((column.key === "distributorNumber" && activeStockList === "k12" ? product.k12QualitySalesNumber : product[column.key]) || "")}</td>`).join("")}</tr>`)
                     .join("")}</tbody>
                 </table>
               </section>
@@ -10098,21 +10117,56 @@ function openPrintWindow(html, options = {}) {
   printWindow.document.write(html);
   printWindow.document.close();
   printWindow.focus();
-  const waitForImages = [...printWindow.document.images].map(
-    (image) =>
-      new Promise((resolve) => {
-        if (image.complete) {
-          resolve();
-          return;
-        }
-        image.addEventListener("load", resolve, { once: true });
-        image.addEventListener("error", resolve, { once: true });
-      })
-  );
-  Promise.race([Promise.all(waitForImages), new Promise((resolve) => setTimeout(resolve, 1200))]).then(() => {
-    printWindow.focus();
-    printWindow.print();
-  });
+  const status = printWindow.document.createElement("div");
+  status.className = "print-load-status";
+  status.style.cssText = "padding:12px;margin:0 0 16px;background:#edf5f0;border:1px solid #aac7bb;font:14px Arial,sans-serif;color:#203d39";
+  const message = printWindow.document.createElement("span");
+  const retry = printWindow.document.createElement("button");
+  retry.type = "button";
+  retry.textContent = "Try again";
+  retry.style.cssText = "margin-left:12px;padding:6px 12px;cursor:pointer";
+  retry.hidden = true;
+  status.append(message, retry);
+  printWindow.document.body.prepend(status);
+  const printStyle = printWindow.document.createElement("style");
+  printStyle.textContent = "@media print{.print-load-status{display:none!important}}";
+  printWindow.document.head.append(printStyle);
+  let preparing = false;
+  async function prepareImages(reloadFailed = false) {
+    if (preparing || printWindow.closed) return;
+    preparing = true;
+    status.hidden = false;
+    retry.hidden = true;
+    message.textContent = "Loading print images…";
+    let timeout;
+    try {
+      const images = [...printWindow.document.images];
+      if (reloadFailed) images.filter(image => !image.complete || !image.naturalWidth).forEach(image => { image.src = image.src; });
+      const ready = images.map(async image => {
+        try {
+          if (typeof image.decode === "function") await image.decode();
+          else if (!image.complete) await new Promise((resolve, reject) => { image.addEventListener("load", resolve, {once:true}); image.addEventListener("error", reject, {once:true}); });
+          if (!image.naturalWidth) throw new Error("Image is unavailable.");
+        } catch (_) { throw new Error("Could not load print image: " + (image.alt || "product artwork") + ". Check your connection and try again."); }
+      });
+      if (printWindow.document.fonts?.ready) ready.push(printWindow.document.fonts.ready);
+      await Promise.race([Promise.all(ready), new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error("Print images are taking too long to load. Check your connection and try again.")), 20000); })]);
+      if (printWindow.closed) return;
+      status.hidden = true;
+      printWindow.focus();
+      printWindow.print();
+    } catch (error) {
+      if (printWindow.closed) return;
+      message.textContent = error.message || "Could not load print images. Try again.";
+      retry.hidden = false;
+      try { window.foodBrokerSaveStatus?.recordError(error, {operation:"Prepare print images"}); } catch (_) {}
+    } finally {
+      clearTimeout(timeout);
+      preparing = false;
+    }
+  }
+  retry.addEventListener("click", () => prepareImages(true));
+  prepareImages();
 }
 
 function getAccountDirectory() {
