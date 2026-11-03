@@ -2,7 +2,7 @@
 (function () {
   "use strict";
   const key = value => String(value || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]/g, "");
-  const mainNames = ["Ajinomoto","Alaska Chip Company","AquaStar","Avieta","Backpack Yogurt","Baker Boy","Brakebush","Campbell's Foodservice","CJ Schwan's","Dakota Growers","Dawn Foods","Delizza Patisserie","DYMA Brands","ES Foods","Foster Farms","General Mills","Grain Craft","Grecian Delight / Kronos","Idahoan","Kerry","King's Command","Knouse Foods","Longhorn BBQ","Michael Foods","Mount Franklin Foods","Nestle","Pacific Coast Producers","Saputo","Simplot","Smithfield","Soules Foods","Super Bakery","The Cheesecake Factory Bakery","Trident Seafoods","Ventura Foods","Westminster Crackers","Wheat Montana / Stone Ground Bakery"];
+  const mainNames = ["Ajinomoto","Alaska Chip Company","AquaStar","Avieta","Backpack Yogurt","Baker Boy","Brakebush","Campbell's Foodservice","CJ Schwan's","Dakota Growers","Dawn Foods","Delizza Patisserie","DYMA Brands","ES Foods","Foster Farms","General Mills","Grain Craft","Grecian Delight / Kronos","Idahoan","Kerry","King's Command","Knouse Foods","Longhorn BBQ","Michael Foods","Mount Franklin Foods","Nestle","Pacific Coast Producers","ProView","Saputo","Simplot","Smithfield","Soules Foods","Super Bakery","The Cheesecake Factory Bakery","Trident Seafoods","Ventura Foods","Westminster Crackers","Wheat Montana / Stone Ground Bakery"];
   const aliases = new Map(mainNames.map(name => [key(name),name]));
   const add = (main, names) => names.forEach(name => aliases.set(key(name),main));
   add("", ["Alaska Bread"]);
@@ -18,6 +18,7 @@
   add("Longhorn BBQ", ["Longhorn"]);
   add("Mount Franklin Foods", ["Mount Franklin"]);
   add("Nestle", ["Nestlé","Nestle Professional","Nestle Vitality"]);
+  add("ProView", ["ProView Chicken"]);
   add("Soules Foods", ["Soules","John Soules","John Soules Foods"]);
   add("The Cheesecake Factory Bakery", ["The Cheesecake Factory","Cheesecake Factory"]);
   add("Trident Seafoods", ["Trident"]);
@@ -29,6 +30,7 @@
   const options = values => [...new Set(values.map(canonical).filter(name => known.has(name)))].sort((a,b) => a.localeCompare(b,undefined,{sensitivity:"base"}));
   const brands = new Map([
     ["coffemate","Coffee-Mate"],["coffeemate","Coffee-Mate"],["chefmate","Chef-Mate"],
+    ["proview","ProView"],["proviewchicken","ProView"],
     ["fernandos","Fernando's"],["nescafe","Nescafé"],["v8","V8"]
   ]);
   const brand = value => brands.get(key(value)) || String(value || "").trim();
