@@ -9674,7 +9674,7 @@ function renderProductPrintLogos(product, mode = "automatic") {
 }
 
 function renderProductPrintGroupHeading(vendor) {
-  return `<span class="print-product-group-heading"><strong>${escapeHtml(vendor)}</strong>${renderProductPrintLogos({vendor})}</span>`;
+  return `<strong>${escapeHtml(vendor)}</strong>`;
 }
 
 function renderProductPrintTable(products, distributor = "US Foods") {
@@ -9933,8 +9933,7 @@ function renderPrintBrandStyles() {
 
 function renderStockPrintDocument(products, selectedColumnKeys, selectedVendor = "", printLayout = "continuous") {
   const columns = stockPrintColumns.filter((column) => selectedColumnKeys.includes(column.key)).map(column => ({ ...column, label: getStockPrintColumnLabel(column) }));
-  const selectedVendorLogo = selectedVendor ? getVendorLogo(selectedVendor) : null;
-  const title = `${getActiveStockGroup()?.label || "Stock List"}${selectedVendor && !selectedVendorLogo ? ` - ${selectedVendor}` : ""}`;
+  const title = `${getActiveStockGroup()?.label || "Stock List"}${selectedVendor ? ` - ${selectedVendor}` : ""}`;
   const isVendorPageLayout = printLayout === "vendor-page" && !selectedVendor;
   const groups = new Map();
   products.forEach((product) => {
@@ -9977,13 +9976,11 @@ function renderStockPrintDocument(products, selectedColumnKeys, selectedVendor =
           .sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }))
           .map(
             ([vendor, vendorProducts], index) => {
-              const logo = getVendorLogo(vendor);
               return `
               <section class="vendor${isVendorPageLayout ? ` vendor-page${index === 0 ? " first-vendor" : ""}` : ""}">
                 <div class="vendor-head">
                   <div class="vendor-title">
-                    ${logo ? `<img class="print-vendor-logo" src="${escapeAttribute(logo.absoluteSrc)}" alt="${escapeAttribute(logo.alt)}" />` : ""}
-                    ${logo ? "" : `<div><div class="vendor-label">Vendor</div><h2>${escapeHtml(vendor)}</h2></div>`}
+                    <div><div class="vendor-label">Vendor</div><h2>${escapeHtml(vendor)}</h2></div>
                   </div>
                 </div>
                 <table>

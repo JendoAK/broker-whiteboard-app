@@ -481,7 +481,7 @@
     return [...groups.values()].sort((a,b) => a.vendor.localeCompare(b.vendor, undefined, {sensitivity:"base"}));
   }
   function productListGroupHeading(vendor, columns) {
-    return `<tr class="print-vendor-heading"><th colspan="${columns}"><span class="print-product-group-heading"><span>${esc(vendor)}</span>${productLogoMarkup({vendor})}</span></th></tr>`;
+    return `<tr class="print-vendor-heading"><th colspan="${columns}">${esc(vendor)}</th></tr>`;
   }
   function printMarkup(products, format, logo, heading, copies) {
     const hasGenericItems = products.some(p => genericItemNumber(p));
