@@ -123,3 +123,6 @@
 #teamPrintCenterDialog .print-product-logos{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 5px;white-space:normal;break-inside:avoid}
 #teamPrintCenterDialog .print-product-logo{display:block;width:auto;height:auto;max-width:110px;max-height:36px;object-fit:contain}
 #teamPrintCenterDialog .ps-preview-label .print-product-logo{max-width:150px;max-height:48px}
+
+/* One compact logo per vendor heading in product lists. */
+#teamPrintCenterDialog .ps-preview-table .print-vendor-heading{break-after:avoid}#teamPrintCenterDialog .ps-preview-table .print-vendor-heading>th{background:#e8d4ae}#teamPrintCenterDialog .print-product-group-heading{display:flex;align-items:center;gap:8px}#teamPrintCenterDialog .print-product-group-heading .print-product-logos{margin:0}#teamPrintCenterDialog .print-product-group-heading .print-product-logo{max-height:24px;max-width:96px}

@@ -9673,16 +9673,19 @@ function renderProductPrintLogos(product, mode = "automatic") {
   return images.length ? `<span class="print-product-logos">${images.map(image => `<img class="print-product-logo" src="${escapeAttribute(getPrintAssetUrl(image.src))}" alt="${escapeAttribute(image.alt || artwork.name)}" />`).join("")}</span>` : "";
 }
 
+function renderProductPrintGroupHeading(vendor) {
+  return `<span class="print-product-group-heading"><strong>${escapeHtml(vendor)}</strong>${renderProductPrintLogos({vendor})}</span>`;
+}
+
 function renderProductPrintTable(products, distributor = "US Foods") {
   if (!products.length) return `<div class="note">No products entered.</div>`;
   return `<table>
     <thead><tr><th>${escapeHtml(getDistributorItemLabel(distributor))}</th><th>Description</th><th>Vendor / Brand</th></tr></thead>
-    <tbody>${products
-      .map(
-        (product) =>
-          `<tr><td>${escapeHtml(getLeadItemNumber(product) || "")}</td><td>${escapeHtml(product.description || "")}</td><td>${renderProductPrintLogos(product)}${escapeHtml([product.vendor, product.brandName].filter(Boolean).join(" · "))}</td></tr>`
-      )
-      .join("")}</tbody>
+    <tbody>${groupVisitProducts(products).map(group =>
+      `<tr class="print-vendor-heading"><th colspan="3">${renderProductPrintGroupHeading(group.vendor)}</th></tr>${group.products.map(product =>
+        `<tr><td>${escapeHtml(getLeadItemNumber(product) || "")}</td><td>${escapeHtml(product.description || "")}</td><td>${escapeHtml([product.vendor, product.brandName].filter(Boolean).join(" · "))}</td></tr>`
+      ).join("")}`
+    ).join("")}</tbody>
   </table>`;
 }
 
@@ -9924,6 +9927,7 @@ function renderPrintBrandStyles() {
     .print-brand-pc { max-width: 175px; max-height: 34px; }
     .print-brand-usf { max-width: 82px; max-height: 38px; }
     .print-product-logos{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 5px;white-space:normal;break-inside:avoid}.print-product-logo{display:block;width:auto;height:auto;max-width:110px;max-height:36px;object-fit:contain}.ps-preview-label .print-product-logo{max-width:150px;max-height:48px}
+    .print-vendor-heading{break-after:avoid}.print-product-group-heading{display:flex;align-items:center;gap:8px;min-height:24px}.print-product-group-heading .print-product-logos{margin:0}.print-product-group-heading .print-product-logo{max-width:96px;max-height:24px}
   `;
 }
 
@@ -9985,7 +9989,7 @@ function renderStockPrintDocument(products, selectedColumnKeys, selectedVendor =
                 <table>
                   <thead><tr>${columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}</tr></thead>
                   <tbody>${vendorProducts
-                    .map((product) => `<tr>${columns.map((column) => `<td>${column.key === "brandName" ? renderProductPrintLogos(product, "brand") : ""}${escapeHtml((column.key === "distributorNumber" && activeStockList === "k12" ? product.k12QualitySalesNumber : product[column.key]) || "")}</td>`).join("")}</tr>`)
+                    .map((product) => `<tr>${columns.map((column) => `<td>${escapeHtml((column.key === "distributorNumber" && activeStockList === "k12" ? product.k12QualitySalesNumber : product[column.key]) || "")}</td>`).join("")}</tr>`)
                     .join("")}</tbody>
                 </table>
               </section>
