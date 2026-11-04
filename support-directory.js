@@ -27,7 +27,7 @@
   }
   function message(error) {
     if(["42883","PGRST202","PGRST203"].includes(text(error?.code)) || /function.*(?:does not exist|schema cache)/i.test(text(error?.message))) return "The restricted directory is not enabled yet. Please try again after the update is enabled.";
-    if(["40001","409","P0002"].includes(text(error?.code)) || /changed|conflict|version/i.test(text(error?.message))) return "This record changed while you were editing. Your edits are still here. Reopen the latest record before saving again.";
+    if(["PT409","40001","409","P0002"].includes(text(error?.code)) || /changed|conflict|version/i.test(text(error?.message))) return "This record changed while you were editing. Your edits are still here. Reopen the latest record before saving again.";
     return text(error?.message) ? "The request could not be completed. Your edits are kept below; check the error details and try again." : "The request could not be completed. Please refresh and try again.";
   }
   function setStatus(section,messageValue,tone="",error=null) {
@@ -232,3 +232,4 @@
   window.addEventListener("foodbrokerbase:auth",()=>{if(!identity()||identity()!==state.uid)clear();},true);
   window.foodBrokerSupportDirectory=Object.freeze({show,clear,refresh});
 })();
+

@@ -2067,6 +2067,10 @@ function keepRecoveredSampleView(sectionKey,items,originalItems,saveRevision) {
   renderAfterCloudSync();
 }
 
+function isCloudSyncConflict(error,status) {
+  return ["PT409","40001"].includes(error?.code) || Number(error?.status || status)===409;
+}
+
 async function saveDirectoryCloudPayload(client,user,payload,saveRevision,options={}) {
   const sampleSection=sampleCloudSectionKeys.has(payload.record_key), collectionName=sampleSection?"samples":"contacts or operators";
   const bases=getDirectoryCloudWriteBases(user.id);
@@ -2107,7 +2111,7 @@ async function saveDirectoryCloudPayload(client,user,payload,saveRevision,option
   if(getCloudUser()?.id!==user.id)throw {code:"DIRECTORY_ACCOUNT_CHANGED",message:"Sign in again before syncing "+collectionName+" changes."};
   const {data,error,status}=await client.rpc(sampleSection?"save_team_sample_section":"save_team_directory_section",{section_key:payload.record_key,section_value:payload.data,expected_updated_at:expected});
   if(sampleSection&&!sampleSyncUserValid(user))throw {code:"DIRECTORY_ACCOUNT_CHANGED",message:"The signed-in account changed before sample sync finished."};
-  if(error){if(sampleSection&&error.code==="40001")sampleCloudSnapshots.delete(payload.record_key);throw {name:error.code==="40001"?"DirectorySyncConflictError":error.name,code:error.code,status:error.status || status,message:error.code==="40001"?"A teammate changed "+collectionName+" while you were editing. Your current entries are kept in this open app and will be checked again before syncing.":error.message};}
+  if(error){const conflict=isCloudSyncConflict(error,status);if(sampleSection&&conflict)sampleCloudSnapshots.delete(payload.record_key);throw {name:conflict?"DirectorySyncConflictError":error.name,code:error.code,status:error.status || status,message:conflict?"A teammate changed "+collectionName+" while you were editing. Your current entries are kept in this open app and will be checked again before syncing.":error.message};}
   if(typeof data?.updatedAt!=="string" || !data.updatedAt || !rememberDirectoryCloudWriteBase(payload.record_key,data.updatedAt,user.id))throw {code:"DIRECTORY_VERSION_UNCONFIRMED",message:"Could not confirm the saved "+collectionName+" version. Your browser copy has been kept."};
   if(sampleSection){
     sampleCloudSnapshots.set(payload.record_key,{data:payload.data,version:data.updatedAt});
@@ -11161,4 +11165,5 @@ window.addEventListener("foodbrokerbase:workspace", () => {
 });
 document.addEventListener("close", () => queueMicrotask(applyPendingWorkspaceViews), true);
 document.addEventListener("focusout", () => setTimeout(applyPendingWorkspaceViews, 0));
+
 
