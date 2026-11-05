@@ -241,6 +241,8 @@ let cloudRefreshChecking = false;
 let pendingCloudSections = readPendingCloudSections();
 let lastCloudError = "";
 const cloudAutoRefreshMs = 30000;
+let timelineSuggestionsDirty = true;
+let leadProductSuggestionsDirty = true;
 
 function getMarketVisitsByCloudType(type) {
   return marketVisits.filter((visit) => normalizeMarketVisit(visit).type === type);
@@ -2227,16 +2229,22 @@ function renderAfterCloudSync() {
   correctThaiCurryVendor();
   applyContactNameCorrections();
   updateSalesRepSuggestions();
-  render();
-  renderTodoBoard();
-  renderVendorReport();
-  renderAddressBook();
-  renderStockLists();
-  renderSamples();
-  renderDotOrders();
-  renderNestleMachines();
-  renderMarketVisits();
-  renderCalendar();
+  // Each section renders when opened. Do not rebuild hidden product tables
+  // and editors just because a background sync changed a task or lead.
+  const views = [
+    [elements.todoDialog, renderTodoBoard],
+    [elements.vendorReportDialog, renderVendorReport],
+    [elements.addressBookDialog, renderAddressBook],
+    [elements.stockListsDialog, renderStockLists],
+    [elements.sampleTrackerDialog, () => { renderSamples(); renderDotOrders(); renderNestleMachines(); }],
+    [elements.marketVisitsDialog, renderMarketVisits]
+  ];
+  let sectionVisible = false;
+  views.forEach(([view, refresh]) => {
+    if (view && !view.hidden) { sectionVisible = true; refresh(); }
+  });
+  if (!sectionVisible) render();
+  if (elements.calendarDialog.open) renderCalendar();
   updateTimelineSearchSuggestions();
   restoreAppScroll(appScroll);
 }
@@ -2247,7 +2255,8 @@ function updateSaveStatus() {
     syncing: cloudSaveRequests,
     confirmed: cloudSaveConfirmed,
     hasUser: Boolean(getCloudUser()),
-    ready: cloudSyncReady
+    ready: cloudSyncReady,
+    error: lastCloudError
   });
 }
 
@@ -10226,6 +10235,10 @@ function updateAccountSuggestions() {
 }
 
 function updateTimelineSearchSuggestions() {
+  timelineSuggestionsDirty = true;
+}
+
+function rebuildTimelineSearchSuggestions() {
   if (!elements.timelineSearchSuggestions) return;
   const products = window.foodBrokerProducts.choices([
     ...stockProducts,
@@ -10260,6 +10273,7 @@ function updateTimelineSearchSuggestions() {
     .slice(0, 500)
     .map((value) => `<option value="${escapeAttribute(value)}"></option>`)
     .join("");
+  timelineSuggestionsDirty = false;
 }
 
 function getSalesRepDirectory() {
@@ -10294,15 +10308,7 @@ function updateVendorControls() {
   const vendors = getVendorNames();
   const reportVendors = getVendorReportVendorNames();
   elements.vendorSuggestions.innerHTML = vendors.map((vendor) => `<option value="${escapeAttribute(vendor)}"></option>`).join("");
-  elements.apnSuggestions.innerHTML = getProductDirectory(elements.leadDistributor?.value ?? preferredLeadDistributor())
-    .map((product) => {
-      const label = [product.description, product.vendor].filter(Boolean).join(" - ");
-      return `<option value="${escapeAttribute(product.number)}" label="${escapeAttribute(label)}"></option>`;
-    })
-    .join("");
-  elements.productSearchSuggestions.innerHTML = getLeadProductSearchDirectory(elements.leadDistributor?.value ?? preferredLeadDistributor())
-    .map((product) => `<option value="${escapeAttribute(product.label)}"></option>`)
-    .join("");
+  leadProductSuggestionsDirty = true;
   elements.vendorFilter.innerHTML = `<option value="">All</option>${vendors
     .map((vendor) => `<option value="${escapeAttribute(vendor)}">${escapeHtml(vendor)}</option>`)
     .join("")}`;
@@ -10317,6 +10323,27 @@ function updateVendorControls() {
   }
   updateVendorReportYearOptions(selectedReportYear);
 }
+
+function rebuildLeadProductSuggestions() {
+  elements.apnSuggestions.innerHTML = getProductDirectory(elements.leadDistributor?.value ?? preferredLeadDistributor())
+    .map((product) => {
+      const label = [product.description, product.vendor].filter(Boolean).join(" - ");
+      return `<option value="${escapeAttribute(product.number)}" label="${escapeAttribute(label)}"></option>`;
+    })
+    .join("");
+  elements.productSearchSuggestions.innerHTML = getLeadProductSearchDirectory(elements.leadDistributor?.value ?? preferredLeadDistributor())
+    .map((product) => `<option value="${escapeAttribute(product.label)}"></option>`)
+    .join("");
+  leadProductSuggestionsDirty = false;
+}
+
+function refreshFocusedSuggestions(event) {
+  const list = event.target?.list;
+  if (timelineSuggestionsDirty && list && list === elements.timelineSearchSuggestions) rebuildTimelineSearchSuggestions();
+  if (leadProductSuggestionsDirty && list && [elements.apnSuggestions, elements.productSearchSuggestions].includes(list)) rebuildLeadProductSuggestions();
+}
+document.addEventListener("focusin", refreshFocusedSuggestions);
+document.addEventListener("input", refreshFocusedSuggestions);
 
 function updateVendorReportYearOptions(selectedYear = "") {
   if (!elements.vendorReportYearFilter) return;

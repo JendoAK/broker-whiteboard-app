@@ -15,10 +15,11 @@
     if (/^importBackup/.test(button.id)) return 'import';
     if (button.matches('.cloud-download-action')) return 'download';
     if (button.matches('[data-cloud-sync-action]')) return 'merge';
+    if (button.matches('[data-save-status-action]')) return 'saveStatus';
     return 'other';
   }
-  const order = ['account','workspace','overview','team','archive','trash','export','import','merge','download','other'];
-  const groups = {account:'personal',workspace:'personal',overview:'team',team:'team',archive:'records',trash:'records',export:'tools',import:'tools',merge:'tools',download:'tools',other:'other'};
+  const order = ['account','workspace','overview','team','archive','trash','export','import','saveStatus','merge','download','other'];
+  const groups = {account:'personal',workspace:'personal',overview:'team',team:'team',archive:'records',trash:'records',export:'tools',import:'tools',saveStatus:'tools',merge:'tools',download:'tools',other:'other'};
 
   function group(panel, label, name) {
     const section = document.createElement('section');

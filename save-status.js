@@ -5,7 +5,7 @@
   const DB_NAME = "food-broker-save-diagnostics";
   const STORE_NAME = "save-errors";
   const HISTORY_KEY = "recent";
-  const state = { pending: 0, syncing: 0, confirmed: false, hasUser: false, ready: false, localFailure: false, touched: false };
+  const state = { pending: 0, syncing: 0, confirmed: false, hasUser: false, ready: false, localFailure: false, syncFailure: false, touched: false };
   let errors = [];
   let database = null;
   let persistence = Promise.resolve();
@@ -153,21 +153,16 @@
     const details = element("button", "save-status-details", "Save error details");
     details.type = "button";
     details.hidden = true;
-    details.addEventListener("click", function () {
-      renderErrors();
-      if (typeof ui.dialog.showModal === "function") ui.dialog.showModal();
-      else ui.dialog.setAttribute("open", "");
-      ui.heading.focus({ preventScroll: true });
-      ui.dialog.scrollTop = 0;
-    });
+    details.addEventListener("click", openDetails);
     bar.append(message, details);
 
     const dialog = element("dialog", "save-errors-dialog");
     dialog.setAttribute("aria-labelledby", "saveErrorsTitle");
-    const heading = element("h2", "", "Recent save errors");
+    const heading = element("h2", "", "Save status & recent errors");
     heading.id = "saveErrorsTitle";
     heading.tabIndex = -1;
     const introduction = element("p", "save-errors-intro");
+    const currentStatus = element("p", "save-current-status");
     const list = element("ol", "save-errors-list");
     const close = element("button", "save-errors-close", "Close");
     close.type = "button";
@@ -177,15 +172,32 @@
     });
     const header = element("div", "save-errors-heading");
     header.append(heading, close);
-    dialog.append(header, introduction, list);
+    dialog.append(header, currentStatus, introduction, list);
     document.body.append(bar, dialog);
-    ui = { bar: bar, message: message, details: details, dialog: dialog, list: list, introduction: introduction, heading: heading };
+    ui = { bar: bar, message: message, details: details, dialog: dialog, list: list, introduction: introduction, heading: heading, currentStatus: currentStatus };
+    document.querySelectorAll(".settings-panel").forEach(function (panel) {
+      const button = element("button", "ghost-action", "Save status & recent errors");
+      button.type = "button"; button.dataset.saveStatusAction = "true";
+      button.addEventListener("click", function () { panel.closest("details.settings-menu")?.removeAttribute("open"); openDetails(); });
+      panel.append(button);
+    });
     render();
+  }
+
+  function openDetails() {
+    createUi();
+    if (!ui) return;
+    render(); renderErrors();
+    if (typeof ui.dialog.showModal === "function") ui.dialog.showModal();
+    else ui.dialog.setAttribute("open", "");
+    ui.heading.focus({ preventScroll: true });
+    ui.dialog.scrollTop = 0;
   }
 
   function renderErrors() {
     if (!ui) return;
     ui.list.replaceChildren();
+    if (!errors.length) ui.list.append(element("li", "save-error-entry", "No recent save errors on this device."));
     errors.slice().reverse().forEach(function (entry) {
       const item = element("li", "save-error-entry");
       const time = element("time", "save-error-time");
@@ -205,15 +217,20 @@
     ui.introduction.textContent = historyDurable
       ? "These details are saved on this device. The most recent 20 errors are kept, even after a later save succeeds."
       : "These details stay on this device. Error history is currently available only until this page closes because browser storage is unavailable or has not finished saving it.";
-    ui.bar.hidden = !(state.touched || state.pending || state.syncing || errors.length);
+    // Routine saving is background work, not a persistent notification.
+    // The complete current status and retained error history remain in Settings.
+    ui.bar.hidden = !(state.localFailure || state.syncFailure);
     ui.details.hidden = errors.length === 0;
     let label;
     let visualState;
-    if (!state.touched && !state.pending && !state.syncing && errors.length) {
+    if (!state.touched && !state.pending && !state.syncing && errors.length && !state.localFailure && !state.syncFailure) {
       label = "Previous save errors are available.";
       visualState = "waiting";
     } else if (state.localFailure) {
       label = "Could not save. Your changes are still open.";
+      visualState = "error";
+    } else if (state.syncFailure) {
+      label = "Cloud sync needs attention. Check save details.";
       visualState = "error";
     } else if (state.syncing) {
       label = "Saving to cloud…";
@@ -230,6 +247,7 @@
     }
     if (ui.message.textContent !== label) ui.message.textContent = label;
     ui.bar.dataset.state = visualState;
+    ui.currentStatus.textContent = label;
     if (ui.dialog.open) renderErrors();
   }
 
@@ -241,6 +259,7 @@
       });
       ["hasUser", "ready"].forEach(function (key) { if (typeof next[key] === "boolean") state[key] = next[key]; });
       if (typeof next.confirmed === "boolean") state.confirmed = next.confirmed;
+      if (typeof next.error === "string") state.syncFailure = Boolean(next.error);
       if (state.pending || state.syncing) state.confirmed = false;
       if (state.pending || state.syncing || next.confirmed) state.touched = true;
       render();
@@ -259,6 +278,7 @@
     },
     recordError: function (error, options) {
       options = options || {};
+      if (!options.localFailure) state.syncFailure = true;
       const isObject = error && (typeof error === "object" || typeof error === "function");
       if (!isObject || !recordedErrors.has(error)) {
         errors.push(diagnostic(error, options));
@@ -280,7 +300,8 @@
       await initialized;
       await persistence;
       return errors.slice().reverse().map(function (entry) { return Object.assign({}, entry); });
-    }
+    },
+    open: openDetails
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", createUi, { once: true });
