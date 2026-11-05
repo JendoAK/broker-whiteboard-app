@@ -3349,6 +3349,7 @@ function createCard(card) {
 }
 
 function turnLeadIntoVendorReport(id) {
+  const previousCards = cards;
   let changed = false;
   let productCount = 0;
   let leadName = "";
@@ -3382,15 +3383,16 @@ function turnLeadIntoVendorReport(id) {
     return;
   }
 
-  if (!persist()) return;
+  if (!persist()) { cards = previousCards; render(); return false; }
   render();
-  if (activeView === "vendor") renderVendorReport();
   alert(`${leadName} is ready in My Vendor Reports with ${productCount} product${productCount === 1 ? "" : "s"}.`);
+  return true;
 }
 
 function archiveCard(id) {
   const outcome = askArchiveOutcome();
-  if (!outcome) return;
+  if (!outcome) return false;
+  const previousCards = cards;
   cards = cards.map((card) =>
     card.id === id
       ? {
@@ -3400,9 +3402,10 @@ function archiveCard(id) {
         }
       : card
   );
-  persist();
+  if (!persist()) { cards = previousCards; render(); return false; }
   render();
   if (elements.archiveDialog.open) renderArchive();
+  return true;
 }
 
 function restoreCard(id) {
