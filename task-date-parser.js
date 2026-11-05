@@ -10,6 +10,16 @@
     return `${part('year')}-${part('month')}-${part('day')}`;
   }
   const key = d => d.toISOString().slice(0,10);
+  function range(period, now = new Date(), sundayStart = false) {
+    if (!['today','tomorrow','week','nextWeek'].includes(period)) return null;
+    const base = new Date(today(now)+'T12:00:00Z');
+    const offset = days => {const date = new Date(base);date.setUTCDate(date.getUTCDate()+days);return key(date);};
+    if (period === 'today') return {start: offset(0), end: offset(0)};
+    if (period === 'tomorrow') return {start: offset(1), end: offset(1)};
+    const weekEnd = ((sundayStart ? 6 : 0)-base.getUTCDay()+7)%7;
+    return period === 'week' ? {start: offset(0), end: offset(weekEnd)}
+      : {start: offset(weekEnd+1), end: offset(weekEnd+7)};
+  }
   function validDate(y,m,d) {
     const date = new Date(Date.UTC(y,m,d));
     return date.getUTCFullYear() === y && date.getUTCMonth() === m && date.getUTCDate() === d ? key(date) : '';
@@ -50,6 +60,6 @@
     return {date,time,tokens,title:clean(text,tokens)};
   }
   function clean(text,tokens){let result=text;[...tokens].sort((a,b)=>b.start-a.start).forEach(t=>{result=result.slice(0,t.start)+result.slice(t.end)});return result.replace(/\s+/g,' ').trim();}
-  const api={parse,clean,today};
+  const api={parse,clean,today,range};
   if(typeof module==='object'&&module.exports)module.exports=api;else root.TaskDates=api;
 })(typeof window==='object'?window:globalThis);

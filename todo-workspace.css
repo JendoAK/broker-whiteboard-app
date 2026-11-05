@@ -71,6 +71,12 @@
 .task-row-feedback{grid-column:2/-1;grid-row:2;font-size:10px;line-height:1.4;color:#4c6234}
 .task-row-feedback:empty{display:none}
 
+.task-planned-filters{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0;flex-shrink:0}
+.task-planned-filters[hidden]{display:none!important}
+.task-planned-filters button{border:1px solid #a4b17e;border-radius:6px;background:#f3f5e4;color:#425534;padding:6px 10px;font:inherit;font-size:12px;line-height:1.25;box-shadow:none;cursor:pointer}
+.task-planned-filters button:hover{background:#e7ebcf}
+.task-planned-filters button[aria-pressed=true]{background:#798448;border-color:#66723b;color:#fff;font-weight:700}
+
 .task-composer{padding:9px 11px;border-radius:7px;box-shadow:0 2px 7px #58653512}
 .task-composer>label{font-size:12px;margin-bottom:5px}
 #todoDialog .task-entry input{padding:7px 9px;font-size:13px}

@@ -1,7 +1,7 @@
 /* FoodBrokerBase task workspace. All writes use the existing save path. */
 (() => {
   'use strict';
-  let selectedId='', view='all', lastDay=TaskDates.today();
+  let selectedId='', view='all', plannedRange='all', lastDay=TaskDates.today();
   const noteDrafts=new Map(), noteTimers=new Map(), noteRecoveryKeys=new Map(), rowNotices=new Map();
   let dateOverride=null, timeOverride=null, parsed=TaskDates.parse('');
   const labels={all:'All tasks',myday:'My Day',today:'Due today',important:'Important',planned:'Planned',done:'Completed',New:'New','In Progress':'In progress','Waiting on Someone':'Waiting on someone'};
@@ -21,11 +21,23 @@
   workspace.querySelector('.task-archive-slot').append(panel.querySelector('.todo-archive-toolbar'));
   const filterButton=workspace.querySelector('.task-filter-toggle');
   filterButton.onclick=()=>{const filters=workspace.querySelector('.task-filters');filters.hidden=!filters.hidden;filterButton.setAttribute('aria-expanded',String(!filters.hidden));};
+  const plannedRangeLabels={all:'All planned',today:'Today',tomorrow:'Tomorrow',week:'This week',nextWeek:'Next week'};
+  const plannedFilters=document.createElement('div');plannedFilters.className='task-planned-filters';plannedFilters.hidden=true;
+  plannedFilters.setAttribute('role','group');plannedFilters.setAttribute('aria-label','Filter planned tasks by date');
+  workspace.querySelector('.task-search-bar').before(plannedFilters);
+  Object.entries(plannedRangeLabels).forEach(([key,label])=>{
+    const button=document.createElement('button');button.type='button';button.textContent=label;button.dataset.plannedRange=key;
+    button.onclick=()=>{plannedRange=key;selectedId='';elements.todoDueFilter.value='';activeTodoQuickFilter='';todoQuickListMode=false;renderTodoBoard();};
+    plannedFilters.append(button);
+  });
+  // Let the existing date dropdown and Clear button replace this date choice.
+  elements.todoDueFilter.addEventListener('input',()=>{plannedRange='all';},{capture:true});
+  workspace.querySelector('#clearTodoFilters')?.addEventListener('click',()=>{plannedRange='all';},{capture:true});
   Object.entries(labels).forEach(([key,label],i)=>{
     if(i===6){const h=document.createElement('h2');h.textContent='By status';nav.append(h);}
     const button=document.createElement('button');button.type='button';button.dataset.taskView=key;
     button.innerHTML=`${icon(iconNames[key])}<span>${label}</span><small></small>`;
-    button.onclick=()=>{view=key;selectedId='';clearTodoFilters(false);workspace.querySelector('#taskQuickMyDay').checked=key==='myday';renderTodoBoard();};nav.append(button);
+    button.onclick=()=>{view=key;plannedRange='all';selectedId='';clearTodoFilters(false);workspace.querySelector('#taskQuickMyDay').checked=key==='myday';renderTodoBoard();};nav.append(button);
   });
   // Existing date-view buttons retain their handlers, with the primary view reset.
   workspace.querySelectorAll('[data-todo-quick]').forEach(button=>button.addEventListener('click',()=>{view='all';renderTodoBoard();}));
@@ -188,9 +200,12 @@
     const focusRow=focused?.closest('.task-row')?.dataset.taskId;
     const rowControl=['task-row-status','task-complete','task-day-action','task-row-save','task-row-archive','task-open'].find(name=>focused?.classList.contains(name));
     updateTodoSummary();setActiveTodoQuickTile();
-    const items=getVisibleTodos().filter(t=>matches(t,view));
+    const range=view==='planned'?TaskDates.range(plannedRange,undefined,typeof sundayCalendarStart==='function'&&sundayCalendarStart()):null;
+    const items=getVisibleTodos().filter(t=>matches(t,view)&&(!range||t.due>=range.start&&t.due<=range.end));
+    plannedFilters.hidden=view!=='planned';
+    plannedFilters.querySelectorAll('button').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.plannedRange===plannedRange)));
     workspace.querySelector('#taskViewTitle').textContent=activeTodoQuickFilter?getTodoQuickFilterLabel(activeTodoQuickFilter):labels[view];
-    workspace.querySelector('#taskViewDescription').textContent=`${items.length} ${items.length===1?'task':'tasks'}${view==='myday'?' to focus on today':''}`;
+    workspace.querySelector('#taskViewDescription').textContent=`${items.length} ${items.length===1?'task':'tasks'}${view==='myday'?' to focus on today':''}${view==='planned'&&plannedRange!=='all'?' · '+plannedRangeLabels[plannedRange]:''}`;
     nav.querySelectorAll('button').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.taskView===view&&!activeTodoQuickFilter));b.querySelector('small').textContent=todos.filter(t=>!t.archivedAt&&matches(t,b.dataset.taskView)).length;});
     board.className='todo-board task-list';board.innerHTML='';
     if(!items.length)board.innerHTML='<div class="task-empty"><h2>All clear</h2><p>No tasks match this view. Add a task or adjust your filters.</p></div>';
