@@ -136,6 +136,62 @@
     };
   }
 
+  // Small, independent edit records survive a closed window and cannot be
+  // replaced by another window's whole-collection cache or global retry list.
+  function createOutbox(storage) {
+    const prefix = (userId, sectionKey) => `broker-whiteboard-work-outbox:${encodeURIComponent(userId)}:${encodeURIComponent(sectionKey)}:`;
+    const changes = (before, after) => {
+      const old = new Map(before.map(item => [item.id, item]));
+      const next = new Map(after.map(item => [item.id, item]));
+      const ids = [...new Set([...old.keys(), ...next.keys()])].filter(id => !equal(old.get(id), next.get(id)));
+      return {base: ids.filter(id => old.has(id)).map(id => old.get(id)), value: ids.filter(id => next.has(id)).map(id => next.get(id))};
+    };
+    function list(userId, sectionKey) {
+      const start = prefix(userId, sectionKey), entries = [];
+      for (let index = 0; index < storage.length; index++) {
+        const key = storage.key(index);
+        if (!key?.startsWith(start)) continue;
+        const raw = storage.getItem(key);
+        if (!raw) continue;
+        let entry;
+        try {entry = JSON.parse(raw);} catch (_) { /* Report an unreadable edit rather than discard it. */ }
+        if (entry?.format !== 1 || !Number.isFinite(entry.order) || !Array.isArray(entry.base) || !Array.isArray(entry.value)) {
+          throw new Error("A saved task edit could not be read. Keep this window open and export a backup.");
+        }
+        entries.push({...entry, key, raw});
+      }
+      return entries.sort((a, b) => a.order - b.order || a.key.localeCompare(b.key));
+    }
+    function acknowledge(entries) {
+      for (const entry of entries) {
+        // A note may have changed again while its earlier text was uploading.
+        if (storage.getItem(entry.key) === entry.raw) storage.removeItem(entry.key);
+      }
+    }
+    function keep(userId, sectionKey, before, after, draftKey, {first = false} = {}) {
+      const entries = list(userId, sectionKey);
+      const prior = entries.find(entry => entry.key === draftKey);
+      const base = prior?.base || before;
+      const delta = changes(base, typeof after === "function" ? after(copy(base)) : after);
+      if (!delta.base.length && !delta.value.length) {
+        if (prior) acknowledge([prior]);
+        return null;
+      }
+      const id = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const key = prior?.key || prefix(userId, sectionKey) + id;
+      const order = first ? Math.min(Date.now(), entries[0]?.order ?? Infinity) - 1
+        : Math.max(Date.now(), (entries.at(-1)?.order || 0) + 1);
+      const raw = JSON.stringify({format: 1, order, ...delta});
+      storage.setItem(key, raw);
+      return {key, raw};
+    }
+    return {list, keep, acknowledge};
+  }
+
+  function applyEdits(value, entries) {
+    return entries.reduce((current, entry) => merge(entry.base, entry.value, current), copy(value));
+  }
+
   async function save(client, options) {
     const {table, userId, payload, normalize, isCurrent} = options;
     const original = copy(options.local);
@@ -158,7 +214,7 @@
     };
     for (let attempt = 0; attempt < 3; attempt++) {
       if (!remote) remote = await read();
-      const value = merge(base?.value, original, remote.value);
+      const value = options.edits?.length ? applyEdits(remote.value, options.edits) : merge(base?.value, original, remote.value);
       const data = {...payload.data, value, syncProtocol: 2, syncWriteBase: remote.version};
       valid();
       const query = remote.version
@@ -180,7 +236,7 @@
     throw new Error("This task or calendar changed on another device while saving. Your changes are kept in this browser and will retry.");
   }
 
-  const api = {equal, merge, createBases, createIndexedBases, save};
+  const api = {equal, merge, createBases, createIndexedBases, createOutbox, applyEdits, save};
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else window.foodBrokerWorkSync = api;
 })();

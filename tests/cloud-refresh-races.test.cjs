@@ -50,6 +50,7 @@ function setup() {
     todoStorageKey: key, normalizeTodo: value => value,
     storageKey: 'leads', stockStorageKey: 'stock', manualVendorStorageKey: 'reports', eventProductStorageKey: 'products', nestleMachineStorageKey: 'machines',
     workCloudBases: sync.createBases({getItem: () => null, setItem() {}}),
+    taskOutbox: {list: () => [], keep() {}, acknowledge() {}}, recoverPendingTaskEdits() {},
     window: {foodBrokerWorkSync: sync, foodBrokerSaveStatus: {localSaved() {}, recordError() {}}, clearTimeout() {}, setTimeout() {return 1;}}
   };
   vm.createContext(context);

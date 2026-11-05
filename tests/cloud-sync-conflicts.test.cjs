@@ -28,6 +28,7 @@ function setup(key = 'contacts', response = {error: {code: 'PT409', message: 'St
     cloudSaveRequests: 0,
     cloudWriteEpoch: 0,
     workCloudSectionKeys: new Set(),
+    todoStorageKey: 'tasks', taskOutbox: {list: () => []},
     failedLocalSections: new Set(),
     cloudSaveTimer: null,
     cloudSaveConfirmed: false,

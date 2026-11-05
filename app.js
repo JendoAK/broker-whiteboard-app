@@ -232,6 +232,7 @@ const cloudSectionRevisions = new Map();
 const failedLocalSections = new Set();
 const workCloudSectionKeys = new Set();
 const workCloudBases = window.foodBrokerWorkSync.createIndexedBases(window.indexedDB, localStorage);
+const taskOutbox = window.foodBrokerWorkSync.createOutbox(localStorage);
 let cloudAutoRefreshTimer = null;
 let cloudLastRowFingerprint = "";
 let cloudRowCache = new Map();
@@ -371,6 +372,7 @@ if (!localStorage.getItem(resetFlagKey)) {
 
 let cards = loadCards();
 let todos = loadTodos();
+let todoSavedSnapshot = JSON.parse(JSON.stringify(todos));
 let manualVendorReports = loadManualVendorReports();
 let addressBook = loadAddressBook();
 let stockProducts = loadStockProducts();
@@ -1813,6 +1815,7 @@ function writeLocalSection(sectionKey, value) {
     throw error;
   }
   failedLocalSections.delete(sectionKey);
+  if (sectionKey === todoStorageKey) todoSavedSnapshot = JSON.parse(JSON.stringify(value));
   window.foodBrokerSaveStatus?.recoverSections?.([sectionKey]);
 }
 
@@ -1830,16 +1833,42 @@ function persist() {
 }
 
 function persistTodos() {
+  let edit;
   try {
     recordWorkUpdateTimes(todos, todoStorageKey);
+    const user = getCloudUser();
+    if (user) edit = taskOutbox.keep(user.id, todoStorageKey, todoSavedSnapshot, todos);
     writeLocalSection(todoStorageKey, todos);
     scheduleCloudSave(todoStorageKey);
     return true;
   } catch (error) {
+    if (edit) {try {taskOutbox.acknowledge([edit]);} catch (_) { /* Keep the recovery copy if storage is unavailable. */ }}
+    cloudSaveConfirmed = false;
+    failedLocalSections.add(todoStorageKey);
+    window.foodBrokerSaveStatus?.recordError(error, {operation: "Save task recovery copy", section: todoStorageKey, localFailure: true});
     alert("This task could not save because the browser storage is full. Try exporting a backup, then removing a very large attachment or old file.");
     console.error(error);
     return false;
   }
+}
+
+function retainTaskNoteDraft(id, notes, draftKey) {
+  const user = getCloudUser(), task = todos.find(item => item.id === id);
+  if (!user || !task) return null;
+  // Freeze the original task fields while typing; only the note is an edit.
+  const draft = taskOutbox.keep(user.id, todoStorageKey, [task], base => base.map(item => ({...item, notes})), draftKey);
+  if (draft) scheduleCloudSave(todoStorageKey);
+  return draft?.key || null;
+}
+
+function recoverPendingTaskEdits(user) {
+  const edits = taskOutbox.list(user.id, todoStorageKey);
+  if (!edits.length) return;
+  todos = window.foodBrokerWorkSync.applyEdits(todos, edits).map(normalizeTodo);
+  writeLocalSection(todoStorageKey, todos);
+  pendingCloudSections.add(todoStorageKey);
+  storePendingCloudSections();
+  renderAfterCloudSync();
 }
 
 function persistManualVendorReports() {
@@ -2321,20 +2350,36 @@ function normalizeWorkCloudValue(sectionKey, value) {
 async function saveWorkCloudPayload(client, user, payload) {
   const section = getCloudConfig(payload.record_key);
   const original = normalizeWorkCloudValue(section.key, payload.data.value);
+  const edits = section.key === todoStorageKey ? taskOutbox.list(user.id, section.key) : [];
   const saved = await window.foodBrokerWorkSync.save(client, {
     table: section.scope === "team" ? "team_app_records" : "app_records",
     userId: user.id, payload, local: original, base: await workCloudBases.get(user.id, section.key),
-    normalize: value => normalizeWorkCloudValue(section.key, value), isCurrent: () => sampleSyncUserValid(user)
+    normalize: value => normalizeWorkCloudValue(section.key, value), isCurrent: () => sampleSyncUserValid(user), edits
   });
   // Preserve edits made after this upload began, along with other devices' additions.
   section.set(window.foodBrokerWorkSync.merge(original, normalizeWorkCloudValue(section.key, section.get()), saved.value));
+  if (section.key === todoStorageKey) {
+    const remaining = taskOutbox.list(user.id, section.key).filter(entry => !edits.some(saved => saved.key === entry.key && saved.raw === entry.raw));
+    section.set(window.foodBrokerWorkSync.applyEdits(section.get(), remaining));
+  }
   const local = getLocalCloudCacheConfig(section.localKey || section.key) || section;
   writeLocalSection(local.key, local.get());
   await workCloudBases.remember(user.id, section.key, saved);
+  taskOutbox.acknowledge(edits);
   renderAfterCloudSync();
 }
 
 async function pushPendingCloudSections() {
+  const user = getCloudUser();
+  try {
+    if (user && taskOutbox.list(user.id, todoStorageKey).length) pendingCloudSections.add(todoStorageKey);
+  } catch (error) {
+    cloudSaveConfirmed = false;
+    lastCloudError = error?.message || "Task recovery storage is unavailable.";
+    window.foodBrokerSaveStatus?.recordError(error, {operation: "Read pending task edits", section: todoStorageKey, localFailure: true});
+    updateSaveStatus();
+    return false;
+  }
   if (!pendingCloudSections.size || cloudSaveRequests) return false;
   if (!cloudSyncReady || !getCloudClient() || !getCloudUser()) return false;
   // Keep the retry queue durable until the cloud confirms the write.
@@ -2416,7 +2461,8 @@ async function performCloudSaveSections(sectionKeys, options) {
     lastCloudError = "";
     revisions.forEach((revision, key) => {
       // Edits made during this request must still be sent in the next request.
-      if ((cloudSectionRevisions.get(key) || 0) === revision) pendingCloudSections.delete(key);
+      const taskEditsRemain = key === todoStorageKey && taskOutbox.list(user.id, key).length;
+      if ((cloudSectionRevisions.get(key) || 0) === revision && !taskEditsRemain) pendingCloudSections.delete(key);
     });
     storePendingCloudSections();
     uploadSucceeded = true;
@@ -2574,6 +2620,15 @@ async function loadCloudSections(options = {}) {
   let uploadFailed=false;
 
   try {
+    if (workCloudSectionKeys.has(todoStorageKey) && pendingCloudSections.has(todoStorageKey) && !taskOutbox.list(user.id, todoStorageKey).length) {
+      // Upgrade the previous release's pending browser copy before a new edit
+      // can arrive during this download. Later task edits must apply after it.
+      const previousLocalTasks = JSON.parse(JSON.stringify(getCloudConfig(todoStorageKey).get()));
+      const base = await workCloudBases.get(user.id, todoStorageKey);
+      if (!sampleSyncUserValid(user)) return false;
+      taskOutbox.keep(user.id, todoStorageKey, base?.value || [], previousLocalTasks, null, {first: true});
+    }
+    recoverPendingTaskEdits(user);
     await syncSavedTeamInitials().catch(error => console.warn("Saved initials will retry on next sync:", error.message));
     await correctPeteTeamRecords().catch(() => { peteCorrectionUser = ""; });
     const summary = options.summary || await fetchCloudRowSummary();
@@ -2641,9 +2696,10 @@ async function loadCloudSections(options = {}) {
           const remote = (section.scope === "team" ? teamRowMap : personalRowMap).get(section.key);
           const value = normalizeWorkCloudValue(section.key, cloudValue);
           const base = workBasesForLoad.get(section.key);
-          const upload = pendingCloudSections.has(section.key) || cloudResult.usedLegacyRow
+          const edits = section.key === todoStorageKey ? taskOutbox.list(user.id, section.key) : [];
+          const upload = edits.length || pendingCloudSections.has(section.key) || cloudResult.usedLegacyRow
             || (!base && Array.isArray(localValue) && localValue.length && !value.length);
-          section.set(upload
+          section.set(edits.length ? window.foodBrokerWorkSync.applyEdits(value, edits) : upload
             ? window.foodBrokerWorkSync.merge(base?.value, normalizeWorkCloudValue(section.key, localValue), value) : value);
           workBasesToRemember.push([section, {version: remote?.updated_at || null, value}]);
           appliedKeys.push(section.key);

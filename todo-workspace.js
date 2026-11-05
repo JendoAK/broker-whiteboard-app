@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   let selectedId='', view='all', lastDay=TaskDates.today();
-  const noteDrafts=new Map(), noteTimers=new Map(), rowNotices=new Map();
+  const noteDrafts=new Map(), noteTimers=new Map(), noteRecoveryKeys=new Map(), rowNotices=new Map();
   let dateOverride=null, timeOverride=null, parsed=TaskDates.parse('');
   const labels={all:'All tasks',myday:'My Day',today:'Due today',important:'Important',planned:'Planned',done:'Completed',New:'New','In Progress':'In progress','Waiting on Someone':'Waiting on someone'};
   const iconNames={all:'list-task',myday:'sun',today:'calendar-event',important:'star',planned:'calendar-week',done:'check-circle',New:'file-earmark','In Progress':'arrow-repeat','Waiting on Someone':'people'};
@@ -63,7 +63,7 @@
     if(notes!==task.notes&&!saveChange(id,{notes},false)){
       noteMessage(id,'Could not save your note. Your text is still here to retry.');return false;
     }
-    noteDrafts.delete(id);noteMessage(id,'Note saved.');return true;
+    noteDrafts.delete(id);noteRecoveryKeys.delete(id);noteMessage(id,'Note saved.');return true;
   }
   function rowMessage(id,text){
     const notice={text};rowNotices.set(id,notice);
@@ -130,6 +130,12 @@
     const note=detail.querySelector('.task-note');
     note.oninput=()=>{
       noteDrafts.set(task.id,note.value);noteMessage(task.id,'Saving note…');
+      try {
+        if(typeof retainTaskNoteDraft==='function')noteRecoveryKeys.set(task.id,retainTaskNoteDraft(task.id,note.value,noteRecoveryKeys.get(task.id)));
+      } catch(error) {
+        noteMessage(task.id,'Could not keep a recovery copy. Keep this window open and save your note.');
+        window.foodBrokerSaveStatus?.recordError(error,{operation:'Keep task note draft',section:typeof todoStorageKey==='string'?todoStorageKey:'tasks',localFailure:true});
+      }
       clearTimeout(noteTimers.get(task.id));
       noteTimers.set(task.id,setTimeout(()=>saveNoteDraft(task.id),600));
     };
@@ -198,6 +204,9 @@
   window.addEventListener('beforeunload',event=>{
     [...noteDrafts.keys()].forEach(saveNoteDraft);
     if(noteDrafts.size){event.preventDefault();event.returnValue='';}
+  });
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden)[...noteDrafts.keys()].forEach(saveNoteDraft);
   });
   function fitWorkspace(){if(workspace.getClientRects().length)workspace.style.setProperty('--task-height',(window.innerHeight-workspace.getBoundingClientRect().top-18)+'px');}
   new ResizeObserver(fitWorkspace).observe(panel.querySelector('.topbar'));

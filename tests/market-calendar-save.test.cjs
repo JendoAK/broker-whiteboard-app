@@ -20,7 +20,7 @@ function setup() {
     elements: {namedItem: () => ({min: '2026-11-09', max: '2026-11-12'})},
     querySelector: () => errorMessage, closest: () => ({close() {closed = true;}})};
   const context = {
-    console, marketVisits: JSON.parse(JSON.stringify(previous)), marketVisitStorageKey: 'visits', cloudSaveConfirmed: true, failedLocalSections: new Set(),
+    console, marketVisits: JSON.parse(JSON.stringify(previous)), marketVisitStorageKey: 'visits', todoStorageKey: 'tasks', cloudSaveConfirmed: true, failedLocalSections: new Set(),
     vendorMarketVisitCloudKey: vendorKey, personalMarketVisitCloudKey: personalKey,
     normalizeMarketVisit: value => JSON.parse(JSON.stringify(value)), normalizeMarketCall: value => ({id: 'new-call', ...value}),
     normalizeMarketOperatorLink: value => ({id: 'new-link', ...value}), normalizeStringList: value => value ? value.split(',') : [],

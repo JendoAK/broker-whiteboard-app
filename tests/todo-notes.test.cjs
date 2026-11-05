@@ -14,7 +14,7 @@ function setup(){
   const context={
     todos:[{id:'task',title:'Task',notes:'Existing note',myDay:'2026-11-05',due:'2026-11-05',dueTime:'10:00',status:'New',priority:'Medium',subtasks:[],createdAt:'2026-11-01T00:00:00Z',archivedAt:''}],
     todoColumns:['New','In Progress','Waiting on Someone','Done'],selectedId:'task',
-    noteDrafts:draft,noteTimers:new Map(),rowNotices:new Map(),
+    noteDrafts:draft,noteTimers:new Map(),noteRecoveryKeys:new Map(),rowNotices:new Map(),
     normalizeActivityHistory:value=>value||[],normalizeVendorName:value=>value||'',
     detail:{querySelector:()=>notes},board:{querySelector:()=>feedback},document:{querySelector:()=>notice},CSS:{escape:value=>value},
     clearTimeout(){},setTimeout(){return 1;},renderTodoBoard(){},updateTimelineSearchSuggestions(){},
