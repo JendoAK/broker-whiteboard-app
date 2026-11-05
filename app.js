@@ -700,6 +700,7 @@ const elements = {
   todoTitle: document.querySelector("#todoTitle"),
   todoPriority: document.querySelector("#todoPriority"),
   todoDue: document.querySelector("#todoDue"),
+  todoDueTime: document.querySelector("#todoDueTime"),
   todoAssignedBy: document.querySelector("#todoAssignedBy"),
   todoStatus: document.querySelector("#todoStatus"),
   todoAccount: document.querySelector("#todoAccount"),
@@ -1487,6 +1488,8 @@ function normalizeTodo(todo) {
     title: todo.title || "",
     priority: todo.priority || "Medium",
     due: todo.due || "",
+    dueTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(todo.dueTime || "") ? todo.dueTime : "",
+    myDay: /^\d{4}-\d{2}-\d{2}$/.test(todo.myDay || "") ? todo.myDay : "",
     assignedBy: todo.assignedBy || "",
     account: todo.account || "",
     vendor: normalizeVendorName(todo.vendor),
@@ -8190,6 +8193,7 @@ function openTodoForm(todo) {
   elements.todoTitle.value = existing?.title || "";
   elements.todoPriority.value = existing?.priority || "Medium";
   elements.todoDue.value = existing?.due || "";
+  elements.todoDueTime.value = existing?.dueTime || "";
   elements.todoAssignedBy.value = existing?.assignedBy || "";
   elements.todoStatus.value = existing?.status || "New";
   elements.todoAccount.value = existing?.account || "";
@@ -8213,10 +8217,12 @@ function saveTodo() {
   const operatorMatch = syncOperatorToAddressBook(elements.todoAccount.value);
   const vendorMatch = getMatchedVendorName(elements.todoVendor.value);
   const next = normalizeTodo({
+    ...existing,
     id,
     title: elements.todoTitle.value.trim(),
     priority: elements.todoPriority.value,
     due: elements.todoDue.value,
+    dueTime: elements.todoDueTime.value,
     assignedBy: elements.todoAssignedBy.value.trim(),
     account: operatorMatch?.operatorName || elements.todoAccount.value.trim(),
     vendor: vendorMatch || elements.todoVendor.value.trim(),
@@ -8269,6 +8275,7 @@ function convertCurrentTodoToLead() {
     title: elements.todoTitle.value.trim(),
     priority: elements.todoPriority.value,
     due: elements.todoDue.value,
+    dueTime: elements.todoDueTime.value,
     assignedBy: elements.todoAssignedBy.value.trim(),
     account: operatorMatch?.operatorName || elements.todoAccount.value.trim(),
     vendor: vendorMatch || elements.todoVendor.value.trim(),
