@@ -60,7 +60,6 @@
 .lead-icon-action .lead-icon{width:16px;height:16px}
 .lead-workspace .lead-icon-action.app-highlight-action{background:#ffe59a!important;border-color:#c8ad53!important;color:#333820!important;box-shadow:none!important}
 .lead-card-body{padding:8px 12px 0;min-width:0;flex:1;display:flex;flex-direction:column}
-.lead-card-subtitle{font-size:18px;font-weight:700;line-height:1.3;margin:0 0 8px;color:#282d1d;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 .lead-card-flow{display:flex;align-items:center;gap:10px;margin-bottom:8px;min-width:0}
 .lead-card-status{min-width:0;width:0;flex:1;border:1px solid #cbb875;border-radius:5px;background:#fffcef;color:#272b20;padding:5px 4px 5px 8px;min-height:29px;font:inherit;font-size:14px;cursor:pointer}
 .lead-priority{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;padding:5px 7px;border:1px solid #dbc575;border-radius:5px;background:#fff6cf;font-size:13px;line-height:1.2;color:#3f3c23}
@@ -68,10 +67,9 @@
 .lead-priority-high .lead-icon{filter:invert(33%) sepia(88%) saturate(1800%) hue-rotate(351deg) brightness(102%)}
 .lead-priority-medium .lead-icon{filter:invert(72%) sepia(80%) saturate(800%) hue-rotate(2deg) brightness(105%)}
 .lead-card-facts{display:grid;gap:3px;padding:7px 0;margin:0;border-top:1px solid #e0c466;min-width:0;font-size:15px;line-height:1.35}
-.lead-card-facts>div{display:grid;grid-template-columns:17px auto minmax(0,1fr);align-items:start;gap:0 6px;min-width:0}
+.lead-card-facts>div{display:grid;grid-template-columns:17px minmax(0,1fr);align-items:start;gap:0 6px;min-width:0}
 .lead-card-facts .lead-icon{width:15px;height:15px;margin-top:1px}
-.lead-card-facts dt{font-weight:700}
-.lead-card-facts dt::after{content:':'}
+.lead-card-facts dt{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
 .lead-card-facts dd{margin:0;min-width:0;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .lead-card-note{display:flex;align-items:start;gap:8px;padding:7px 0;margin:0;border-top:1px solid #e0c466;min-width:0}
 .lead-card-note .lead-icon{width:16px;height:16px;margin-top:1px}
