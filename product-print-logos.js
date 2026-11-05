@@ -1,4 +1,5 @@
-/* Print-only logo library. Artwork stays local; no account, product or storage access.
+/* Sysco entries are limited to artwork supplied by the user. Custom uploads remain print-job only.
+ * Print-only logo library. Artwork stays local; no account, product or storage access.
  * Exact brand names are matched; distributor, product title and MF numbers never infer a brand.
  * Source provenance and original-byte SHA-256 hashes are retained in the release evidence.
  */
@@ -896,23 +897,6 @@
       ]
     },
     {
-      "id": "sysco-bakers-source",
-      "name": "Baker's Source",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-bakers-source.png",
-          "alt": "Baker's Source logo",
-          "widthPt": 45.67,
-          "heightPt": 45,
-          "cropLeft": 0,
-          "cropRight": 0,
-          "cropTop": 0,
-          "cropBottom": 0
-        }
-      ]
-    },
-    {
       "id": "sysco-block-and-barrel",
       "name": "Block & Barrel",
       "family": "syscoEb",
@@ -922,40 +906,6 @@
           "alt": "Block & Barrel logo",
           "widthPt": 50.28,
           "heightPt": 50.4,
-          "cropLeft": 0,
-          "cropRight": 0,
-          "cropTop": 0,
-          "cropBottom": 0
-        }
-      ]
-    },
-    {
-      "id": "sysco-buckhead-newport-pride",
-      "name": "Buckhead Newport Pride",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-buckhead-newport-pride.jpg",
-          "alt": "Buckhead Newport Pride logo",
-          "widthPt": 86.554,
-          "heightPt": 45,
-          "cropLeft": 0,
-          "cropRight": 0,
-          "cropTop": 0.2357142857142857,
-          "cropBottom": 0.2357142857142857
-        }
-      ]
-    },
-    {
-      "id": "sysco-butchers-block",
-      "name": "Butcher's Block",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-butchers-block.png",
-          "alt": "Butcher's Block logo",
-          "widthPt": 45.67,
-          "heightPt": 45,
           "cropLeft": 0,
           "cropRight": 0,
           "cropTop": 0,
@@ -981,108 +931,6 @@
       ]
     },
     {
-      "id": "sysco-citavo",
-      "name": "Citavo",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-citavo.png",
-          "alt": "Citavo logo",
-          "widthPt": 52.618,
-          "heightPt": 45,
-          "cropLeft": 0.1756440281030445,
-          "cropRight": 0.1288056206088993,
-          "cropTop": 0.20476190476190476,
-          "cropBottom": 0.19047619047619047
-        }
-      ]
-    },
-    {
-      "id": "sysco-fire-river-farms",
-      "name": "Fire River Farms",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-fire-river-farms.png",
-          "alt": "Fire River Farms logo",
-          "widthPt": 57.273,
-          "heightPt": 45,
-          "cropLeft": 0.17008797653958943,
-          "cropRight": 0.17302052785923755,
-          "cropTop": 0.23809523809523808,
-          "cropBottom": 0.23809523809523808
-        }
-      ]
-    },
-    {
-      "id": "sysco-house-recipe",
-      "name": "House Recipe",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-house-recipe.jpg",
-          "alt": "House Recipe logo",
-          "widthPt": 63,
-          "heightPt": 45,
-          "cropLeft": 0.1436950146627566,
-          "cropRight": 0.17888563049853373,
-          "cropTop": 0.25297619047619047,
-          "cropBottom": 0.25595238095238093
-        }
-      ]
-    },
-    {
-      "id": "sysco-jade-mountain",
-      "name": "Jade Mountain",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-jade-mountain.png",
-          "alt": "Jade Mountain logo",
-          "widthPt": 45.67,
-          "heightPt": 45,
-          "cropLeft": 0,
-          "cropRight": 0,
-          "cropTop": 0,
-          "cropBottom": 0
-        }
-      ]
-    },
-    {
-      "id": "sysco-keystone",
-      "name": "Keystone",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-keystone.jpg",
-          "alt": "Keystone logo",
-          "widthPt": 128,
-          "heightPt": 28.178,
-          "cropLeft": 0,
-          "cropRight": 0,
-          "cropTop": 0.3880952380952381,
-          "cropBottom": 0.3880952380952381
-        }
-      ]
-    },
-    {
-      "id": "sysco-pasta-la-bella",
-      "name": "Pasta La Bella",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-pasta-la-bella.jpg",
-          "alt": "Pasta La Bella logo",
-          "widthPt": 68.138,
-          "heightPt": 45,
-          "cropLeft": 0,
-          "cropRight": 0,
-          "cropTop": 0.16428571428571428,
-          "cropBottom": 0.16428571428571428
-        }
-      ]
-    },
-    {
       "id": "sysco-portico",
       "name": "Portico Seafood",
       "family": "syscoEb",
@@ -1096,23 +944,6 @@
           "cropRight": 0,
           "cropTop": 0,
           "cropBottom": 0
-        }
-      ]
-    },
-    {
-      "id": "sysco-ranch-grill",
-      "name": "Ranch & Grill",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-ranch-grill.jpg",
-          "alt": "Ranch & Grill logo",
-          "widthPt": 53.726,
-          "heightPt": 45,
-          "cropLeft": 0.13348946135831383,
-          "cropRight": 0.13114754098360656,
-          "cropTop": 0.1880952380952381,
-          "cropBottom": 0.18571428571428572
         }
       ]
     },
@@ -1151,40 +982,6 @@
       ]
     },
     {
-      "id": "sysco-sysco-earth-plus",
-      "name": "Sysco Earth Plus",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-sysco-earth-plus.png",
-          "alt": "Sysco Earth Plus logo",
-          "widthPt": 51.516,
-          "heightPt": 45,
-          "cropLeft": 0.12903225806451613,
-          "cropRight": 0.12903225806451613,
-          "cropTop": 0.17261904761904762,
-          "cropBottom": 0.16964285714285715
-        }
-      ]
-    },
-    {
-      "id": "sysco-sysco-freshpoint",
-      "name": "Sysco Freshpoint Natural",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-sysco-freshpoint.png",
-          "alt": "Sysco Freshpoint Natural logo",
-          "widthPt": 45.67,
-          "heightPt": 45,
-          "cropLeft": 0,
-          "cropRight": 0,
-          "cropTop": 0,
-          "cropBottom": 0
-        }
-      ]
-    },
-    {
       "id": "sysco-sysco-premium",
       "name": "Sysco Premium",
       "family": "syscoEb",
@@ -1215,74 +1012,6 @@
           "cropRight": 0,
           "cropTop": 0,
           "cropBottom": 0
-        }
-      ]
-    },
-    {
-      "id": "sysco-sysco-reliance-fresh",
-      "name": "Sysco Reliance Fresh",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-sysco-reliance-fresh.jpg",
-          "alt": "Sysco Reliance Fresh logo",
-          "widthPt": 73.477,
-          "heightPt": 45,
-          "cropLeft": 0.00936768149882904,
-          "cropRight": 0.0117096018735363,
-          "cropTop": 0.19523809523809524,
-          "cropBottom": 0.19523809523809524
-        }
-      ]
-    },
-    {
-      "id": "sysco-sysco-simply-plant-based",
-      "name": "Sysco Simply Plant Based",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-sysco-simply-plant-based.jpg",
-          "alt": "Sysco Simply Plant Based logo",
-          "widthPt": 114.375,
-          "heightPt": 45,
-          "cropLeft": 0,
-          "cropRight": 0,
-          "cropTop": 0.3047619047619048,
-          "cropBottom": 0.29523809523809524
-        }
-      ]
-    },
-    {
-      "id": "sysco-sysco-supplies",
-      "name": "Sysco Supplies",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-sysco-supplies.jpg",
-          "alt": "Sysco Supplies logo",
-          "widthPt": 42.843,
-          "heightPt": 45,
-          "cropLeft": 0.1288056206088993,
-          "cropRight": 0.17330210772833723,
-          "cropTop": 0.14523809523809525,
-          "cropBottom": 0.10952380952380952
-        }
-      ]
-    },
-    {
-      "id": "sysco-white-marble-farms",
-      "name": "White Marble Farms",
-      "family": "syscoEb",
-      "logos": [
-        {
-          "src": "print-logos/sysco-white-marble-farms.jpg",
-          "alt": "White Marble Farms logo",
-          "widthPt": 63.626,
-          "heightPt": 45,
-          "cropLeft": 0,
-          "cropRight": 0,
-          "cropTop": 0.14047619047619048,
-          "cropBottom": 0.14047619047619048
         }
       ]
     },
@@ -1600,26 +1329,10 @@
     "thirster": "usf-thirster",
     "valuplus": "usf-valu-plus",
     "arrezzio": "sysco-arrezzio",
-    "bakerssource": "sysco-bakers-source",
     "blockandbarrel": "sysco-block-and-barrel",
-    "buckheadnewportpride": "sysco-buckhead-newport-pride",
-    "butchersblock": "sysco-butchers-block",
     "casasolana": "sysco-casa-solana",
-    "citavo": "sysco-citavo",
-    "syscoearthplus": "sysco-sysco-earth-plus",
-    "fireriverfarms": "sysco-fire-river-farms",
-    "houserecipe": "sysco-house-recipe",
-    "jademountain": "sysco-jade-mountain",
-    "keystone": "sysco-keystone",
-    "pastalabella": "sysco-pasta-la-bella",
-    "ranchandgrill": "sysco-ranch-grill",
     "porticoseafood": "sysco-portico",
     "riserva": "sysco-riserva",
-    "syscofreshpointnatural": "sysco-sysco-freshpoint",
-    "syscosupplies": "sysco-sysco-supplies",
-    "syscosimplyplantbased": "sysco-sysco-simply-plant-based",
-    "syscoreliancefresh": "sysco-sysco-reliance-fresh",
-    "whitemarblefarms": "sysco-white-marble-farms",
     "wholesomefarms": "sysco-wholesome-farms",
     "syscopremium": "sysco-sysco-premium",
     "syscoclassic": "sysco-sysco-classic",
@@ -1628,23 +1341,14 @@
     "harborbanks": "usf-harbor-banks-seafood",
     "devonshire": "usf-devonshire-bake-shop",
     "portico": "sysco-portico",
-    "syscosimply": "sysco-sysco-simply-plant-based",
-    "earthplus": "sysco-sysco-earth-plus",
-    "syscofreshpoint": "sysco-sysco-freshpoint",
-    "freshpointnatural": "sysco-sysco-freshpoint",
-    "jademountainclassic": "sysco-jade-mountain",
-    "jademountainimperial": "sysco-jade-mountain",
     "arrezzioclassic": "sysco-arrezzio",
     "arrezzioimperial": "sysco-arrezzio",
     "arrezzioriserva": "sysco-riserva",
-    "bakerssourceclassic": "sysco-bakers-source",
     "blockandbarrelclassic": "sysco-block-and-barrel",
     "blockandbarrelimperial": "sysco-block-and-barrel",
     "blockandbarrelreliance": "sysco-block-and-barrel",
     "casasolanaclassic": "sysco-casa-solana",
     "casasolanaimperial": "sysco-casa-solana",
-    "citavoclassic": "sysco-citavo",
-    "houserecipeclassic": "sysco-house-recipe",
     "porticoclassic": "sysco-portico",
     "porticoimperial": "sysco-portico",
     "porticosimply": "sysco-portico",
@@ -1660,19 +1364,14 @@
     "riservapremium": "sysco-riserva"
   },
   "brandAliasNotices": {
-    "jademountainclassic": "Showing the Jade Mountain family logo for “Jade Mountain Classic”.",
-    "jademountainimperial": "Showing the Jade Mountain family logo for “Jade Mountain Imperial”.",
     "arrezzioclassic": "Showing the Arrezzio family logo for “Arrezzio Classic”.",
     "arrezzioimperial": "Showing the Arrezzio family logo for “Arrezzio Imperial”.",
     "arrezzioriserva": "Showing the Arrezzio Riserva Premium logo for “Arrezzio Riserva”.",
-    "bakerssourceclassic": "Showing the Baker's Source family logo for “Baker's Source Classic”.",
     "blockandbarrelclassic": "Showing the Block & Barrel family logo for “Block & Barrel Classic”.",
     "blockandbarrelimperial": "Showing the Block & Barrel family logo for “Block & Barrel Imperial”.",
     "blockandbarrelreliance": "Showing the Block & Barrel family logo for “Block & Barrel Reliance”.",
     "casasolanaclassic": "Showing the Casa Solana family logo for “Casa Solana Classic”.",
     "casasolanaimperial": "Showing the Casa Solana family logo for “Casa Solana Imperial”.",
-    "citavoclassic": "Showing the Citavo family logo for “Citavo Classic”.",
-    "houserecipeclassic": "Showing the House Recipe family logo for “House Recipe Classic”.",
     "porticoclassic": "Showing the Portico Seafood family logo for “Portico Classic”.",
     "porticoimperial": "Showing the Portico Seafood family logo for “Portico Imperial”.",
     "porticosimply": "Showing the Portico Seafood family logo for “Portico Simply”.",
@@ -1715,5 +1414,5 @@
     if (maker) return result(maker, mode === "automatic" && brand ? "No logo is available for “" + brand + "”; showing the " + maker.name + " manufacturer logo." : mode === "automatic" && key(product.brandType) === "eb" ? "No Exclusive Brand name is recorded; showing the " + maker.name + " manufacturer logo." : "");
     return missing(mode, manufacturer ? "No manufacturer logo is available for “" + manufacturer + "”. Choose a logo or upload your own." : "No manufacturer logo is available. Choose a logo or upload your own.");
   }
-  scope.foodBrokerPrintLogos = Object.freeze({version:"20261103-proview1",resolve,options});
+  scope.foodBrokerPrintLogos = Object.freeze({version:"20261105-syscocurated1",resolve,options});
 })(typeof window !== "undefined" ? window : globalThis);
