@@ -119,7 +119,33 @@
   };
   function showDetail(task){
     detail.hidden=!task;workspace.classList.toggle('has-detail',!!task);if(!task){detail.innerHTML='';return;}
-    detail.innerHTML=`<div class="task-detail-top"><span>Task details</span><button type="button" class="task-detail-close">Close</button></div><section class="task-detail-card"><h2>${escapeHtml(task.title)}</h2><button type="button" class="task-myday" aria-pressed="${myday(task)}">${icon('sun')}${myday(task)?'Remove from My Day':'Add to My Day'}</button><p class="task-detail-help">${myday(task)?'In your focus list for today.':'Focus on this task today without changing its due date.'}</p><label class="task-important"><input type="checkbox" ${task.priority==='High'?'checked':''}> Important</label></section><section class="task-detail-card task-detail-fields"><label>Due date<input class="task-due" type="date" value="${escapeAttribute(task.due||'')}"></label><label>Time<input class="task-time" data-friendly-time="true" type="time" value="${escapeAttribute(task.dueTime||'')}"></label><label>Status<select class="task-status">${todoColumns.map(s=>`<option ${s===task.status?'selected':''}>${escapeHtml(s)}</option>`).join('')}</select></label><label>Priority<select class="task-priority">${Object.keys(priorities).map(s=>`<option ${s===task.priority?'selected':''}>${s}</option>`).join('')}</select></label></section><section class="task-detail-card"><form class="task-note-form"><label class="task-note-label"><span>Notes</span><textarea class="task-note" aria-label="Task notes" rows="6" placeholder="Add a note to this task…">${escapeHtml(noteDrafts.has(task.id)?noteDrafts.get(task.id):task.notes||'')}</textarea></label><div class="task-note-actions"><span class="task-note-status" data-task-id="${escapeAttribute(task.id)}" role="status">${noteDrafts.has(task.id)?'Note has unsaved changes.':''}</span><button type="submit" class="task-note-save">${icon('floppy')}Save note</button></div></form></section><section class="task-detail-card"><h3>Checklist</h3><div class="task-checklist">${task.subtasks.map((s,i)=>`<label><input type="checkbox" data-step="${i}" ${s.done?'checked':''}><span>${escapeHtml(s.text)}</span></label>`).join('')||'<p class="task-detail-help">No steps yet.</p>'}</div><form class="task-add-step"><input aria-label="Add a step" placeholder="Add a step" required maxlength="500"><button type="submit">Add</button></form></section><div class="task-detail-actions"><button type="button" data-action="edit">Edit task</button><button type="button" data-action="lead">Turn into Lead</button><button type="button" data-action="archive">Archive task</button></div><small class="task-created">${task.createdAt?'Created '+escapeHtml(formatDateTime(task.createdAt)):''}</small>`;
+    detail.innerHTML=`<div class="task-detail-top"><span>Task details</span>
+      <div class="task-detail-actions" role="group" aria-label="Task actions">
+        <button type="button" class="task-icon-action" data-action="edit" aria-label="Edit task" title="Edit task">${icon('pencil-square')}</button>
+        <button type="button" class="task-icon-action" data-action="lead" aria-label="Turn into Lead" title="Turn into Lead">${icon('box-arrow-up-right')}</button>
+        <button type="button" class="task-icon-action" data-action="archive" aria-label="Archive task" title="Archive task">${icon('archive')}</button>
+        <button type="button" class="task-icon-action task-detail-close" aria-label="Close task details" title="Close task details">${icon('x-lg')}</button>
+      </div></div>
+      <section class="task-detail-card task-detail-summary"><h2>${escapeHtml(task.title)}</h2>
+        <div class="task-focus-options"><button type="button" class="task-myday" aria-pressed="${myday(task)}" aria-label="${myday(task)?'Remove from My Day':'Add to My Day'}" title="${myday(task)?'Remove from My Day':'Add to My Day'}">${icon('sun')}${myday(task)?'In My Day':'Add to My Day'}</button>
+        <label class="task-important"><input type="checkbox" ${task.priority==='High'?'checked':''}> Important</label></div>
+      </section>
+      <section class="task-detail-card task-detail-fields">
+        <label><span class="task-field-label">Due date</span><input class="task-due" type="date" value="${escapeAttribute(task.due||'')}"></label>
+        <label><span class="task-field-label">Time</span><input class="task-time" data-friendly-time="true" type="time" value="${escapeAttribute(task.dueTime||'')}"></label>
+        <label><span class="task-field-label">Status</span><select class="task-status">${todoColumns.map(s=>`<option ${s===task.status?'selected':''}>${escapeHtml(s)}</option>`).join('')}</select></label>
+        <label><span class="task-field-label">Priority</span><select class="task-priority">${Object.keys(priorities).map(s=>`<option ${s===task.priority?'selected':''}>${s}</option>`).join('')}</select></label>
+      </section>
+      <section class="task-detail-card task-checklist-section"><h3>Checklist</h3>
+        <div class="task-checklist">${task.subtasks.map((s,i)=>`<label><input type="checkbox" data-step="${i}" ${s.done?'checked':''}><span>${escapeHtml(s.text)}</span></label>`).join('')||'<p class="task-detail-help">No steps yet.</p>'}</div>
+        <form class="task-add-step"><input aria-label="Add a step" placeholder="Add a step" required maxlength="500"><button type="submit" class="task-icon-action" aria-label="Add step" title="Add step">${icon('plus-lg')}</button></form>
+      </section>
+      <section class="task-detail-card task-notes-section"><form class="task-note-form">
+        <div class="task-note-heading"><label class="task-note-label" for="taskDetailNote">Notes</label><button type="submit" class="task-note-save task-icon-action" aria-label="Save note" title="Save note">${icon('floppy')}</button></div>
+        <textarea id="taskDetailNote" class="task-note" aria-label="Task notes" rows="4" placeholder="Add a note to this task…">${escapeHtml(noteDrafts.has(task.id)?noteDrafts.get(task.id):task.notes||'')}</textarea>
+        <span class="task-note-status" data-task-id="${escapeAttribute(task.id)}" role="status">${noteDrafts.has(task.id)?'Note has unsaved changes.':''}</span>
+      </form></section>
+      <small class="task-created">${task.createdAt?'Created '+escapeHtml(formatDateTime(task.createdAt)):''}</small>`;
     detail.querySelector('.task-detail-close').onclick=()=>{selectedId='';renderTodoBoard();board.querySelector(`[data-task-id="${CSS.escape(task.id)}"]`)?.focus();};
     detail.querySelector('.task-myday').onclick=()=>saveChange(task.id,{myDay:myday(task)?'':TaskDates.today()});
     detail.querySelector('.task-important input').onchange=e=>saveChange(task.id,{priority:e.target.checked?'High':'Medium'});
@@ -172,15 +198,14 @@
       const row=document.createElement('article');row.className='task-row';row.dataset.taskId=task.id;row.classList.toggle('selected',task.id===selectedId);
       const context=[task.vendor,task.account].filter(Boolean).join(' · ')||task.assignedBy&&'By '+task.assignedBy||'';
       const meta=[context,task.subtasks.length?`${task.subtasks.filter(s=>s.done).length}/${task.subtasks.length} steps`:''].filter(Boolean).join(' · ');
+      const metaId='task-meta-'+task.id, metaDescription=[task.due?formatDate(task.due):'No due date',task.dueTime,meta].filter(Boolean).join(' · ');
       row.innerHTML=`<input class="task-complete" type="checkbox" aria-label="${escapeAttribute((task.status==='Done'?'Reopen ':'Complete ')+task.title)}" ${task.status==='Done'?'checked':''}>
-        <button type="button" class="task-open" data-task-id="${escapeAttribute(task.id)}" aria-pressed="${task.id===selectedId}"><span class="task-row-title ${task.status==='Done'?'is-done':''}">${escapeHtml(task.title)}</span>${meta?`<span class="task-row-meta">${escapeHtml(meta)}</span>`:''}</button>
-        <div class="task-row-schedule ${isTodoOverdue(task)?'task-overdue':''}">${task.due?escapeHtml(formatDate(task.due)):'No due date'}${task.dueTime?`<small>${escapeHtml(task.dueTime)}</small>`:''}</div>
-        <div class="task-row-controls"><select class="task-row-status" aria-label="${escapeAttribute('Status for '+task.title)}">${todoColumns.map(status=>`<option ${status===task.status?'selected':''}>${escapeHtml(status)}</option>`).join('')}</select>
-          <span class="task-row-feedback" data-task-feedback="${escapeAttribute(task.id)}" role="status">${escapeHtml(rowNotices.get(task.id)?.text||'')}</span>
-          <button type="button" class="task-day-action" aria-pressed="${myday(task)}" aria-label="${escapeAttribute((myday(task)?'Remove from My Day: ':'Add to My Day: ')+task.title)}" title="${myday(task)?'Remove from My Day':'Add to My Day'}">${icon('sun')}<span>${myday(task)?'In My Day':'My Day'}</span></button>
+        <button type="button" class="task-open" data-task-id="${escapeAttribute(task.id)}" aria-label="${escapeAttribute(task.title)}" aria-describedby="${escapeAttribute(metaId)}" aria-pressed="${task.id===selectedId}"><span class="task-row-title ${task.status==='Done'?'is-done':''}">${escapeHtml(task.title)}</span><span id="${escapeAttribute(metaId)}" class="task-row-meta" title="${escapeAttribute(metaDescription)}"><span class="task-row-schedule ${isTodoOverdue(task)?'task-overdue':''}">${task.due?escapeHtml(formatDate(task.due)):'No due date'}${task.dueTime?' · '+escapeHtml(task.dueTime):''}</span>${meta?`<span>${escapeHtml(meta)}</span>`:''}</span></button>
+        <div class="task-row-controls"><select class="task-row-status" aria-label="${escapeAttribute('Status for '+task.title)}" title="${escapeAttribute(task.status)}">${todoColumns.map(status=>`<option value="${escapeAttribute(status)}" ${status===task.status?'selected':''}>${escapeHtml(status==='Waiting on Someone'?'Waiting':status)}</option>`).join('')}</select>
+          <button type="button" class="task-day-action task-icon-action" aria-pressed="${myday(task)}" aria-label="${escapeAttribute((myday(task)?'Remove from My Day: ':'Add to My Day: ')+task.title)}" title="${myday(task)?'Remove from My Day':'Add to My Day'}">${icon('sun')}</button>
           <button type="button" class="task-row-save task-icon-action" aria-label="${escapeAttribute('Save task: '+task.title)}" title="Save task">${icon('floppy')}</button>
           <button type="button" class="task-row-archive task-icon-action" aria-label="${escapeAttribute('Archive task: '+task.title)}" title="Archive task">${icon('archive')}</button>
-        </div>`;
+        </div><span class="task-row-feedback" data-task-feedback="${escapeAttribute(task.id)}" role="status">${escapeHtml(rowNotices.get(task.id)?.text||'')}</span>`;
       row.querySelector('.task-open').onclick=()=>{selectedId=task.id;renderTodoBoard();detail.querySelector('.task-detail-close').focus();};
       row.querySelector('.task-complete').onchange=e=>changeStatus(task.id,e.target.checked?'Done':'New');
       row.querySelector('.task-row-status').onchange=e=>changeStatus(task.id,e.target.value);
@@ -208,7 +233,11 @@
   document.addEventListener('visibilitychange',()=>{
     if(document.hidden)[...noteDrafts.keys()].forEach(saveNoteDraft);
   });
-  function fitWorkspace(){if(workspace.getClientRects().length)workspace.style.setProperty('--task-height',(window.innerHeight-workspace.getBoundingClientRect().top-18)+'px');}
+  function fitWorkspace(){
+    if(!workspace.getClientRects().length)return;
+    const rect=workspace.getBoundingClientRect(), scale=rect.width/workspace.offsetWidth||1;
+    workspace.style.setProperty('--task-height',((window.innerHeight-rect.top-18)/scale)+'px');
+  }
   new ResizeObserver(fitWorkspace).observe(panel.querySelector('.topbar'));
   window.addEventListener('resize',fitWorkspace);
   new MutationObserver(fitWorkspace).observe(document.querySelector('#todoDialog'),{attributes:true,attributeFilter:['hidden']});
