@@ -230,7 +230,9 @@
       label = "Could not save. Your changes are still open.";
       visualState = "error";
     } else if (state.syncFailure) {
-      label = "Cloud sync needs attention. Check save details.";
+      label = state.upgradeRequired
+        ? "Update FoodBrokerBase to finish syncing. Save any open form, then refresh the app."
+        : "Cloud sync needs attention. Check save details.";
       visualState = "error";
     } else if (state.syncing) {
       label = "Saving to cloud…";
@@ -259,7 +261,10 @@
       });
       ["hasUser", "ready"].forEach(function (key) { if (typeof next[key] === "boolean") state[key] = next[key]; });
       if (typeof next.confirmed === "boolean") state.confirmed = next.confirmed;
-      if (typeof next.error === "string") state.syncFailure = Boolean(next.error);
+      if (typeof next.error === "string") {
+        state.syncFailure = Boolean(next.error);
+        if (!next.error) state.upgradeRequired = false;
+      }
       if (state.pending || state.syncing) state.confirmed = false;
       if (state.pending || state.syncing || next.confirmed) state.touched = true;
       render();
@@ -279,6 +284,7 @@
     recordError: function (error, options) {
       options = options || {};
       if (!options.localFailure) state.syncFailure = true;
+      if (error?.code === "PT426" || error?.status === 426) state.upgradeRequired = true;
       const isObject = error && (typeof error === "object" || typeof error === "function");
       if (!isObject || !recordedErrors.has(error)) {
         errors.push(diagnostic(error, options));

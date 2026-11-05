@@ -159,7 +159,7 @@
     for (let attempt = 0; attempt < 3; attempt++) {
       if (!remote) remote = await read();
       const value = merge(base?.value, original, remote.value);
-      const data = {...payload.data, value};
+      const data = {...payload.data, value, syncProtocol: 2, syncWriteBase: remote.version};
       valid();
       const query = remote.version
         ? filters(client.from(table).update({data, updated_by: userId})).eq("updated_at", remote.version)

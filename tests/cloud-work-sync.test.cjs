@@ -129,6 +129,26 @@ test('an account change stops the write', async () => {
   assert.equal(db.attempts(), 0);
 });
 
+test('every save declares its supported format and the exact cloud version it replaces', async () => {
+  const base = [task('existing')], seen = [];
+  const db = database(base, ({query, row}) => {
+    seen.push(query.payload.data);
+    if (query.payload.data.syncProtocol !== 2) return {error: {code: 'PT426', message: 'Update FoodBrokerBase'}};
+    assert.equal(query.payload.data.syncWriteBase, row.updated_at);
+  });
+  const focused = [{...base[0], myDay: '2026-11-05'}];
+  const saved = await sync.save(db.client, options(focused, {version: 'v1', value: base}));
+  assert.equal(saved.value[0].myDay, '2026-11-05');
+  assert.equal(seen.length, 1);
+});
+
+test('an outdated-format rejection keeps the confirmed tasks intact', async () => {
+  const focused = [{...task('existing'), myDay: '2026-11-05'}];
+  const db = database(focused, () => ({error: {code: 'PT426', message: 'Update FoodBrokerBase to finish syncing'}}));
+  await assert.rejects(sync.save(db.client, options([task('existing')], {version: 'v1', value: focused})), error => error.code === 'PT426');
+  assert.deepEqual(db.current().data.value, focused);
+});
+
 test('known bases survive a restart and keep deletions distinct from new remote tasks', () => {
   const data = new Map(), storage = {getItem: key => data.get(key), setItem: (key, value) => data.set(key, value)};
   const base = {version: 'v1', value: [task('delete'), task('keep')]};

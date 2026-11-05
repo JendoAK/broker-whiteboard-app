@@ -269,7 +269,7 @@ async function correctPeteTeamRecords() {
         if (table === 'team_app_records' && ['broker-whiteboard-people-contacts','broker-whiteboard-address-book'].includes(row.record_key)) continue;
         const corrected = correctContactNames(row.data);
         if (JSON.stringify(corrected) === JSON.stringify(row.data)) continue;
-        const saved = await client.from(table).update({data:corrected}).eq('id',row.id).eq('updated_at',row.updated_at).select('id');
+        const saved = await client.from(table).update({data:{...corrected,syncProtocol:2,syncWriteBase:row.updated_at}}).eq('id',row.id).eq('updated_at',row.updated_at).select('id');
         if (saved.error || !saved.data?.length) throw saved.error || new Error('A record changed during name correction; retry on next sync.');
       }
       if ((data || []).length < 100) break;

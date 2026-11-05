@@ -31,7 +31,7 @@ async function syncSavedTeamInitials() {
       for(const row of data||[]) {
         const updated=updateRecordedInitials(row.data);
         if(JSON.stringify(updated)===JSON.stringify(row.data))continue;
-        const result=await auth.client.from(table).update({data:updated}).eq('id',row.id).eq('updated_at',row.updated_at).select('id');
+        const result=await auth.client.from(table).update({data:{...updated,syncProtocol:2,syncWriteBase:row.updated_at}}).eq('id',row.id).eq('updated_at',row.updated_at).select('id');
         if(result.error||!result.data?.length)throw result.error||new Error('A record changed during initials refresh. Retry on the next sync.');
       }
       if((data||[]).length<100)break;
