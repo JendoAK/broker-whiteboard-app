@@ -13,7 +13,7 @@ function loadPersonalVisitCalendar() {
 }
 
 function persistPersonalVisitCalendar() {
-  localStorage.setItem(personalVisitCalendarKey, JSON.stringify(personalVisitCalendar));
+  writeLocalSection(personalVisitCalendarKey, personalVisitCalendar);
   scheduleCloudSave(personalVisitCalendarKey);
 }
 

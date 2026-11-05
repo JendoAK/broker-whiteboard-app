@@ -45,7 +45,7 @@ function loadEventProducts() {
 
 function persistEventProducts() {
   try {
-    localStorage.setItem(eventProductStorageKey, JSON.stringify(eventProducts));
+    writeLocalSection(eventProductStorageKey, eventProducts);
     scheduleCloudSave(eventProductStorageKey);
   } catch (error) {
     window.foodBrokerSaveStatus?.recordError(error, { operation: "Save new event product", section: eventProductStorageKey, localFailure: true });

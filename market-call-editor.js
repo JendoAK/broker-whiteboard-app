@@ -108,6 +108,18 @@ function deleteMarketCallEdit(event) {
 
 function saveMarketCallEdit(event) {
   event.preventDefault();
+  try { performMarketCallEdit(event); }
+  catch (error) {
+    window.foodBrokerSaveStatus?.recordError(error, {operation: "Save calendar entry", section: marketVisitStorageKey, localFailure: true});
+    const message = event.currentTarget.querySelector("[data-call-edit-error]");
+    message.textContent = "Could not save this calendar entry. Your details are still here. " + (error.name === "QuotaExceededError"
+      ? "Browser storage is full. Export a backup or remove a large attachment, then try again." : "Please try again.");
+    message.hidden = false;
+  }
+}
+
+function performMarketCallEdit(event) {
+  event.preventDefault();
   const form = event.currentTarget;
   const dialog = form.closest("dialog");
   const error = form.querySelector("[data-call-edit-error]");
@@ -132,6 +144,7 @@ function saveMarketCallEdit(event) {
       ? [...visit.operatorLinks, normalizeMarketOperatorLink({ ...operator, productIds: getMarketVisitProducts(visit).map(product => product.id) })]
       : visit.operatorLinks;
     updateMarketVisit(visit.id, { calls: [...visit.calls, next], operatorLinks });
+    marketCallEditContext = null;
     dialog.close();
     return;
   }
@@ -145,6 +158,7 @@ function saveMarketCallEdit(event) {
     patch.operatorId = match?.id || "";
   }
   updateMarketVisit(visit.id, { calls: visit.calls.map((item) => item.id === call.id ? { ...item, ...patch } : item) });
+  marketCallEditContext = null;
   dialog.close();
 }
 

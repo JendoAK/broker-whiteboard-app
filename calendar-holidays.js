@@ -22,7 +22,7 @@ function setCurrentCalendarPreferences(value) {
 }
 
 function persistCalendarPreferences() {
-  localStorage.setItem(calendarPreferencesKey, JSON.stringify(calendarPreferences));
+  writeLocalSection(calendarPreferencesKey, calendarPreferences);
   scheduleCloudSave(calendarPreferencesKey);
 }
 

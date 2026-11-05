@@ -46,7 +46,7 @@ function rememberPeopleContact(person) {
   persistPeopleContacts();
 }
 function persistPeopleContacts() {
-  localStorage.setItem(peopleContactsStorageKey, JSON.stringify(peopleContacts));
+  writeLocalSection(peopleContactsStorageKey, peopleContacts);
   scheduleCloudSave(peopleContactsStorageKey);
   updateSalesRepSuggestions(); renderPeopleContacts();
 }
