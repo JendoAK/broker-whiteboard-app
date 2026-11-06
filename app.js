@@ -233,6 +233,8 @@ const failedLocalSections = new Set();
 const workCloudSectionKeys = new Set();
 const workCloudBases = window.foodBrokerWorkSync.createIndexedBases(window.indexedDB, localStorage);
 const taskOutbox = window.foodBrokerWorkSync.createOutbox(localStorage);
+let sectionJournal = null;
+const legacyRecoveryCopies = new Map();
 let cloudAutoRefreshTimer = null;
 let cloudLastRowFingerprint = "";
 let cloudRowCache = new Map();
@@ -391,6 +393,12 @@ if (!localStorage.getItem(pcVisitMigrationKey)) {
   localStorage.setItem(marketVisitStorageKey, JSON.stringify(marketVisits));
   localStorage.setItem(pcVisitMigrationKey, "1");
 }
+sectionJournal = window.foodBrokerWorkSync.createJournal(taskOutbox,
+  cloudSectionConfigs.filter(section => !sampleCloudSectionKeys.has(section.key)), section => {
+    let raw; try {raw = JSON.parse(localStorage.getItem(section.localKey || section.key) || 'null');} catch (_) {}
+    const byId = new Map((Array.isArray(raw) ? raw : []).map(item => [item.id, item]));
+    return section.get().map(item => byId.get(item.id) || item);
+  });
 let draggedId = null;
 let draggedTodoId = null;
 let leadQuickListMode = false;
@@ -1779,7 +1787,9 @@ function normalizeStatus(status) {
 }
 
 function recordWorkUpdateTimes(records, key) {
-  let prior; try { prior = JSON.parse(localStorage.getItem(key) || '[]'); } catch { return; }
+  let prior;
+  if (typeof sectionJournal !== 'undefined' && sectionJournal) prior = getCloudConfigsForKey(key).flatMap(section => sectionJournal.snapshot(section.key) || []);
+  else try { prior = JSON.parse(localStorage.getItem(key) || '[]'); } catch { return; }
   if (!Array.isArray(prior)) return;
   const old = new Map(prior.map(item => [item.id,item]));
   const comparable = item => JSON.stringify(item, (name,value) => ['updatedAt','_activity'].includes(name) ? undefined : value);
@@ -1806,9 +1816,19 @@ function showBoardSaveFailure() {
   backup.type = 'button'; backup.textContent = 'Export Backup'; backup.onclick = exportBackup;
   notice.append(text,backup); document.body.appendChild(notice);
 }
-function writeLocalSection(sectionKey, value) {
-  try { localStorage.setItem(sectionKey, JSON.stringify(value)); }
+function writeLocalSection(sectionKey, value, options = {}) {
+  const sections = typeof sectionJournal !== 'undefined' && sectionJournal ? getCloudConfigsForKey(sectionKey) : [];
+  const edits = [];
+  try {
+    if (!options.cache) for (const section of sections) {
+      if (section.key === todoStorageKey || sampleCloudSectionKeys.has(section.key)) continue;
+      const edit = sectionJournal.capture(getCloudUser()?.id, section);
+      if (edit) edits.push(edit);
+    }
+    localStorage.setItem(sectionKey, JSON.stringify(value));
+  }
   catch (error) {
+    if (edits.length) taskOutbox.acknowledge(edits);
     failedLocalSections.add(sectionKey);
     cloudSaveConfirmed = false;
     window.foodBrokerSaveStatus?.recordError(error, {operation: "Save browser copy", section: sectionKey, localFailure: true});
@@ -1816,6 +1836,7 @@ function writeLocalSection(sectionKey, value) {
   }
   failedLocalSections.delete(sectionKey);
   if (sectionKey === todoStorageKey) todoSavedSnapshot = JSON.parse(JSON.stringify(value));
+  sections.forEach(section => sectionJournal.accept(section));
   window.foodBrokerSaveStatus?.recoverSections?.([sectionKey]);
 }
 
@@ -1862,11 +1883,16 @@ function retainTaskNoteDraft(id, notes, draftKey) {
 }
 
 function recoverPendingTaskEdits(user) {
-  const edits = taskOutbox.list(user.id, todoStorageKey);
-  if (!edits.length) return;
-  todos = window.foodBrokerWorkSync.applyEdits(todos, edits).map(normalizeTodo);
-  writeLocalSection(todoStorageKey, todos);
-  pendingCloudSections.add(todoStorageKey);
+  let changed = false;
+  for (const section of cloudSectionConfigs.filter(section => !sampleCloudSectionKeys.has(section.key))) {
+    const edits = taskOutbox.list(user.id, section.key);
+    if (!edits.length) continue;
+    section.set(normalizeWorkCloudValue(section.key, window.foodBrokerWorkSync.applyEdits(section.get(), edits)));
+    const local = getLocalCloudCacheConfig(section.localKey || section.key) || section;
+    writeLocalSection(local.key, local.get(), {cache: true});
+    pendingCloudSections.add(section.key); changed = true;
+  }
+  if (!changed) return;
   storePendingCloudSections();
   renderAfterCloudSync();
 }
@@ -1922,7 +1948,8 @@ function persistNestleMachines() {
 
 function persistMarketVisits() {
   let previous;
-  try { previous = JSON.parse(localStorage.getItem(marketVisitStorageKey) || "[]").map(normalizeMarketVisit); } catch (_) {}
+  if (typeof sectionJournal !== 'undefined' && sectionJournal) previous = getCloudConfigsForKey(marketVisitStorageKey).flatMap(section => sectionJournal.snapshot(section.key) || []);
+  else try { previous = JSON.parse(localStorage.getItem(marketVisitStorageKey) || "[]").map(normalizeMarketVisit); } catch (_) {}
   recordWorkUpdateTimes(marketVisits.filter(visit => visit.type === "personal"), marketVisitStorageKey);
   writeLocalSection(marketVisitStorageKey, marketVisits);
   getCloudConfigsForKey(marketVisitStorageKey).forEach(section => {
@@ -2135,6 +2162,23 @@ function isCloudSyncConflict(error,status) {
 
 async function saveDirectoryCloudPayload(client,user,payload,saveRevision,options={}) {
   const sampleSection=sampleCloudSectionKeys.has(payload.record_key), collectionName=sampleSection?"samples":"contacts or operators";
+  if (!sampleSection) {
+    const section = getCloudConfig(payload.record_key), original = section.get();
+    const edits = taskOutbox.list(user.id, section.key);
+    const normalize = values => section.key === peopleContactsStorageKey ? values.map(normalizePeopleContact) : values.map(normalizeAddressBookEntry);
+    const saved = await window.foodBrokerWorkSync.saveDirectory(client, {
+      payload, edits, normalize, isCurrent: () => sampleSyncUserValid(user)
+    });
+    section.set(window.foodBrokerWorkSync.merge(original, section.get(), saved.value));
+    const remaining = taskOutbox.list(user.id, section.key).filter(entry => !edits.some(sent => sent.key === entry.key && sent.raw === entry.raw));
+    section.set(window.foodBrokerWorkSync.applyEdits(section.get(), remaining));
+    writeLocalSection(section.key, section.get(), {cache: true});
+    await workCloudBases.remember(user.id, section.key, {...saved, journalVersion: 3});
+    rememberDirectoryCloudWriteBase(section.key, saved.version, user.id);
+    taskOutbox.acknowledge(edits);
+    renderAfterCloudSync();
+    return;
+  }
   const bases=getDirectoryCloudWriteBases(user.id);
   let expected=bases.get(payload.record_key),recovered=null;
   const originalItems=sampleSection?payload.data.value:null;
@@ -2273,7 +2317,7 @@ function writeCloudSectionsToLocalStorage(sectionKeys = cloudSectionConfigs.map(
     const section = getLocalCloudCacheConfig(sectionKey) || getCloudConfig(sectionKey);
     if (!section) return;
     try {
-      writeLocalSection(section.key, section.get());
+      writeLocalSection(section.key, section.get(), {cache: true});
     } catch (error) {
       failedKeys.add(sectionKey);
       window.foodBrokerSaveStatus?.recordError(error, { operation: "Refresh saved browser copy" });
@@ -2336,6 +2380,8 @@ function scheduleCloudSave(sectionKey) {
 
 function normalizeWorkCloudValue(sectionKey, value) {
   const items = Array.isArray(value) ? value : [];
+  if (sectionKey === peopleContactsStorageKey) return items.map(normalizePeopleContact);
+  if (sectionKey === addressBookStorageKey) return items.map(normalizeAddressBookEntry);
   if (sectionKey === storageKey) return items.map(normalizeCard);
   if (sectionKey === stockStorageKey) return items.map(normalizeStockProduct);
   if (sectionKey === manualVendorStorageKey) return items.map(normalizeManualVendorReport);
@@ -2347,10 +2393,27 @@ function normalizeWorkCloudValue(sectionKey, value) {
   return items.map(normalizeMarketVisit);
 }
 
+async function migratePendingBrowserCopy(user, section, base, remote, boot, wasPending, hadEdits) {
+  const key = `broker-whiteboard-journal-upgrade-3:${user.id}:${section.key}`;
+  if (localStorage.getItem(key) === '3') return;
+  if (wasPending && !hadEdits && !window.foodBrokerWorkSync.equal(boot, remote.value)) {
+    // Keep the entire older copy for recovery; do not turn stale cache fields
+    // or missing fields from an older schema into new cloud edits.
+    if (typeof legacyRecoveryCopies !== 'undefined') legacyRecoveryCopies.set(section.key, boot);
+    await workCloudBases.remember(user.id, 'recovery-v3:' + section.key, {version: base?.version || null, value: boot});
+    if (base && !base.journalVersion) {
+      const delta = window.foodBrokerWorkSync.verifiedLegacyChanges(base?.value, boot, remote.value, remote.version);
+      const edit = taskOutbox.keep(user.id, section.key, delta.base, delta.value, null, {first: true});
+      if (edit) pendingCloudSections.add(section.key);
+    }
+  }
+  localStorage.setItem(key, '3');
+}
+
 async function saveWorkCloudPayload(client, user, payload) {
   const section = getCloudConfig(payload.record_key);
   const original = normalizeWorkCloudValue(section.key, payload.data.value);
-  const edits = section.key === todoStorageKey ? taskOutbox.list(user.id, section.key) : [];
+  const edits = taskOutbox.list(user.id, section.key);
   const saved = await window.foodBrokerWorkSync.save(client, {
     table: section.scope === "team" ? "team_app_records" : "app_records",
     userId: user.id, payload, local: original, base: await workCloudBases.get(user.id, section.key),
@@ -2358,13 +2421,13 @@ async function saveWorkCloudPayload(client, user, payload) {
   });
   // Preserve edits made after this upload began, along with other devices' additions.
   section.set(window.foodBrokerWorkSync.merge(original, normalizeWorkCloudValue(section.key, section.get()), saved.value));
-  if (section.key === todoStorageKey) {
+  {
     const remaining = taskOutbox.list(user.id, section.key).filter(entry => !edits.some(saved => saved.key === entry.key && saved.raw === entry.raw));
     section.set(window.foodBrokerWorkSync.applyEdits(section.get(), remaining));
   }
   const local = getLocalCloudCacheConfig(section.localKey || section.key) || section;
-  writeLocalSection(local.key, local.get());
-  await workCloudBases.remember(user.id, section.key, saved);
+  writeLocalSection(local.key, local.get(), {cache: true});
+  await workCloudBases.remember(user.id, section.key, {...saved, journalVersion: 3});
   taskOutbox.acknowledge(edits);
   renderAfterCloudSync();
 }
@@ -2372,7 +2435,9 @@ async function saveWorkCloudPayload(client, user, payload) {
 async function pushPendingCloudSections() {
   const user = getCloudUser();
   try {
-    if (user && taskOutbox.list(user.id, todoStorageKey).length) pendingCloudSections.add(todoStorageKey);
+    if (user) cloudSectionConfigs.filter(section => !sampleCloudSectionKeys.has(section.key)).forEach(section => {
+      if (taskOutbox.list(user.id, section.key).length) pendingCloudSections.add(section.key);
+    });
   } catch (error) {
     cloudSaveConfirmed = false;
     lastCloudError = error?.message || "Task recovery storage is unavailable.";
@@ -2402,6 +2467,20 @@ async function performCloudSaveSections(sectionKeys, options) {
   cloudWriteEpoch += 1;
   cloudSaveRequests += 1;
   let uploadSucceeded = false;
+  const unfinished = new Set(expandCloudSectionKeys(sectionKeys));
+  const errors = [];
+  const complete = keys => {
+    keys.forEach(key => {
+      unfinished.delete(key);
+      const editsRemain = !sampleCloudSectionKeys.has(key) && taskOutbox.list(user.id, key).length;
+      if ((cloudSectionRevisions.get(key) || 0) === revisions.get(key) && !editsRemain) pendingCloudSections.delete(key);
+    });
+    storePendingCloudSections();
+  };
+  const attempt = async (keys, save) => {
+    try {await save(); complete(keys);}
+    catch (error) {errors.push(error);}
+  };
   updateSaveStatus();
   try {
     const now = new Date().toISOString();
@@ -2445,25 +2524,25 @@ async function performCloudSaveSections(sectionKeys, options) {
     const ordinaryPersonal = personalPayload.filter(payload => !workCloudSectionKeys.has(payload.record_key));
     const ordinaryTeam = teamPayload.filter(payload => !workCloudSectionKeys.has(payload.record_key));
     if (ordinaryPersonal.length) {
-      const { error, status } = await client.from("app_records").upsert(ordinaryPersonal, {
-        onConflict: "owner_id,record_type,record_key"
+      await attempt(ordinaryPersonal.map(payload => payload.record_key), async () => {
+        const { error, status } = await client.from("app_records").upsert(ordinaryPersonal, {
+          onConflict: "owner_id,record_type,record_key"
+        });
+        if (error) throw { name: error.name, message: error.message, code: error.code, status: error.status || status };
       });
-      if (error) throw { name: error.name, message: error.message, code: error.code, status: error.status || status };
     }
     if (ordinaryTeam.length) {
-      const { error, status } = await client.from("team_app_records").upsert(ordinaryTeam, {
-        onConflict: "record_type,record_key"
+      await attempt(ordinaryTeam.map(payload => payload.record_key), async () => {
+        const { error, status } = await client.from("team_app_records").upsert(ordinaryTeam, {
+          onConflict: "record_type,record_key"
+        });
+        if (error) throw { name: error.name, message: error.message, code: error.code, status: error.status || status };
       });
-      if (error) throw { name: error.name, message: error.message, code: error.code, status: error.status || status };
     }
-    for (const payload of workPayload) await saveWorkCloudPayload(client, user, payload);
-    for(const payload of directoryPayload)await saveDirectoryCloudPayload(client,user,payload,revisions.get(payload.record_key),options);
+    for (const payload of workPayload) await attempt([payload.record_key], () => saveWorkCloudPayload(client, user, payload));
+    for (const payload of directoryPayload) await attempt([payload.record_key], () => saveDirectoryCloudPayload(client,user,payload,revisions.get(payload.record_key),options));
+    if (errors.length) throw errors[0];
     lastCloudError = "";
-    revisions.forEach((revision, key) => {
-      // Edits made during this request must still be sent in the next request.
-      const taskEditsRemain = key === todoStorageKey && taskOutbox.list(user.id, key).length;
-      if ((cloudSectionRevisions.get(key) || 0) === revision && !taskEditsRemain) pendingCloudSections.delete(key);
-    });
     storePendingCloudSections();
     uploadSucceeded = true;
     cloudSaveConfirmed = !lastCloudError && pendingCloudSections.size === 0 && failedLocalSections.size === 0;
@@ -2474,7 +2553,7 @@ async function performCloudSaveSections(sectionKeys, options) {
     cloudSaveConfirmed = false;
     window.foodBrokerSaveStatus?.recordError(error, { operation: "Save changes to cloud" });
     console.warn("FoodBrokerBase cloud save failed.", error);
-    pendingCloudSections = new Set([...expandCloudSectionKeys(sectionKeys), ...pendingCloudSections]);
+    pendingCloudSections = new Set([...unfinished, ...pendingCloudSections]);
     storePendingCloudSections();
     return false;
   } finally {
@@ -2618,23 +2697,20 @@ async function loadCloudSections(options = {}) {
   cloudSyncUserId = user.id;
   const directoryBases=getDirectoryCloudWriteBases(user.id);
   let uploadFailed=false;
+  const trackedSections = cloudSectionConfigs.filter(section => workCloudSectionKeys.has(section.key) || directoryCloudSectionKeys.has(section.key) && !sampleCloudSectionKeys.has(section.key));
+  const bootCopies = new Map(trackedSections.map(section => [section.key,
+    typeof sectionJournal !== 'undefined' && sectionJournal ? sectionJournal.boot(section.key) : JSON.parse(JSON.stringify(section.get()))]));
+  const pendingAtStart = new Set(pendingCloudSections);
+  const editsAtStart = new Map(trackedSections.map(section => [section.key, taskOutbox.list(user.id, section.key).length]));
 
   try {
-    if (workCloudSectionKeys.has(todoStorageKey) && pendingCloudSections.has(todoStorageKey) && !taskOutbox.list(user.id, todoStorageKey).length) {
-      // Upgrade the previous release's pending browser copy before a new edit
-      // can arrive during this download. Later task edits must apply after it.
-      const previousLocalTasks = JSON.parse(JSON.stringify(getCloudConfig(todoStorageKey).get()));
-      const base = await workCloudBases.get(user.id, todoStorageKey);
-      if (!sampleSyncUserValid(user)) return false;
-      taskOutbox.keep(user.id, todoStorageKey, base?.value || [], previousLocalTasks, null, {first: true});
-    }
     recoverPendingTaskEdits(user);
     await syncSavedTeamInitials().catch(error => console.warn("Saved initials will retry on next sync:", error.message));
     await correctPeteTeamRecords().catch(() => { peteCorrectionUser = ""; });
     const summary = options.summary || await fetchCloudRowSummary();
     const [rows, savedBases] = await Promise.all([
       downloadChangedCloudRows(client, user, summary, cloudRowCache),
-      Promise.all([...workCloudSectionKeys].map(async key => [key, await workCloudBases.get(user.id, key)]))
+      Promise.all(trackedSections.map(async section => [section.key, await workCloudBases.get(user.id, section.key)]))
     ]);
     const workBasesForLoad = new Map(savedBases);
     if(!sampleSyncUserValid(user))return false;
@@ -2659,9 +2735,26 @@ async function loadCloudSections(options = {}) {
       }
       if(cleared.length)writeCloudSectionsToLocalStorage(cleared);
     }
+    const personalRowMap = new Map(personalRows.map((row) => [row.record_key, row]));
+    const teamRowMap = new Map(teamRows.map((row) => [row.record_key, row]));
+    for (const section of trackedSections) {
+      const remote = (section.scope === 'team' ? teamRowMap : personalRowMap).get(section.key);
+      const result = getCloudSectionValue(section, personalRowMap, teamRowMap);
+      await migratePendingBrowserCopy(user, section, workBasesForLoad.get(section.key), {
+        version: remote?.data?.directoryRevision || remote?.updated_at || null,
+        value: normalizeWorkCloudValue(section.key, result.found ? result.value : [])
+      }, bootCopies.get(section.key), pendingAtStart.has(section.key), editsAtStart.get(section.key));
+    }
+    // Keeping recovery copies is asynchronous too; a newer upload supersedes
+    // this download even when it completes during the browser database write.
+    if (!sampleSyncUserValid(user)) return false;
+    if (cloudSaveRequests || writeEpoch !== cloudWriteEpoch) {
+      cloudSyncReady = wasReady;
+      window.setTimeout(() => refreshCloudSectionsIfChanged({force: true}), 0);
+      return false;
+    }
+    if (isAppEditing()) {cloudSyncReady = true; return false;}
     if (rows.length) {
-      const personalRowMap = new Map(personalRows.map((row) => [row.record_key, row]));
-      const teamRowMap = new Map(teamRows.map((row) => [row.record_key, row]));
       const appliedKeys = [];
       const localUploadKeys = [];
       const workBasesToRemember = [];
@@ -2670,6 +2763,17 @@ async function loadCloudSections(options = {}) {
         if (failedLocalSections.has(section.localKey || section.key)) return;
         const cloudResult = getCloudSectionValue(section, personalRowMap, teamRowMap);
         if(directoryCloudSectionKeys.has(section.key)){
+          if (!sampleCloudSectionKeys.has(section.key)) {
+            const remote = teamRowMap.get(section.key), value = normalizeWorkCloudValue(section.key, cloudResult.found ? cloudResult.value : []);
+            const edits = taskOutbox.list(user.id, section.key);
+            section.set(window.foodBrokerWorkSync.applyEdits(value, edits));
+            appliedKeys.push(section.key);
+            const version = remote?.data?.directoryRevision || remote?.updated_at || null;
+            workBasesToRemember.push([section, {version, value, journalVersion: 3}]);
+            rememberDirectoryCloudWriteBase(section.key, version, user.id);
+            if (edits.length || pendingCloudSections.has(section.key)) localUploadKeys.push(section.key);
+            return;
+          }
           if(sampleCloudSectionKeys.has(section.key))sampleCloudSnapshots.set(section.key,sampleSyncSnapshot(teamRowMap.get(section.key)));
           if(pendingCloudSections.has(section.key)){localUploadKeys.push(section.key);return;}
           const remote=teamRowMap.get(section.key);
@@ -2686,6 +2790,14 @@ async function loadCloudSections(options = {}) {
           return;
         }
         if (!cloudResult.found) {
+          if (workCloudSectionKeys.has(section.key)) {
+            const edits = taskOutbox.list(user.id, section.key);
+            section.set(normalizeWorkCloudValue(section.key, window.foodBrokerWorkSync.applyEdits([], edits)));
+            appliedKeys.push(section.key);
+            workBasesToRemember.push([section, {version: null, value: [], journalVersion: 3}]);
+            if (edits.length || pendingCloudSections.has(section.key)) localUploadKeys.push(section.key);
+            return;
+          }
           const localValue = section.get();
           if (Array.isArray(localValue) && localValue.length) localUploadKeys.push(section.key);
           return;
@@ -2695,13 +2807,10 @@ async function loadCloudSections(options = {}) {
         if (workCloudSectionKeys.has(section.key)) {
           const remote = (section.scope === "team" ? teamRowMap : personalRowMap).get(section.key);
           const value = normalizeWorkCloudValue(section.key, cloudValue);
-          const base = workBasesForLoad.get(section.key);
-          const edits = section.key === todoStorageKey ? taskOutbox.list(user.id, section.key) : [];
-          const upload = edits.length || pendingCloudSections.has(section.key) || cloudResult.usedLegacyRow
-            || (!base && Array.isArray(localValue) && localValue.length && !value.length);
-          section.set(edits.length ? window.foodBrokerWorkSync.applyEdits(value, edits) : upload
-            ? window.foodBrokerWorkSync.merge(base?.value, normalizeWorkCloudValue(section.key, localValue), value) : value);
-          workBasesToRemember.push([section, {version: remote?.updated_at || null, value}]);
+          const edits = taskOutbox.list(user.id, section.key);
+          const upload = edits.length || pendingCloudSections.has(section.key);
+          section.set(normalizeWorkCloudValue(section.key, window.foodBrokerWorkSync.applyEdits(value, edits)));
+          workBasesToRemember.push([section, {version: remote?.updated_at || null, value, journalVersion: 3}]);
           appliedKeys.push(section.key);
           if (upload) localUploadKeys.push(section.key);
           return;
@@ -2810,42 +2919,11 @@ function setCloudSyncButtonsBusy(isBusy) {
 
 async function mergeCloudDataIntoThisBrowser() {
   if (isAppEditing()) return false;
-  const client = getCloudClient();
-  const user = getCloudUser();
-  if (!client || !user) return false;
-
-  const { data: personalData, error: personalError } = await client
-    .from("app_records")
-    .select("record_key,data")
-    .eq("record_type", cloudRecordType)
-    .eq("owner_id", user.id);
-  if (personalError) throw personalError;
-
-  const { data: teamData, error: teamError } = await client
-    .from("team_app_records")
-    .select("record_key,data")
-    .eq("record_type", teamCloudRecordType);
-  if (teamError) throw teamError;
-
-  if (isAppEditing()) return false;
-  const personalRows = new Map((personalData || []).map((row) => [row.record_key, row]));
-  const teamRows = new Map((teamData || []).map((row) => [row.record_key, row]));
-  const mergedKeys = [];
-
-  cloudSectionConfigs.forEach((section) => {
-    const cloudResult = getCloudSectionValue(section, personalRows, teamRows);
-    if (!cloudResult.found) return;
-    const cloudValue = cloudResult.value;
-    if(directoryCloudSectionKeys.has(section.key) && pendingCloudSections.has(section.key))return;
-    section.set(workCloudSectionKeys.has(section.key)
-      ? window.foodBrokerWorkSync.merge(undefined, normalizeWorkCloudValue(section.key, section.get()), normalizeWorkCloudValue(section.key, cloudValue))
-      : mergeCloudSectionValues(section.get(), cloudValue));
-    mergedKeys.push(section.key);
-  });
-
-  writeCloudSectionsToLocalStorage(mergedKeys);
-  renderAfterCloudSync();
-  return true;
+  // Manual sync uses the same confirmed cloud copy and recorded edits as
+  // automatic sync. A stale browser cache is never an instruction to restore it.
+  const loaded = await loadCloudSections();
+  if (lastCloudError) throw new Error(lastCloudError);
+  return loaded || cloudSyncReady;
 }
 
 async function syncLocalDataToCloud(options = {}) {
@@ -2862,17 +2940,12 @@ async function syncLocalDataToCloud(options = {}) {
     }
     return false;
   }
-  if (!hasLocalAppData()) {
-    if (!options.silent) alert("This browser does not have local FoodBrokerBase data to upload. Use the browser where your imported backup data is visible.");
-    return false;
-  }
-
   setCloudSyncButtonsBusy(true);
   let uploaded = false;
   let cloudRowCount = 0;
   try {
-    await mergeCloudDataIntoThisBrowser();
-    uploaded = await saveCloudSections(undefined, { force: true });
+    if (!await mergeCloudDataIntoThisBrowser()) throw new Error("Finish the open edit and try syncing again.");
+    uploaded = pendingCloudSections.size ? await saveCloudSections(Array.from(pendingCloudSections), { force: true }) : true;
     if (uploaded) {
       cloudRowCount = (await fetchCloudRowSummary()).length;
       if (!cloudRowCount) {
@@ -3027,7 +3100,7 @@ async function removeStockFileData(id) {
   }
 }
 
-function exportBackup() {
+async function exportBackup() {
   const date = new Date().toISOString().slice(0, 10);
   const backup = {
     app: "Broker Whiteboard",
@@ -3047,6 +3120,21 @@ function exportBackup() {
     nestleMachines,
     marketVisits
   };
+  const user = getCloudUser();
+  if (user) {
+    const pendingEdits = [], previousBrowserCopies = [];
+    for (const section of cloudSectionConfigs.filter(section => !sampleCloudSectionKeys.has(section.key))) {
+      try {
+        const edits = taskOutbox.list(user.id, section.key);
+        if (edits.length) pendingEdits.push({section: section.key, edits: edits.map(({format, order, base, value}) => ({format, order, base, value}))});
+      } catch (_) { /* Keep exporting the visible records if an edit record is unreadable. */ }
+      try {
+        const recovery = await workCloudBases.get(user.id, 'recovery-v3:' + section.key);
+        if (recovery) previousBrowserCopies.push({section: section.key, value: recovery.value});
+      } catch (_) { /* Export the visible records even if the browser database cannot open. */ }
+    }
+    if (pendingEdits.length || previousBrowserCopies.length) backup.syncRecovery = {format: 3, pendingEdits, previousBrowserCopies};
+  }
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

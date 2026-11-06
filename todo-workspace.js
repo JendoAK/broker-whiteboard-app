@@ -110,6 +110,7 @@
   }
   function myday(task){return task.myDay===TaskDates.today();}
   function matches(task,key){
+    if(key==='all')return task.status!=='Done';
     if(key==='myday')return myday(task)&&task.status!=='Done';
     if(key==='today')return isTodoDueToday(task)&&task.status!=='Done';
     if(key==='important')return task.priority==='High'&&task.status!=='Done';

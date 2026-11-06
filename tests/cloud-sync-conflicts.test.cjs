@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const sync = require('../cloud-work-sync.js');
 
 const root = path.join(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
@@ -10,10 +11,14 @@ const saveSource = source.slice(source.indexOf('function sampleSyncUserValid('),
 const batchSource = source.slice(source.indexOf('async function performCloudSaveSections('), source.indexOf('async function fetchCloudRowSummary('));
 
 function setup(key = 'contacts', response = {error: {code: 'PT409', message: 'Stale version'}, status: 409}) {
-  const items = [{id: 'local-entry', product: 'Unsynced browser edit', note: 'Keep this'}];
+  let items = [{id: 'local-entry', product: 'Unsynced browser edit', note: 'Keep this'}];
+  const values = new Map(), storage = {get length() {return values.size;}, key: index => [...values.keys()][index],
+    getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key)};
+  const outbox = sync.createOutbox(storage);
+  if (key !== 'samples') outbox.keep('test-user', key, [], items);
   const bases = new Map([[key, 'revision-a']]);
   let calls = 0;
-  const section = {key, scope: 'team', label: key, get: () => items};
+  const section = {key, scope: 'team', label: key, get: () => items, set: value => {items = value;}};
   const context = {
     user: {id: 'test-user'},
     console: {warn() {}},
@@ -28,7 +33,10 @@ function setup(key = 'contacts', response = {error: {code: 'PT409', message: 'St
     cloudSaveRequests: 0,
     cloudWriteEpoch: 0,
     workCloudSectionKeys: new Set(),
-    todoStorageKey: 'tasks', taskOutbox: {list: () => []},
+    todoStorageKey: 'tasks', taskOutbox: outbox, workCloudBases: sync.createBases(storage),
+    peopleContactsStorageKey: 'people', addressBookStorageKey: 'contacts',
+    normalizePeopleContact: value => value, normalizeAddressBookEntry: value => value,
+    writeLocalSection() {}, renderAfterCloudSync() {},
     failedLocalSections: new Set(),
     cloudSaveTimer: null,
     cloudSaveConfirmed: false,
@@ -48,6 +56,7 @@ function setup(key = 'contacts', response = {error: {code: 'PT409', message: 'St
     rememberDirectoryCloudWriteBase: (key, version) => {bases.set(key, version); return true;},
     getCloudConfig: () => section,
     window: {
+      foodBrokerWorkSync: sync,
       foodBrokerBaseAuth: {getCurrentProfile: () => ({role: 'member'}), isPasswordRecovery: () => false},
       foodBrokerSampleSyncRecovery: {mergeKnown: item => item, clearSection() {}},
       foodBrokerSaveStatus: {recordError() {}},
@@ -55,28 +64,31 @@ function setup(key = 'contacts', response = {error: {code: 'PT409', message: 'St
       setTimeout() {return 1;}
     }
   };
-  const client = {rpc: async (...args) => {calls++; return typeof response === 'function' ? response(context, ...args) : response;}};
+  const client = {
+    from: () => {const query = {select: () => query, eq: () => query,
+      maybeSingle: async () => ({data: {data: {value: [], directoryRevision: 'revision-a'}}, error: null})}; return query;},
+    rpc: async (...args) => {calls++; return typeof response === 'function' ? response(context, ...args) : response;}
+  };
   context.getCloudUser = () => context.user;
   context.getCloudClient = () => client;
   context.expandCloudSectionKeys = keys => keys;
   vm.createContext(context);
   vm.runInContext(saveSource + '\n' + batchSource, context);
   const payload = {record_key: key, data: {value: items}};
-  return {context, client, bases, items, payload, calls: () => calls};
+  return {context, client, bases, get items() {return items;}, payload, calls: () => calls};
 }
 
-test('HTTP 409 conflicts preserve unsynced directory entries and their original base', async () => {
+test('repeated HTTP 409 conflicts preserve the directory edits and retry against a fresh version', async () => {
   const s = setup();
   const before = JSON.stringify(s.items);
   await assert.rejects(s.context.saveDirectoryCloudPayload(s.client, s.context.user, s.payload, 0), error => {
-    assert.equal(error.name, 'DirectorySyncConflictError');
-    assert.equal(error.code, 'PT409');
-    assert.match(error.message, /current entries are kept/);
+    assert.match(error.message, /recorded edits are kept/);
     return true;
   });
   assert.equal(JSON.stringify(s.items), before);
   assert.equal(s.bases.get('contacts'), 'revision-a');
-  assert.equal(s.calls(), 1);
+  assert.equal(s.calls(), 3);
+  assert.equal(s.context.taskOutbox.list('test-user', 'contacts').length, 1);
 });
 
 for (const code of ['PT409', '40001']) {

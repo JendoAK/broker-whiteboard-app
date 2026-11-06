@@ -48,6 +48,7 @@ function open(localStorage, db) {
     todos: JSON.parse(localStorage.getItem(key) || JSON.stringify(initial)),
     todoStorageKey: key, storageKey: 'leads', stockStorageKey: 'stock', manualVendorStorageKey: 'reports',
     eventProductStorageKey: 'products', nestleMachineStorageKey: 'machines', calendarPreferencesKey: 'preferences', personalVisitCalendarKey: 'calendar',
+    peopleContactsStorageKey: 'people', addressBookStorageKey: 'contacts', legacyRecoveryCopies: new Map(),
     cloudPendingStorageKey: queueKey, pendingCloudSections: new Set(), cloudSectionRevisions: new Map(),
     cloudSaveChain: Promise.resolve(), cloudWriteEpoch: 0, cloudSaveRequests: 0, cloudSaveConfirmed: false, cloudSaveTimer: null,
     cloudSyncReady: true, cloudSyncLoading: false, cloudSyncUserId: owner, cloudRefreshChecking: false,
@@ -70,9 +71,11 @@ function open(localStorage, db) {
   };
   const section = {key, label: 'Tasks', scope: 'personal', get: () => context.todos, set: value => {context.todos = clone(value);}};
   context.cloudSectionConfigs = [section]; context.localCloudCacheConfigs = [section];
+  context.getCloudConfigsForKey = sectionKey => sectionKey === key ? [section] : [];
   context.getCloudConfig = sectionKey => sectionKey === key ? section : null;
   context.getLocalCloudCacheConfig = context.getCloudConfig;
   if (sync.createOutbox) context.taskOutbox = sync.createOutbox(localStorage);
+  context.sectionJournal = sync.createJournal(context.taskOutbox, [section]);
   context.todoSavedSnapshot = clone(context.todos);
   vm.createContext(context);
   vm.runInContext([
@@ -170,6 +173,40 @@ test('acknowledged journal entries do not override later changes from another de
   const reopened = app.reopen(); await reopened.context.loadCloudSections();
   assert.equal(reopened.value()[0].notes, 'Later remote note'); assert.equal(reopened.value()[0].status, 'Done'); assert.equal(reopened.value()[0].myDay, '');
 });
+
+test('a stale whole-browser cache cannot undo confirmed My Day, completion or archive after reopen', async () => {
+  const {app, local, db} = await fixture();
+  app.edit({...changed, status: 'Done', archivedAt: '2026-11-05T22:00:00Z'});
+  assert.equal(await app.context.pushPendingCloudSections(), true);
+  // An older open app can still replace shared browser storage, even though
+  // its obsolete cloud writes are rejected by the server.
+  local.setItem(key, JSON.stringify(initial));
+  local.setItem(queueKey, JSON.stringify([key]));
+  const reopened = app.reopen();
+  await reopened.context.loadCloudSections();
+  const task = db.current().data.value[0];
+  assert.equal(task.myDay, changed.myDay);
+  assert.equal(task.status, 'Done');
+  assert.equal(task.archivedAt, '2026-11-05T22:00:00Z');
+  assert.equal(task.notes, changed.notes);
+});
+
+test('a contacts conflict does not requeue an already confirmed task save', async () => {
+  const {app, db} = await fixture();
+  const context = app.context, originalGet = context.getCloudConfig;
+  const contacts = {key: 'contacts', label: 'Contacts', scope: 'team', get: () => [], set() {}};
+  context.cloudSectionConfigs.push(contacts);
+  context.getCloudConfig = sectionKey => sectionKey === 'contacts' ? contacts : originalGet(sectionKey);
+  context.directoryCloudSectionKeys.add('contacts');
+  context.pendingCloudSections.add('contacts');
+  context.saveDirectoryCloudPayload = async () => {throw {code: 'PT409', status: 409, message: 'Stale directory fixture'};};
+  app.edit(changed);
+  assert.equal(await context.pushPendingCloudSections(), false);
+  assertChanged(db.current().data.value);
+  assert.equal(context.taskOutbox.list(owner, key).length, 0);
+  assert.equal(context.pendingCloudSections.has(key), false);
+  assert.equal(context.pendingCloudSections.has('contacts'), true);
+});
 test('a lost response after the server accepted a save recovers without losing or duplicating tasks', async () => {
   const {app, db} = await fixture(); app.edit(changed); db.loseResponse();
   assert.equal(await app.context.pushPendingCloudSections(), false);
@@ -210,7 +247,9 @@ test('a journal storage failure does not falsely confirm the task save', async (
 test('pending edits from the previous app version survive an edit during the first download', async () => {
   const {app, local, db} = await fixture();
   // The previous release had a browser copy and a retry marker, without an outbox.
-  local.setItem(key, JSON.stringify([{...initial[0], notes: changed.notes}])); local.setItem(queueKey, JSON.stringify([key]));
+  app.context.workCloudBases.remember(owner, key, {version: db.current().updated_at, value: initial});
+  local.removeItem(`broker-whiteboard-journal-upgrade-3:${owner}:${key}`);
+  local.setItem(key, JSON.stringify([{...initial[0], notes: changed.notes, updatedAt: '2026-11-05T22:00:00Z'}])); local.setItem(queueKey, JSON.stringify([key]));
   const upgraded = app.reopen(); let release;
   upgraded.context.fetchCloudRowSummary = () => new Promise(resolve => {release = () => resolve([db.current()]);});
   const loading = upgraded.context.loadCloudSections(); await new Promise(setImmediate);

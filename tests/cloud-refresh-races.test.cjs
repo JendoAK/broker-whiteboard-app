@@ -48,6 +48,7 @@ function setup() {
     cloudRowCacheKey: row => row.record_key, getCloudRowFingerprint: () => 'old',
     mergeCloudSectionValues: (local, remote) => [...new Map([...remote, ...local].map(item => [item.id, item])).values()],
     todoStorageKey: key, normalizeTodo: value => value,
+    peopleContactsStorageKey: 'people', addressBookStorageKey: 'contacts',
     storageKey: 'leads', stockStorageKey: 'stock', manualVendorStorageKey: 'reports', eventProductStorageKey: 'products', nestleMachineStorageKey: 'machines',
     workCloudBases: sync.createBases({getItem: () => null, setItem() {}}),
     taskOutbox: {list: () => [], keep() {}, acknowledge() {}}, recoverPendingTaskEdits() {},
@@ -85,6 +86,18 @@ test('a refresh started earlier is discarded if a forced save finishes during it
   assert.equal(s.context.cloudLastRowFingerprint, 'old');
 });
 
+test('a save completed while keeping a recovery copy supersedes the downloaded snapshot', async () => {
+  const s = setup(), recovery = deferred(); let keeping = false;
+  s.context.workCloudSectionKeys.add('tasks');
+  s.context.migratePendingBrowserCopy = async () => {keeping = true; await recovery.promise;};
+  const refreshing = s.context.loadCloudSections(); s.download.resolve(s.rows);
+  await new Promise(setImmediate); assert.equal(keeping, true);
+  s.context.saveWorkCloudPayload = async () => {s.context.getCloudConfig('tasks').set([{id: 'confirmed', status: 'Done'}]);};
+  assert.equal(await s.context.performCloudSaveSections(['tasks'], {force: true}), true);
+  recovery.resolve(); assert.equal(await refreshing, false);
+  assert.equal(s.items()[0].id, 'confirmed'); assert.equal(s.items()[0].status, 'Done');
+});
+
 test('edits made while a save is in flight remain queued for another save', async () => {
   const s = setup();
   const saving = s.context.performCloudSaveSections(['tasks'], {});
@@ -111,7 +124,13 @@ test('a row summary fetched before a save cannot reuse an obsolete cached collec
 test('a pending task deletion survives a cloud refresh and keeps other devices additions', async () => {
   const s = setup();
   s.context.workCloudSectionKeys.add('tasks');
-  s.context.workCloudBases.remember('test-user', 'tasks', {version: 'before', value: [{id: 'deleted'}, {id: 'existing', title: 'Existing task'}]});
+  const before = [{id: 'deleted'}, {id: 'existing', title: 'Existing task'}];
+  s.context.workCloudBases.remember('test-user', 'tasks', {version: 'before', value: before, journalVersion: 3});
+  const values = new Map();
+  s.context.localStorage = {get length() {return values.size;}, key: index => [...values.keys()][index], getItem: key => values.get(key) || null,
+    setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key)};
+  s.context.taskOutbox = sync.createOutbox(s.context.localStorage);
+  s.context.taskOutbox.keep('test-user', 'tasks', before, s.items());
   const remote = [{id: 'deleted'}, ...s.rows[0].data.value, {id: 'remote', title: 'Other device'}];
   s.context.getCloudSectionValue = () => ({found: true, value: remote});
   let uploaded;

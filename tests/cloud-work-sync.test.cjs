@@ -133,7 +133,7 @@ test('every save declares its supported format and the exact cloud version it re
   const base = [task('existing')], seen = [];
   const db = database(base, ({query, row}) => {
     seen.push(query.payload.data);
-    if (query.payload.data.syncProtocol !== 2) return {error: {code: 'PT426', message: 'Update FoodBrokerBase'}};
+    if (query.payload.data.syncProtocol !== 3) return {error: {code: 'PT426', message: 'Update FoodBrokerBase'}};
     assert.equal(query.payload.data.syncWriteBase, row.updated_at);
   });
   const focused = [{...base[0], myDay: '2026-11-05'}];
