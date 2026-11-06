@@ -102,3 +102,74 @@ test('all workspace timeline inputs are connected to the shared stock suggestion
  assert.equal(inputs.length,7);
  for(const [input] of inputs)assert.match(input,/list="timelineSearchSuggestions"/);
 });
+
+test('typing an APN and choosing a suggestion reuse one distributor catalog',()=>{
+ const {c}=setup(),catalog=c.window.foodBrokerProducts;let builds=0;
+ c.window.foodBrokerProducts={...catalog,choices(...args){builds++;return catalog.choices(...args);}};
+ c.rebuildLeadProductSuggestions();assert.equal(builds,1);
+ const fields={'.product-apn':{value:''},'.product-description':{value:''},'.product-vendor-input':{value:''}};
+ for(const value of ['1','11','110','1100','11000','110001']){fields['.product-apn'].value=value;c.fillProductFromApn({querySelector:key=>fields[key]});}
+ assert.equal(fields['.product-description'].value,'Avocado halves');
+ assert.equal(c.findLeadProductSearchMatch('110001').number,'110001');assert.equal(builds,1);
+});
+
+test('cached catalogs refresh on stock additions, edits and removals',()=>{
+ const {c}=setup();const original=c.getLeadProductSearchDirectory('US Foods');
+ c.stockProducts=c.stockProducts.map(item=>item.id==='usf'?{...item,apn:'119999',description:'Updated from stock'}:item);
+ const edited=c.getLeadProductSearchDirectory('US Foods');assert.notEqual(edited,original);assert.ok(edited.some(item=>item.number==='119999'&&item.description==='Updated from stock'));assert.ok(!edited.some(item=>item.number==='110001'));
+ c.stockProducts=[...c.stockProducts,{id:'added',distributor:'US Foods Anchorage',vendor:'Test Bakery',description:'Fresh buns',apn:'112233'}];
+ assert.ok(c.getLeadProductSearchDirectory('US Foods').some(item=>item.number==='112233'));
+ c.stockProducts=c.stockProducts.filter(item=>item.id!=='added');assert.ok(!c.getLeadProductSearchDirectory('US Foods').some(item=>item.number==='112233'));
+});
+
+test('cached catalogs refresh when historical lead products change',()=>{
+ const {c}=setup();c.getLeadProductSearchDirectory('US Foods');
+ c.cards=[{id:'lead',distributor:'US Foods',products:[{description:'Historical product',vendor:'Test Bakery',apn:'556677'}]}];
+ assert.ok(c.getLeadProductSearchDirectory('US Foods').some(item=>item.number==='556677'));
+ c.cards=[];assert.ok(!c.getLeadProductSearchDirectory('US Foods').some(item=>item.number==='556677'));
+});
+
+test('distributor choices are kept separately and refresh for workspace preference changes',()=>{
+ const {c}=setup();let mode='usFoods';c.window.foodBrokerWorkspace={getMode:()=>mode};
+ const usf=c.getLeadProductSearchDirectory('US Foods'),sysco=c.getLeadProductSearchDirectory('Sysco');
+ assert.ok(usf.some(item=>item.number==='110001'));assert.ok(sysco.some(item=>item.number==='770001'));
+ assert.equal(c.getLeadProductSearchDirectory('US Foods'),usf);assert.equal(c.getLeadProductSearchDirectory('Sysco'),sysco);
+ mode='sysco';assert.notEqual(c.getLeadProductSearchDirectory('US Foods'),usf);
+});
+
+test('Timeline collects all stock, lead and selected event terms without rebuilding product match catalogs',()=>{
+ const s=setup(),{c}=s;let builds=0;const catalog=c.window.foodBrokerProducts;
+ c.window.foodBrokerProducts={...catalog,choices(...args){builds++;return catalog.choices(...args);}};
+ c.cards=[{id:'lead',distributor:'Quality Sales',products:[{description:'Historical rolls',vendor:'Test Bakery',distributorNumber:'H123'}]}];
+ c.eventProducts=[{id:'new',description:'Selected event product',manufacturerNumber:'EVENT123'},{id:'unused',description:'Unused new product'}];
+ c.marketVisits=[{id:'visit',name:'Vendor visit',newProductIds:['new'],productIds:['usf']}];
+ const values=s.values(s.input('timelineSearchSuggestions'));
+ for(const term of ['110001','770001','MF100','Historical rolls','H123','Selected event product','EVENT123'])assert.ok(values.includes(term),term);
+ assert.ok(!values.includes('Unused new product'));assert.equal(builds,0);
+});
+
+test('repeated menu input reuses indexed options until the stock source changes',()=>{
+ const s=setup(),input=s.input('productSearchSuggestions'),first=s.c.readSuggestions(input);
+ for(let i=0;i<20;i++)assert.equal(s.c.readSuggestions(input),first);
+ s.c.stockProducts=s.c.stockProducts.map(item=>item.id==='usf'?{...item,description:'Latest description'}:item);
+ const fresh=s.c.readSuggestions(input);assert.notEqual(fresh,first);assert.ok(fresh.some(item=>item.value.includes('Latest description')));
+});
+
+test('Timeline menu cache refreshes for task updates even when the stock array stays the same',()=>{
+ const s=setup(),input=s.input('timelineSearchSuggestions'),first=s.c.readSuggestions(input);
+ assert.equal(s.c.readSuggestions(input),first);
+ s.c.todos=[{id:'task',title:'Fresh task title'}];s.c.timelineSuggestionsDirty=true;
+ const fresh=s.c.readSuggestions(input);assert.notEqual(fresh,first);assert.ok(fresh.some(item=>item.value==='Fresh task title'));
+});
+
+test('other dynamic suggestion lists continue reading their latest options',()=>{
+ const s=setup(),other=list('otherSuggestions'),input=s.input('otherSuggestions');s.lists.set(other.id,other);
+ other.innerHTML='<option value="First value"></option>';assert.deepEqual(s.values(input),['First value']);
+ other.innerHTML='<option value="Changed value"></option>';assert.deepEqual(s.values(input),['Changed value']);
+});
+
+test('reopening a search after an unrelated render keeps the existing options and menu index',()=>{
+ const s=setup(),input=s.input('productSearchSuggestions'),first=s.c.readSuggestions(input);
+ s.c.leadProductSuggestionsDirty=true;
+ assert.equal(s.c.readSuggestions(input),first);assert.equal(s.c.leadProductSuggestionsDirty,false);
+});

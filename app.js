@@ -4000,8 +4000,12 @@ function setupSuggestionMenus() {
     refreshFocusedSuggestions({target: input});
     const list = getInputSuggestionList(input);
     if (!list) return [];
+    const version = list === elements.timelineSearchSuggestions ? rebuildTimelineSearchSuggestions.version
+      : [elements.apnSuggestions, elements.productSearchSuggestions].includes(list) ? rebuildLeadProductSuggestions.sources : null;
+    const previous = version && getValues.cache?.get(list);
+    if (previous && previous.version === version) return previous.values;
     const seen = new Set();
-    return Array.from(list.querySelectorAll("option"))
+    const values = Array.from(list.querySelectorAll("option"))
       .map((option) => {
         const value = (option.value || option.textContent || "").trim();
         return {value, search: [value, option.label, option.dataset.search].filter(Boolean).join(' ').toLocaleLowerCase()};
@@ -4012,6 +4016,8 @@ function setupSuggestionMenus() {
         seen.add(key);
         return true;
       });
+    if (version) (getValues.cache ||= new WeakMap()).set(list, {version, values});
+    return values;
   };
 
   const positionMenu = () => {
@@ -10552,11 +10558,14 @@ function updateTimelineSearchSuggestions() {
 
 function rebuildTimelineSearchSuggestions() {
   if (!elements.timelineSearchSuggestions) return;
-  const products = window.foodBrokerProducts.choices([
+  // This is a vocabulary of search terms, so it does not need to resolve and
+  // group the entire catalog again for every lead distributor and visit.
+  const selectedNewIds = new Set(marketVisits.flatMap(visit => visit.newProductIds || []));
+  const products = [
     ...stockProducts,
-    ...[...new Set(cards.map((card) => card.distributor || "US Foods"))].flatMap(getLeadProductSuggestionProducts),
-    ...marketVisits.flatMap(getMarketVisitProducts)
-  ], stockProducts);
+    ...cards.flatMap(normalizeProducts),
+    ...eventProducts.filter(product => selectedNewIds.has(product.id))
+  ];
   const productSuggestions = products.flatMap((product) => [product.description, product.vendor, product.brandName, product.apn, product.supc, product.distributorNumber, product.manufacturerNumber, product.gtin]);
   const suggestions = [
     ...getAccountDirectory().map((account) => account.name),
@@ -10586,6 +10595,7 @@ function rebuildTimelineSearchSuggestions() {
     .join("");
   timelineSuggestionsDirty = false;
   rebuildTimelineSearchSuggestions.stocks = stockProducts;
+  rebuildTimelineSearchSuggestions.version = {};
 }
 
 function getSalesRepDirectory() {
@@ -10637,17 +10647,23 @@ function updateVendorControls() {
 }
 
 function rebuildLeadProductSuggestions() {
+  const distributor = elements.leadDistributor?.value ?? preferredLeadDistributor();
+  const products = getLeadProductSearchDirectory(distributor);
+  if (rebuildLeadProductSuggestions.sources?.products === products) {
+    leadProductSuggestionsDirty = false;
+    return;
+  }
   elements.apnSuggestions.innerHTML = getProductDirectory(elements.leadDistributor?.value ?? preferredLeadDistributor())
     .map((product) => {
       const label = [product.description, product.vendor].filter(Boolean).join(" - ");
       return `<option value="${escapeAttribute(product.number)}" label="${escapeAttribute(label)}"></option>`;
     })
     .join("");
-  elements.productSearchSuggestions.innerHTML = getLeadProductSearchDirectory(elements.leadDistributor?.value ?? preferredLeadDistributor())
+  elements.productSearchSuggestions.innerHTML = products
     .map((product) => `<option value="${escapeAttribute(product.label)}" data-search="${escapeAttribute(window.foodBrokerProducts.searchable(product))}"></option>`)
     .join("");
   leadProductSuggestionsDirty = false;
-  rebuildLeadProductSuggestions.sources = {stocks: stockProducts, leads: cards, distributor: elements.leadDistributor?.value ?? preferredLeadDistributor()};
+  rebuildLeadProductSuggestions.sources = {stocks: stockProducts, leads: cards, distributor, products};
 }
 
 function getInputSuggestionList(input) {
@@ -10744,6 +10760,15 @@ function getProductDirectory(distributor = elements.leadDistributor?.value ?? pr
 }
 
 function getLeadProductSearchDirectory(distributor = elements.leadDistributor?.value ?? preferredLeadDistributor()) {
+  // Lead and stock edits replace their source arrays, including cloud refreshes.
+  // Reuse the matching work while typing; never hold it across a source change.
+  const mode = window.foodBrokerWorkspace?.getMode?.() || "";
+  let cache = getLeadProductSearchDirectory.cache;
+  if (!cache || cache.stocks !== stockProducts || cache.leads !== cards || cache.mode !== mode) {
+    cache = {stocks: stockProducts, leads: cards, mode, directories: new Map()};
+    getLeadProductSearchDirectory.cache = cache;
+  }
+  if (cache.directories.has(distributor)) return cache.directories.get(distributor);
   const directory = new Map();
   getLeadProductSuggestionProducts(distributor).forEach((product) => {
     const number = getProductNumberForDistributor(product, distributor);
@@ -10768,6 +10793,7 @@ function getLeadProductSearchDirectory(distributor = elements.leadDistributor?.v
     const details = [product.packaging && `Pack: ${product.packaging}`, product.manufacturerNumber && `MF#: ${product.manufacturerNumber}`, product.storage].filter(Boolean);
     product.label = `${product.label} | ${details.join(" | ") || "Pack and MF# not recorded"}`;
   });
+  cache.directories.set(distributor, products);
   return products;
 }
 
