@@ -42,8 +42,13 @@ function rememberPeopleContact(person) {
   person = {...person, ...contactCommunicationFields(person)};
   const existing = peopleContacts.find(item => peopleContactKey(item) === peopleContactKey(person));
   const next = normalizePeopleContact({ ...existing, ...person, id: existing?.id || crypto.randomUUID(), updatedAt: new Date().toISOString() });
-  peopleContacts = existing ? peopleContacts.map(item => item.id === existing.id ? next : item) : [...peopleContacts,next];
-  persistPeopleContacts();
+  commitPeopleContacts(existing ? peopleContacts.map(item => item.id === existing.id ? next : item) : [...peopleContacts,next]);
+}
+function commitPeopleContacts(next) {
+  const previous = peopleContacts;
+  peopleContacts = next;
+  try { persistPeopleContacts(); }
+  catch (error) { peopleContacts = previous; throw error; }
 }
 function persistPeopleContacts() {
   writeLocalSection(peopleContactsStorageKey, peopleContacts);
@@ -174,7 +179,12 @@ function renderPeopleContacts() {
   if(deleted.length)panel.insertAdjacentHTML('beforeend','<details class="deleted-contacts"><summary>Deleted contacts ('+deleted.length+')</summary>'+deleted.map(person=>'<div><span>'+escapeHtml(peopleContactDisplayName(person))+' · '+escapeHtml(person.organization)+'</span><button type="button" class="edit-card" data-restore-person="'+escapeAttribute(person.id)+'">Restore</button></div>').join('')+'</details>');
   panel.querySelectorAll('[data-open-school-key]').forEach(button=>button.onclick=()=>openPeopleContactView(button.dataset.openSchoolKey,true));
   panel.querySelectorAll('[data-open-person-key]').forEach(button=>button.onclick=()=>openPeopleContactView(button.dataset.openPersonKey));
-  panel.querySelectorAll('[data-restore-person]').forEach(button=>button.onclick=()=>{peopleContacts=peopleContacts.map(person=>person.id===button.dataset.restorePerson?{...person,archivedAt:'',updatedAt:new Date().toISOString()}:person);persistPeopleContacts();});
+  panel.querySelectorAll('[data-restore-person]').forEach(button=>button.onclick=()=>restorePeopleContact(button.dataset.restorePerson));
+}
+
+function restorePeopleContact(id) {
+  try { commitPeopleContacts(peopleContacts.map(person=>person.id===id?{...person,archivedAt:'',updatedAt:new Date().toISOString()}:person)); return true; }
+  catch (error) { alert('Could not restore this contact. It is still in Deleted contacts. Please retry.'); return false; }
 }
 
 function deletePeopleContact(key) {
@@ -182,8 +192,8 @@ function deletePeopleContact(key) {
   if (!person || !confirm('Delete ' + peopleContactDisplayName(person) + ' from the shared contact list and name suggestions? Existing leads and event records will keep their details. You can restore this contact under Deleted contacts.')) return;
   const existing = peopleContacts.find(item => peopleContactKey(item) === key);
   const deleted = normalizePeopleContact({...person, id:existing?.id || crypto.randomUUID(), archivedAt:new Date().toISOString(), updatedAt:new Date().toISOString()});
-  peopleContacts = existing ? peopleContacts.map(item => item.id === existing.id ? deleted : item) : [...peopleContacts,deleted];
-  persistPeopleContacts();
+  try { commitPeopleContacts(existing ? peopleContacts.map(item => item.id === existing.id ? deleted : item) : [...peopleContacts,deleted]); return true; }
+  catch (error) { alert('Could not remove this contact. It is still in the contact list. Please retry.'); return false; }
 }
 function renderContactExtraField(field = {}) {
   return `<div class="contact-extra-field"><label><span>Detail name</span><input data-extra-label value="${escapeAttribute(String(field.label || ''))}" maxlength="160" placeholder="Column name" /></label><label><span>Value</span><textarea data-extra-value rows="2" maxlength="10000">${escapeHtml(String(field.value == null ? '' : field.value))}</textarea></label><button type="button" class="contact-icon-action contact-delete" data-remove-extra aria-label="Remove detail" title="Remove detail">${icons.trash}</button></div>`;
@@ -201,6 +211,7 @@ function openPeopleContactForm(person = {}) {
   body.querySelector('[data-contact-extra-fields]').addEventListener('click',event=>{const button=event.target.closest('[data-remove-extra]');if(button)button.closest('.contact-extra-field').remove();});
   body.querySelector('form').onsubmit = event => {
     event.preventDefault();
+    body.querySelector('[data-contact-error]').textContent = '';
     const values = Object.fromEntries(new FormData(event.currentTarget));
     const extraFields=[...body.querySelectorAll('.contact-extra-field')].map(row=>({label:row.querySelector('[data-extra-label]').value.trim(),value:row.querySelector('[data-extra-value]').value})).filter(field=>field.label || field.value);
     if(extraFields.some(field=>!field.label)){body.querySelector('[data-contact-error]').textContent='Give each additional detail a name.';return;}
@@ -208,8 +219,9 @@ function openPeopleContactForm(person = {}) {
     if(!next.name.trim() && !(window.foodBrokerContactDirectory.isSchool(next) && window.foodBrokerContactDirectory.schoolName(next))){body.querySelector('[data-contact-error]').textContent='Enter a contact name, or a school name for school details.';return;}
     const duplicate = peopleContacts.find(item => item.id !== existing?.id && peopleContactKey(item) === peopleContactKey(next));
     if (duplicate) { body.querySelector('[data-contact-error]').textContent = 'This person is already saved for that organization.'; return; }
-    peopleContacts = existing ? peopleContacts.map(item => item.id === existing.id ? next : item) : [...peopleContacts,next];
-    persistPeopleContacts(); applyContactNameCorrections(); renderPeopleContacts(); dialog.close();
+    try { commitPeopleContacts(existing ? peopleContacts.map(item => item.id === existing.id ? next : item) : [...peopleContacts,next]); }
+    catch (error) { body.querySelector('[data-contact-error]').textContent = 'Could not save this contact. Your entries are still in this form. Please retry before closing.'; return; }
+    applyContactNameCorrections(); renderPeopleContacts(); dialog.close();
   };
   dialog.showModal();
 }

@@ -1908,6 +1908,26 @@ function persistAddressBook() {
   scheduleCloudSave(addressBookStorageKey);
 }
 
+function commitAddressBook(next) {
+  const previous = addressBook;
+  addressBook = next;
+  try { persistAddressBook(); }
+  catch (error) { addressBook = previous; throw error; }
+}
+
+function showEntrySaveError(form, kind) {
+  const message = form.querySelector('[data-entry-save-error]');
+  if (message) {
+    message.textContent = `Could not save this ${kind}. Your entries are still in this form. Please retry before closing.`;
+    message.hidden = false;
+  }
+}
+
+function clearEntrySaveError(form) {
+  const message = form.querySelector('[data-entry-save-error]');
+  if (message) { message.textContent = ''; message.hidden = true; }
+}
+
 function persistStockProducts() {
   try {
     writeLocalSection(stockStorageKey, stockProducts);
@@ -3497,17 +3517,21 @@ function archiveCard(id) {
 }
 
 function restoreCard(id) {
+  const previousCards = cards;
   cards = cards.map((card) => (card.id === id ? { ...card, archivedAt: "", archiveOutcome: "" } : card));
-  persist();
+  if (!persist()) { cards = previousCards; return false; }
   render();
   renderArchive();
+  return true;
 }
 
 function restoreTodo(id) {
+  const previousTodos = todos;
   todos = todos.map((todo) => (todo.id === id ? { ...todo, archivedAt: "" } : todo));
-  persistTodos();
+  if (!persistTodos()) { todos = previousTodos; return false; }
   renderTodoBoard();
   renderArchive();
+  return true;
 }
 
 function restoreSample(id) {
@@ -4981,6 +5005,7 @@ function formatAddressContact(contact) {
 
 function openAddressBookForm(entry) {
   elements.addressBookForm.reset();
+  clearEntrySaveError(elements.addressBookForm);
   elements.addressContactList.innerHTML = "";
   const existing = entry ? normalizeAddressBookEntry(entry) : null;
   elements.addressBookFormTitle.textContent = existing ? "Edit Operator" : "Add Operator";
@@ -5048,6 +5073,7 @@ function saveAddressBookEntry() {
   const id = elements.addressBookId.value || crypto.randomUUID();
   const existing = addressBook.find((entry) => entry.id === id);
   const entry = normalizeAddressBookEntry({
+    ...existing,
     id,
     operation: elements.addressOperation.value.trim(),
     accountNumber: elements.addressAccountNumber.value.trim(),
@@ -5078,12 +5104,13 @@ function saveAddressBookEntry() {
     updatedAt: new Date().toISOString()
   });
   stampSharedRecord(entry, existing ? "Updated" : "Created");
-  addressBook = existing ? addressBook.map((item) => (item.id === id ? entry : item)) : [entry, ...addressBook];
-  persistAddressBook();
+  try { commitAddressBook(existing ? addressBook.map((item) => (item.id === id ? entry : item)) : [entry, ...addressBook]); }
+  catch (error) { showEntrySaveError(elements.addressBookForm, 'operator'); return false; }
   updateAccountSuggestions();
   updateSalesRepSuggestions();
   closeAddressBookForm();
   renderAddressBook();
+  return true;
 }
 
 function deleteCurrentAddressEntry() {
@@ -5104,11 +5131,12 @@ function archiveAddressBookEntry(id) {
   if (!entry) return;
   const shouldArchive = confirm(entry.operation ? `Archive operator "${entry.operation}"?` : "Archive this operator?");
   if (!shouldArchive) return;
-  addressBook = addressBook.map((item) => {
+  const next = addressBook.map((item) => {
     if (item.id !== id) return item;
     return stampSharedRecord({ ...item, archivedAt: new Date().toISOString() }, "Archived");
   });
-  persistAddressBook();
+  try { commitAddressBook(next); }
+  catch (error) { alert('Could not archive this operator. It is still in the operator list. Please retry.'); return false; }
   updateAccountSuggestions();
   updateSalesRepSuggestions();
   renderAddressBook();
@@ -5116,10 +5144,11 @@ function archiveAddressBookEntry(id) {
 }
 
 function restoreAddressBookEntry(id) {
-  addressBook = addressBook.map((entry) => (
+  const next = addressBook.map((entry) => (
     entry.id === id ? stampSharedRecord({ ...entry, archivedAt: "" }, "Restored") : entry
   ));
-  persistAddressBook();
+  try { commitAddressBook(next); }
+  catch (error) { alert('Could not restore this operator. It is still in Archive. Please retry.'); return false; }
   updateAccountSuggestions();
   updateSalesRepSuggestions();
   renderAddressBook();
@@ -7194,8 +7223,7 @@ function syncOperatorToAddressBook(value, details = {}) {
       updatedEntry.usfSalesRep !== existing.usfSalesRep ||
       updatedEntry.syscoSalesRep !== existing.syscoSalesRep;
     if (changed) {
-      addressBook = addressBook.map((entry) => (entry.id === existing.id ? updatedEntry : entry));
-      persistAddressBook();
+      commitAddressBook(addressBook.map((entry) => (entry.id === existing.id ? updatedEntry : entry)));
       updateAccountSuggestions();
       updateTimelineSearchSuggestions();
     }
@@ -7212,8 +7240,7 @@ function syncOperatorToAddressBook(value, details = {}) {
     createdAt: now,
     updatedAt: now
   });
-  addressBook = [entry, ...addressBook].sort((a, b) => a.operation.localeCompare(b.operation, undefined, { sensitivity: "base" }));
-  persistAddressBook();
+  commitAddressBook([entry, ...addressBook].sort((a, b) => a.operation.localeCompare(b.operation, undefined, { sensitivity: "base" })));
   updateAccountSuggestions();
   updateTimelineSearchSuggestions();
   return { operatorId: entry.id, operatorName: entry.operation, entry };
@@ -8464,6 +8491,7 @@ function compareTodos(a, b) {
 }
 
 function openTodoForm(todo) {
+  clearEntrySaveError(elements.todoForm);
   elements.todoForm.reset();
   elements.subtaskList.innerHTML = "";
   updateAccountSuggestions();
@@ -8497,7 +8525,9 @@ function saveTodo() {
   const id = elements.todoId.value || crypto.randomUUID();
   const existing = todos.find((todo) => todo.id === id);
   const status = elements.todoStatus.value;
-  const operatorMatch = syncOperatorToAddressBook(elements.todoAccount.value);
+  let operatorMatch;
+  try { operatorMatch = syncOperatorToAddressBook(elements.todoAccount.value); }
+  catch (error) { showEntrySaveError(elements.todoForm, 'task'); return false; }
   const vendorMatch = getMatchedVendorName(elements.todoVendor.value);
   const next = normalizeTodo({
     ...existing,
@@ -8520,12 +8550,14 @@ function saveTodo() {
   todos = existing ? todos.map((todo) => (todo.id === id ? next : todo)) : [next, ...todos];
   if (!persistTodos()) {
     todos = previousTodos;
-    return;
+    showEntrySaveError(elements.todoForm, 'task');
+    return false;
   }
   updateVendorControls();
   updateTimelineSearchSuggestions();
   closeTodoForm();
   renderTodoBoard();
+  return true;
 }
 
 function deleteCurrentTodo() {
@@ -9214,6 +9246,7 @@ function openWorkspaceDistributorChoice(onChoose) {
 
 function openForm(card) {
   elements.form.reset();
+  clearEntrySaveError(elements.form);
   updateAccountSuggestions();
   updateSalesRepSuggestions();
   elements.cardId.value = card?.id || "";
@@ -9276,12 +9309,14 @@ function saveCard() {
   const id = elements.cardId.value || crypto.randomUUID();
   const existing = cards.find((card) => card.id === id);
   const noteHistory = buildLeadNoteHistoryForSave();
-  const operatorMatch = syncOperatorToAddressBook(elements.account.value, {
+  let operatorMatch;
+  try { operatorMatch = syncOperatorToAddressBook(elements.account.value, {
     accountNumber: elements.accountNumber.value.trim(),
     syscoAccountNumber: elements.syscoAccountNumber.value.trim(),
     usfSalesRep: elements.salesRep.value.trim(),
     syscoSalesRep: elements.syscoSalesRep.value.trim()
-  });
+  }); }
+  catch (error) { showEntrySaveError(elements.form, 'lead'); return false; }
   const next = {
     ...(existing || {}),
     id,
@@ -9308,15 +9343,17 @@ function saveCard() {
 
   syncLeadProductsToStock(next.products, next.distributor);
 
+  const previousCards = cards;
   if (existing) {
     cards = cards.map((card) => (card.id === id ? next : card));
   } else {
     cards = [next, ...cards];
   }
 
-  if (!persist()) return;
+  if (!persist()) { cards = previousCards; showEntrySaveError(elements.form, 'lead'); return false; }
   closeForm();
   render();
+  return true;
 }
 
 function renderDotOrders() {

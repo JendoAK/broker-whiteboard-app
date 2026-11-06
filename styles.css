@@ -5846,3 +5846,4 @@ body.todo-drag-active, body.todo-drag-active * { cursor: grabbing !important; }
 @media(max-width:400px) { .event-stock-edit .event-entry-grid,.event-stock-codes { grid-template-columns:1fr; } }
 .event-stock-option .event-stock-add-button,.event-stock-overview-actions .event-stock-add-button { background:#42702e; color:#fff; border-color:#315622; }
 .event-stock-option .event-stock-add-button:hover,.event-stock-overview-actions .event-stock-add-button:hover { background:#315622; }
+.form-error { color:#9c3027; font-weight:600; line-height:1.45; margin:12px 0; }

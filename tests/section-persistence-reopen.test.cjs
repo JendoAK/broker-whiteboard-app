@@ -248,3 +248,105 @@ test('a saved appointment time edit and event archive/status stay saved over a s
   assert.equal(actual.status,'Completed'); assert.equal(actual.archivedAt,'2026-11-06T19:00:00Z');
   assert.equal(actual.calls[0].date,'2026-11-11'); assert.equal(actual.calls[0].startTime,'2:00 PM'); assert.equal(actual.calls[0].notes,'Updated appointment'); assert.equal(actual.calls[0].status,'Completed');
 });
+
+const entryKinds=[['lead','storageKey','cards'],['task','todoStorageKey','todos'],['contact','peopleContactsStorageKey','peopleContacts'],['operator','addressBookStorageKey','addressBook']];
+function entryEditors(c,kind,id='') {
+  let closed=false,submit; const error={hidden:true,textContent:''};
+  const values={cardId:id,account:'Persistence QA lead',accountNumber:'123',syscoAccountNumber:'456',leadDistributor:'US Foods',note:'New lead note',priority:'High',due:'2026-11-12',status:'Follow Up',source:'Email',salesRep:'Test rep',syscoSalesRep:'Other rep',
+    todoId:id,todoTitle:'Persistence QA task',todoStatus:'In Progress',todoPriority:'High',todoDue:'2026-11-12',todoDueTime:'14:30',todoAssignedBy:'Test rep',todoAccount:'Test operator',todoVendor:'Test vendor',todoNotes:'Saved task notes',
+    addressBookId:id,addressOperation:'Persistence QA operator',addressAccountNumber:'123',addressSyscoAccountNumber:'456',addressLocations:'Anchorage',addressWebsite:'https://example.invalid',addressUsfSalesRep:'Test rep',addressSyscoSalesRep:'Other rep',
+    addressPrimaryName:'Primary contact',addressPrimaryRole:'Buyer',addressPrimaryEmail:'primary@example.invalid',addressPrimaryPhone:'907-555-0100',addressSecondaryName:'Second contact',addressSecondaryRole:'Chef',addressSecondaryEmail:'second@example.invalid',addressSecondaryPhone:'907-555-0101',addressStreet:'Test address',addressNotes:'Saved operator notes'};
+  c.elements=Object.fromEntries(Object.entries(values).map(([key,value])=>[key,{value}]));
+  const form={querySelector:()=>error}; c.elements.form=form;c.elements.todoForm=form;c.elements.addressBookForm=form;
+  c.elements.archiveDialog={open:false};
+  Object.assign(c,{crypto:require('node:crypto').webcrypto,columns:['New Lead','Follow Up','Done'],currentAttachments:[{id:'file',data:'data:test'}],currentLeadNoteHistory:[{id:'old-note',text:'Earlier note',createdAt:'2026-11-01T12:00:00Z'}],
+    normalizeMarketDistributor:value=>value,rememberLeadDistributor(){},syncOperatorToAddressBook:value=>({operatorName:value}),normalizeStatus:value=>value,normalizeAttachment:clone,
+    getLeadNoteHistoryText:history=>history.map(item=>item.text).join('\n'),normalizeAddressContactExtras:value=>value||{},normalizeStringList:value=>String(value||'').split(','),
+    readProducts:()=>[{id:'product',description:'Saved product',apn:'12345'}],readSubtasks:()=>[{id:'step',text:'Saved checklist item',done:false}],getMatchedVendorName:value=>value,
+    readAddressDeliveryDays:()=>['Monday','Thursday'],readAddressContacts:()=>[{id:'extra',name:'Additional contact',email:'extra@example.invalid',phone:'907-555-0102',extraFields:[{label:'Territory',value:'North'}]}],
+    syncLeadProductsToStock(){},showBoardSaveFailure(){},stampSharedRecord:value=>value,
+    closeForm(){closed=true;},closeTodoForm(){closed=true;},closeAddressBookForm(){closed=true;},render(){},renderArchive(){},renderTodoBoard(){},renderAddressBook(){},updateAccountSuggestions(){},updateSalesRepSuggestions(){},updateVendorControls(){},updateTimelineSearchSuggestions(){},
+    activeContactFilter:'all',peopleContactKey:person=>person.id||[person.name,person.organization].join('::'),attachContactValueSuggestions(){},renderContactExtraField:()=>'',renderPeopleContacts(){},applyContactNameCorrections(){},escapeAttribute:value=>String(value||''),escapeHtml:value=>String(value||'')});
+  c.window.foodBrokerContactDirectory={normalizeContact:person=>({...person,groups:person.groups||[],extraFields:person.extraFields||[]}),isSchool:()=>false,schoolName:person=>person.schoolName||''};
+  const contactValues={name:'Persistence QA contact',organization:'Test company',role:'Buyer',email:'person@example.invalid',phone:'907-555-0103',category:'Distributor',groups:'Test group, North',notes:'Saved contact notes',schoolName:'',location:'Anchorage',address:'Test address',website:'https://example.invalid'};
+  const contactForm={values:contactValues};
+  const body={innerHTML:'',querySelector:selector=>selector==='form'?contactForm:selector==='[data-contact-error]'?error:{addEventListener(){}},querySelectorAll:()=>[{querySelector:selector=>({value:selector==='[data-extra-label]'?'Territory':'North'})}]};
+  const dialog={querySelector:()=>body,showModal(){},close(){closed=true;}};
+  c.createVisitDialog=()=>dialog;
+  c.FormData=class {constructor(form){this.form=form;}[Symbol.iterator](){return Object.entries(this.form.values)[Symbol.iterator]();}};
+  const part=(source,name)=>{const start=source.indexOf('function '+name+'('),end=source.indexOf('\nfunction ',start+1);return source.slice(start,end<0?undefined:end);};
+  const contacts=fs.readFileSync(path.join(__dirname,'../people-contacts.js'),'utf8');
+  for(const name of ['persist','saveCard','buildLeadNoteHistoryForSave','saveTodo','saveAddressBookEntry','archiveAddressBookEntry','restoreAddressBookEntry','restoreCard','restoreTodo']) vm.runInContext(part(app,name),c);
+  for(const name of ['contactCommunicationFields','persistPeopleContacts','openPeopleContactForm','deletePeopleContact'])vm.runInContext(part(contacts,name),c);
+  // Load shared form/transaction helpers only if the production source defines them.
+  for(const [source,names] of [[app,['showEntrySaveError','clearEntrySaveError','commitAddressBook']],[contacts,['commitPeopleContacts','restorePeopleContact']]])
+    for(const name of names)if(source.includes('function '+name+'('))vm.runInContext(part(source,name),c);
+  if(kind==='contact') {c.openPeopleContactForm(c.peopleContacts.find(item=>item.id===id)||{});submit=()=>contactForm.onsubmit({currentTarget:contactForm,preventDefault(){}});}
+  else submit=()=>c[{lead:'saveCard',task:'saveTodo',operator:'saveAddressBookEntry'}[kind]]();
+  return {save:submit,error,closed:()=>closed,form,contactValues};
+}
+
+for(const [kind,key,collection] of entryKinds)test(`${kind}: the actual entry form retains all saved fields through offline close and two reopenings`,async()=>{
+  const {app,db}=await fixture(),c=app.context,form=entryEditors(c,kind);
+  db.offline(true);form.save();assert.equal(form.closed(),true);
+  const saved=clone(c[collection].find(item=>!item.id.endsWith('-record')));assert.ok(saved);
+  assert.ok(c.taskOutbox.list('owner',key).length);const reopened=app.reopen();
+  assert.deepEqual(clone(reopened.context.getCloudConfig(key).get().find(item=>item.id===saved.id)),saved);
+  assert.equal(await reopened.context.pushPendingCloudSections(),false);
+  db.offline(false);db.rows.get(key).data.value.push({id:'other-window',name:'Remote addition'});db.rows.get(key).updated_at='other-window-version';
+  await reopened.context.loadCloudSections();const fresh=reopened.reopen();await fresh.context.loadCloudSections();
+  assert.deepEqual(clone(fresh.context.getCloudConfig(key).get().find(item=>item.id===saved.id)),saved);
+  assert.ok(fresh.context.getCloudConfig(key).get().some(item=>item.id==='other-window'));
+  assert.equal(fresh.context.taskOutbox.list('owner',key).length,0);
+});
+
+for(const [kind,key,collection] of entryKinds)for(const edit of [false,true])test(`${kind} ${edit?'edit':'create'}: failed browser save keeps the original and retries once`,async()=>{
+  const {app,local}=await fixture(),c=app.context,existing=c.getCloudConfig(key).get()[0],form=entryEditors(c,kind,edit?existing.id:'');
+  const before=clone(c[collection]),stored=local.getItem(key),write=local.setItem;
+  local.setItem=(name,value)=>{if(name===key){const error=Error('Storage full');error.name='QuotaExceededError';throw error;}write(name,value);};
+  assert.doesNotThrow(()=>form.save());assert.equal(form.closed(),false);assert.deepEqual(clone(c[collection]),before);
+  assert.match(form.error.textContent,/Could not save/);
+  assert.equal(local.getItem(key),stored);assert.equal(c.taskOutbox.list('owner',key).length,0);
+  local.setItem=write;form.save();assert.equal(form.closed(),true);assert.equal(c[collection].length,before.length+(edit?0:1));
+});
+
+test('editing an archived operator retains its archive state and earlier audit details',async()=>{
+  const {app}=await fixture(),c=app.context,key='addressBookStorageKey';
+  app.edit(key,values=>values.map(item=>({...item,archivedAt:'2026-11-05T12:00:00Z',_activity:[{id:'earlier',at:'2026-11-05T12:00:00Z',action:'Created'}]})));
+  const id=c.addressBook[0].id;entryEditors(c,'operator',id).save();
+  assert.equal(c.addressBook[0].archivedAt,'2026-11-05T12:00:00Z');assert.equal(c.addressBook[0]._activity[0].id,'earlier');
+});
+
+for(const [kind,key,collection] of entryKinds)test(`${kind}: a failed restore keeps the saved archive state`,async()=>{
+  const {app,local}=await fixture(),c=app.context;app.edit(key,values=>values.map(item=>({...item,archivedAt:'2026-11-06T19:00:00Z'})));
+  const id=c[collection][0].id;entryEditors(c,kind,id);const before=clone(c[collection]),stored=local.getItem(key),write=local.setItem;
+  local.setItem=(name,value)=>{if(name===key)throw Error('Storage unavailable');write(name,value);};
+  const action={lead:'restoreCard',task:'restoreTodo',contact:'restorePeopleContact',operator:'restoreAddressBookEntry'}[kind];
+  assert.doesNotThrow(()=>c[action](id));assert.deepEqual(clone(c[collection]),before);assert.equal(local.getItem(key),stored);
+});
+
+for(const [kind,key] of entryKinds)test(`${kind}: confirmed completion/archive survives an older window replacing browser cache`,async()=>{
+  const {app,local}=await fixture(),c=app.context,stale=local.getItem(key);
+  app.edit(key,values=>values.map(item=>({...item,status:'Done',archivedAt:'2026-11-06T19:00:00Z',myDay:'2026-11-06',notes:'Keep saved notes'})));
+  const expected=clone(c.getCloudConfig(key).get());assert.equal(await c.pushPendingCloudSections(),true);
+  local.setItem(key,stale);local.setItem('pending',JSON.stringify([key]));const fresh=app.reopen();await fresh.context.loadCloudSections();
+  assert.deepEqual(clone(fresh.context.getCloudConfig(key).get()),expected);
+});
+
+for(const kind of ['lead','task'])test(`${kind}: a failed linked-operator save retains both collections and the form`,async()=>{
+  const {app,local}=await fixture(),c=app.context,form=entryEditors(c,kind),before=clone(c.addressBook),leads=clone(c.cards),tasks=clone(c.todos),write=local.setItem;
+  c.getMarketOperatorOptions=()=>c.addressBook;c.shouldSyncOperatorName=()=>true;c.normalizeOperatorKey=value=>String(value||'').toLowerCase();
+  c.normalizeAuditRecord=value=>value||null;c.normalizeActivityHistory=value=>value||[];
+  vm.runInContext(cut('function normalizeAddressBookEntry(', 'function normalizeStockProduct(')+'\n'+cut('function syncOperatorToAddressBook(', 'function isMarketOperatorAlreadyAttached('),c);
+  local.setItem=(name,value)=>{if(name==='addressBookStorageKey')throw Error('Storage unavailable');write(name,value);};
+  assert.doesNotThrow(()=>form.save());assert.equal(form.closed(),false);assert.deepEqual(clone(c.addressBook),before);assert.deepEqual(clone(c.cards),leads);assert.deepEqual(clone(c.todos),tasks);assert.match(form.error.textContent,/Could not save/);
+});
+
+for(const [kind,key,collection] of entryKinds.filter(([kind])=>['contact','operator'].includes(kind)))test(`${kind}: a failed archive keeps the visible record and can be retried`,async()=>{
+  const {app,local}=await fixture(),c=app.context;entryEditors(c,kind);const before=clone(c[collection]),id=before[0].id,write=local.setItem;
+  c.confirm=()=>true;c.getPeopleDirectory=()=>c.peopleContacts;c.peopleContactDisplayName=person=>person.name||'Test person';
+  local.setItem=(name,value)=>{if(name===key)throw Error('Storage unavailable');write(name,value);};
+  const action=kind==='contact'?'deletePeopleContact':'archiveAddressBookEntry';
+  assert.doesNotThrow(()=>c[action](id));assert.deepEqual(clone(c[collection]),before);
+  local.setItem=write;c[action](id);assert.ok(c[collection][0].archivedAt);assert.ok(c.taskOutbox.list('owner',key).length);
+});

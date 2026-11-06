@@ -163,7 +163,7 @@
       oldRender();
       const panel = content.querySelector('#marketDetailPanel'), back = panel?.querySelector('[data-detail-close]');
       if (activeMarketDetailId && back) {
-        back.textContent = 'Back to Events & Visits';
+        back.innerHTML = icon('arrow-left') + '<span>Back to Events &amp; Visits</span>';
         back.classList.add('event-back-button');
         panel.prepend(back);
       }
