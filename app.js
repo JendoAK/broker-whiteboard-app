@@ -3997,13 +3997,16 @@ function setupSuggestionMenus() {
   };
 
   const getValues = (input) => {
-    const listId = input?.dataset.suggestionList;
-    const list = listId ? document.getElementById(listId) : null;
+    refreshFocusedSuggestions({target: input});
+    const list = getInputSuggestionList(input);
     if (!list) return [];
     const seen = new Set();
     return Array.from(list.querySelectorAll("option"))
-      .map((option) => (option.value || option.textContent || "").trim())
-      .filter((value) => {
+      .map((option) => {
+        const value = (option.value || option.textContent || "").trim();
+        return {value, search: [value, option.label, option.dataset.search].filter(Boolean).join(' ').toLocaleLowerCase()};
+      })
+      .filter(({value}) => {
         const key = value.replace(/\s+/g, " ").toLocaleLowerCase();
         if (!key || seen.has(key)) return false;
         seen.add(key);
@@ -4078,11 +4081,9 @@ function setupSuggestionMenus() {
       .split(/\s+/)
       .filter(Boolean);
     visibleValues = allValues
-      .filter((value) => {
-        const normalizedValue = value.toLocaleLowerCase();
-        return terms.every((term) => normalizedValue.includes(term));
-      })
-      .slice(0, 12);
+      .filter(({search}) => terms.every((term) => search.includes(term)))
+      .slice(0, 12)
+      .map(({value}) => value);
 
     if (!visibleValues.length) {
       hideMenu();
@@ -10556,7 +10557,7 @@ function rebuildTimelineSearchSuggestions() {
     ...[...new Set(cards.map((card) => card.distributor || "US Foods"))].flatMap(getLeadProductSuggestionProducts),
     ...marketVisits.flatMap(getMarketVisitProducts)
   ], stockProducts);
-  const productSuggestions = products.flatMap((product) => [product.description, product.vendor, product.brandName, product.apn, product.supc, product.distributorNumber]);
+  const productSuggestions = products.flatMap((product) => [product.description, product.vendor, product.brandName, product.apn, product.supc, product.distributorNumber, product.manufacturerNumber, product.gtin]);
   const suggestions = [
     ...getAccountDirectory().map((account) => account.name),
     ...addressBook.map((entry) => entry.operation),
@@ -10581,10 +10582,10 @@ function rebuildTimelineSearchSuggestions() {
       seen.add(key);
       return true;
     })
-    .slice(0, 500)
     .map((value) => `<option value="${escapeAttribute(value)}"></option>`)
     .join("");
   timelineSuggestionsDirty = false;
+  rebuildTimelineSearchSuggestions.stocks = stockProducts;
 }
 
 function getSalesRepDirectory() {
@@ -10643,15 +10644,25 @@ function rebuildLeadProductSuggestions() {
     })
     .join("");
   elements.productSearchSuggestions.innerHTML = getLeadProductSearchDirectory(elements.leadDistributor?.value ?? preferredLeadDistributor())
-    .map((product) => `<option value="${escapeAttribute(product.label)}"></option>`)
+    .map((product) => `<option value="${escapeAttribute(product.label)}" data-search="${escapeAttribute(window.foodBrokerProducts.searchable(product))}"></option>`)
     .join("");
   leadProductSuggestionsDirty = false;
+  rebuildLeadProductSuggestions.sources = {stocks: stockProducts, leads: cards, distributor: elements.leadDistributor?.value ?? preferredLeadDistributor()};
+}
+
+function getInputSuggestionList(input) {
+  const id = input?.dataset?.suggestionList || input?.getAttribute?.('list');
+  return (id && document.getElementById(id)) || input?.list || null;
 }
 
 function refreshFocusedSuggestions(event) {
-  const list = event.target?.list;
-  if (timelineSuggestionsDirty && list && list === elements.timelineSearchSuggestions) rebuildTimelineSearchSuggestions();
-  if (leadProductSuggestionsDirty && list && [elements.apnSuggestions, elements.productSearchSuggestions].includes(list)) rebuildLeadProductSuggestions();
+  const list = getInputSuggestionList(event.target);
+  if (list && list === elements.timelineSearchSuggestions && (timelineSuggestionsDirty || rebuildTimelineSearchSuggestions.stocks !== stockProducts)) rebuildTimelineSearchSuggestions();
+  if (list && [elements.apnSuggestions, elements.productSearchSuggestions].includes(list)) {
+    const sources = rebuildLeadProductSuggestions.sources;
+    const distributor = elements.leadDistributor?.value ?? preferredLeadDistributor();
+    if (leadProductSuggestionsDirty || sources?.stocks !== stockProducts || sources?.leads !== cards || sources?.distributor !== distributor) rebuildLeadProductSuggestions();
+  }
 }
 document.addEventListener("focusin", refreshFocusedSuggestions);
 document.addEventListener("input", refreshFocusedSuggestions);
