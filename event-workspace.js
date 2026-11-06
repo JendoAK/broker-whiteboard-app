@@ -3,10 +3,10 @@
   'use strict';
   const dialog = elements.marketVisitsDialog, content = elements.marketContent, model = window.foodBrokerEventLayout;
   if (!dialog || !content || !model) return;
-  const oldRender = renderMarketVisits, oldVisible = getVisibleMarketVisits, oldDateMatches = agendaDateMatches;
+  const oldRender = renderMarketVisits, oldDateMatches = agendaDateMatches;
   const controls = dialog.querySelector('.market-controls'), actionRow = dialog.querySelector('.market-action-row');
   const typeSelect = document.getElementById('marketAgendaType'), rangeSelect = document.getElementById('marketAgendaRange'), groupSelect = document.getElementById('marketAgendaGroup');
-  let period = 'all', noticeTimer;
+  let noticeTimer;
   const icon = name => `<img class="event-icon" src="task-icons/${name}.svg" width="18" height="18" alt="">`;
   const views = [['all', 'All events', 'calendar-event'], ['upcoming', 'Upcoming', 'calendar-week'], ['completed', 'Completed', 'check-circle'],
     ['visits', 'Market visits', 'shop'], ['foodshow', 'Foodshows', 'people'], ['testkitchen', 'Testkitchens', 'fork-knife']];
@@ -15,7 +15,7 @@
   workspace.innerHTML = `<aside class="event-sidebar" aria-label="Event views"><h2>Event views</h2><nav class="event-views" aria-label="Event lists"></nav>
     <div class="event-archive-slot"><button type="button" data-event-view="archive" aria-label="Archive">${icon('archive')}<span>Archive</span><small></small></button></div></aside>
     <section class="event-main"><header class="event-heading"><div><h1>Events &amp; Visits</h1><p class="event-view-subtitle"></p></div><div class="event-heading-actions"></div></header>
-    <div class="event-date-filters" role="group" aria-label="Filter events by date"></div><div class="event-search-toolbar"><div class="event-search-slot"></div><button class="event-filter-toggle" type="button" aria-expanded="false" aria-controls="eventAdvancedFilters">Filters</button></div>
+    <div class="event-search-toolbar"><div class="event-search-slot"></div><button class="event-filter-toggle" type="button" aria-expanded="false" aria-controls="eventAdvancedFilters">Filters</button></div>
     <section id="eventAdvancedFilters" class="event-advanced-filters" hidden></section><p class="event-workspace-status" role="status"></p><div class="event-content-slot"></div></section>`;
   actionRow.before(workspace); workspace.querySelector('.event-content-slot').append(content);
   dialog.classList.add('events-enabled'); actionRow.hidden = true;
@@ -41,11 +41,6 @@
     button.innerHTML = `${icon(name)}<span>${label}</span><small></small>`; nav.append(button);
   });
   workspace.querySelectorAll('[data-event-view]').forEach(button => button.onclick = () => selectView(button.dataset.eventView));
-  for (const [key, label] of Object.entries({all: 'All dates', today: 'Today', tomorrow: 'Tomorrow', week: 'This week', nextWeek: 'Next week'})) {
-    const button = document.createElement('button'); button.type = 'button'; button.textContent = label; button.dataset.eventDate = key;
-    button.onclick = () => {period = key; activeMarketDetailId = ''; renderMarketVisits();}; workspace.querySelector('.event-date-filters').append(button);
-  }
-  rangeSelect.addEventListener('change', () => {period = 'all';}, true);
   const sundayStart = () => getCurrentCalendarPreferences().some(item => item.weekStart === 'sunday');
   function currentView() {
     if (elements.marketArchiveFilter.value === 'archived') return 'archive';
@@ -54,7 +49,7 @@
     return rangeSelect.value === 'all' ? 'all' : 'upcoming';
   }
   function selectView(key) {
-    period = 'all'; activeMarketDetailId = ''; elements.marketSearch.value = ''; elements.marketManufacturerFilter.value = '';
+    activeMarketDetailId = ''; elements.marketSearch.value = ''; elements.marketManufacturerFilter.value = '';
     elements.marketRepFilter.value = ''; elements.marketStatusFilter.value = key === 'completed' ? 'Completed' : '';
     elements.marketArchiveFilter.value = key === 'archive' ? 'archived' : 'active'; agendaArchiveFilterIsExplicit = true;
     typeSelect.value = ['visits', 'foodshow', 'testkitchen'].includes(key) ? key : '';
@@ -76,7 +71,6 @@
     workspace.querySelectorAll('[data-event-view]').forEach(button => {
       button.setAttribute('aria-pressed', String(button.dataset.eventView === selected)); button.querySelector('small').textContent = viewCount(button.dataset.eventView);
     });
-    workspace.querySelectorAll('[data-event-date]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.eventDate === period)));
     workspace.querySelectorAll('[data-market-view]').forEach(button => {button.setAttribute('aria-pressed', String(button.dataset.marketView === activeMarketView)); button.classList.toggle('active-market-view', button.dataset.marketView === activeMarketView);});
     workspace.classList.toggle('event-detail-open', !!activeMarketDetailId); workspace.classList.toggle('event-calendar-open', activeMarketView === 'calendar');
     const label = selected === 'archive' ? 'Archived events and visits' : selected === 'completed' ? 'Completed events and visits' : 'Your upcoming plans, in date order';
@@ -148,7 +142,6 @@
   }
   workspace.addEventListener('click', event => {workspace.querySelectorAll('.event-card-menu[open]').forEach(menu => {if (!menu.contains(event.target)) menu.open = false;});});
   workspace.addEventListener('keydown', event => {if (event.key === 'Escape') workspace.querySelectorAll('.event-card-menu[open]').forEach(menu => {menu.open = false; menu.querySelector('summary').focus();});});
-  getVisibleMarketVisits = function() {return oldVisible().filter(visit => model.matches(visit, period, TaskDates.today(), sundayStart()));};
   agendaDateMatches = function(visit) {
     if (['upcoming', 'past', 'all'].includes(rangeSelect.value)) {
       if (rangeSelect.value === 'all') return true;
@@ -158,7 +151,7 @@
     return oldDateMatches(visit);
   };
   clearMarketFilters = function() {
-    period = 'all'; agendaArchiveFilterIsExplicit = false; activeMarketDetailId = '';
+    agendaArchiveFilterIsExplicit = false; activeMarketDetailId = '';
     elements.marketArchiveFilter.value = 'auto'; elements.marketSearch.value = ''; elements.marketManufacturerFilter.value = '';
     elements.marketRepFilter.value = ''; elements.marketStatusFilter.value = ''; elements.marketDateFilter.value = '';
     typeSelect.value = ''; rangeSelect.value = 'upcoming'; groupSelect.value = 'schedule'; renderMarketVisits();
@@ -166,7 +159,16 @@
   renderMarketVisits = function() {
     if (isFoodshowFieldEditing()) return;
     refreshControls();
-    if (activeMarketView === 'calendar' || activeMarketDetailId) {oldRender(); return;}
+    if (activeMarketView === 'calendar' || activeMarketDetailId) {
+      oldRender();
+      const panel = content.querySelector('#marketDetailPanel'), back = panel?.querySelector('[data-detail-close]');
+      if (activeMarketDetailId && back) {
+        back.textContent = 'Back to Events & Visits';
+        back.classList.add('event-back-button');
+        panel.prepend(back);
+      }
+      return;
+    }
     const scroll = captureFoodshowScroll(); updateMarketVisitControls(); updateAgendaFilterButtons();
     const visits = getVisibleMarketVisits(), groups = model.groups(visits, TaskDates.today(), groupSelect.value, marketVisitTypes, sundayStart());
     content.innerHTML = visits.length ? groups.map(group => `<section class="event-date-group"><h2>${escapeHtml(group.title)}</h2><div class="event-cards">${group.items.map(card).join('')}</div></section>`).join('')

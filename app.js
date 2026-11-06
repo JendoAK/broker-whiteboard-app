@@ -6696,6 +6696,8 @@ function openMarketVisitForm(visit, typeOverride) {
   const vendorIsLocked = Boolean(existing && type === "manufacturer");
   if (!existing) activeMarketType = type;
   elements.marketVisitFormTitle.textContent = existing ? "Edit Market Visit" : `Create ${marketVisitTypes[type]}`;
+  const errorMessage = elements.marketVisitForm.querySelector('[data-market-visit-save-error]');
+  if (errorMessage) { errorMessage.textContent = ''; errorMessage.hidden = true; }
   elements.marketVisitId.value = existing?.id || "";
   elements.marketVisitType.value = type;
   elements.marketVisitName.value = existing?.name || "";
@@ -6724,6 +6726,7 @@ function closeMarketVisitForm() {
 }
 
 function saveMarketVisit() {
+  const previousVisits = marketVisits;
   const id = elements.marketVisitId.value || crypto.randomUUID();
   const existing = marketVisits.find((visit) => visit.id === id);
   const type = elements.marketVisitType.value || activeMarketType;
@@ -6749,12 +6752,23 @@ function saveMarketVisit() {
   });
   if (type !== "personal") stampSharedRecord(visit, existing ? "Updated" : "Created");
   marketVisits = existing ? marketVisits.map((item) => (item.id === id ? visit : item)) : [visit, ...marketVisits];
+  try { persistMarketVisits(); }
+  catch (error) {
+    marketVisits = previousVisits;
+    window.foodBrokerSaveStatus?.recordError(error, {operation: "Save event or visit", section: marketVisitStorageKey, localFailure: true});
+    const errorMessage = elements.marketVisitForm.querySelector('[data-market-visit-save-error]');
+    if (errorMessage) {
+      errorMessage.textContent = "Could not save this event or visit. Your entries are still in this form. " + (error.name === "QuotaExceededError" ? "Browser storage is full. Export a backup or remove a large attachment, then retry." : "Please retry before closing this window.");
+      errorMessage.hidden = false;
+    }
+    return false;
+  }
   activeMarketType = type;
   elements.marketArchiveFilter.value = visit.archivedAt ? "archived" : "active";
   activeMarketDetailId = id;
-  persistMarketVisits();
   closeMarketVisitForm();
   renderMarketVisits();
+  return true;
 }
 
 function deleteCurrentMarketVisit() {

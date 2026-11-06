@@ -154,3 +154,97 @@ test('recording a field edit does not copy unchanged attachments into recovery s
   assert.equal(sync.applyEdits(before, edits)[0].notes, 'New note');
   assert.deepEqual(sync.applyEdits([], edits), []);
 });
+
+function eventEditors(context, type = 'manufacturer', id = '') {
+  let closed = false;
+  const message = {hidden: true, textContent: ''};
+  const values = {marketVisitId:id, marketVisitType:type, marketVisitName:'Persistence check', marketVisitVendor:'Test vendor',
+    marketVisitorName:'Visitor', marketStartDate:'2026-11-09', marketEndDate:'2026-11-12', marketStartTime:'9:00 AM',
+    marketEndTime:'10:00 AM', marketLocation:'Anchorage', marketSalesReps:'Test rep', marketStatus:'In Progress', marketNotes:'Keep these notes'};
+  context.elements = Object.fromEntries(Object.entries(values).map(([key,value]) => [key,{value}]));
+  context.elements.marketArchiveFilter = {value:'active'};
+  context.elements.marketVisitForm = {querySelector: () => message};
+  Object.assign(context, {crypto:require('node:crypto').webcrypto, activeMarketType:type, activeMarketDetailId:'',
+    normalizeStringList:value => String(value || '').split(',').map(item => item.trim()).filter(Boolean),
+    stampSharedRecord() {}, renderMarketVisits() {}, closeMarketVisitForm() {closed = true;},
+    normalizeMarketCall:value => ({id:require('node:crypto').randomUUID(), ...clone(value)}),
+    normalizeMarketOperatorLink:value => ({id:require('node:crypto').randomUUID(), ...clone(value)}),
+    formatTimeOption:(hour, minute) => `${hour % 12 || 12}:${String(minute).padStart(2,'0')} ${hour < 12 ? 'AM' : 'PM'}`,
+    findOrCreateMarketOperator:name => ({operatorId:'test-operator',operatorName:name}), isMarketOperatorAlreadyAttached:() => false,
+    getMarketVisitProducts:() => [], FormData:class {constructor(form) {this.form=form;} [Symbol.iterator]() {return Object.entries(this.form.values)[Symbol.iterator]();}}
+  });
+  vm.runInContext(cut('function saveMarketVisit(', 'function deleteCurrentMarketVisit(') + '\n' +
+    cut('function updateMarketVisit(', 'function saveMarketProductNote(') + '\n' +
+    fs.readFileSync(path.join(__dirname,'../market-call-editor.js'),'utf8'),context);
+  return {message,closed:() => closed};
+}
+
+const eventKinds = [['manufacturer','vendorMarketVisitCloudKey'],['personal','personalMarketVisitCloudKey'],
+  ['foodshow','marketVisitStorageKey-foodshow'],['testkitchen','marketVisitStorageKey-testkitchen']];
+for (const [type,key] of eventKinds) test(`${type}: the original event form survives offline close, sync, and a second reopen`,async () => {
+  const {app,db} = await fixture(), c=app.context, form=eventEditors(c,type);
+  db.offline(true); c.saveMarketVisit();
+  assert.equal(form.closed(),true);
+  const created=c.getCloudConfig(key).get().find(item => item.name === 'Persistence check');
+  assert.ok(created); assert.ok(c.taskOutbox.list('owner',key).length);
+  const reopened=app.reopen();
+  assert.equal(reopened.context.marketVisits.find(item => item.id === created.id).notes,'Keep these notes');
+  assert.equal(await reopened.context.pushPendingCloudSections(),false);
+  db.offline(false); assert.equal(await reopened.context.loadCloudSections(),true);
+  const fresh=reopened.reopen(); await fresh.context.loadCloudSections();
+  const actual=fresh.context.marketVisits.find(item => item.id === created.id);
+  for (const field of ['name','notes','status','startDate','endDate','startTime','endTime','location','salesReps']) assert.deepEqual(clone(actual[field]),clone(created[field]),field);
+  assert.equal(fresh.context.taskOutbox.list('owner',key).length,0);
+});
+
+for (const edit of [false,true]) test(`${edit ? 'editing' : 'creating'} an event: failed browser write keeps the form and retries without duplicates`,async () => {
+  const {app,local} = await fixture(), c=app.context, existing=c.getCloudConfig('vendorMarketVisitCloudKey').get()[0];
+  const form=eventEditors(c,'manufacturer',edit ? existing.id : ''), before=clone(c.marketVisits), cache=local.getItem('marketVisitStorageKey'), write=local.setItem;
+  local.setItem=(key,value) => {if(key === 'marketVisitStorageKey') {const error=Error('Storage full'); error.name='QuotaExceededError'; throw error;} write(key,value);};
+  assert.doesNotThrow(() => c.saveMarketVisit());
+  assert.equal(form.closed(),false); assert.equal(form.message.hidden,false);
+  assert.match(form.message.textContent,/not save/i); assert.equal(c.elements.marketNotes.value,'Keep these notes');
+  assert.deepEqual(clone(c.marketVisits),before); assert.equal(local.getItem('marketVisitStorageKey'),cache);
+  assert.equal(c.taskOutbox.list('owner','vendorMarketVisitCloudKey').length,0);
+  local.setItem=write; assert.equal(c.saveMarketVisit(),true); assert.equal(form.closed(),true);
+  assert.equal(c.marketVisits.length,before.length+(edit ? 0 : 1));
+  assert.equal(c.marketVisits.filter(item => item.name === 'Persistence check').length,1);
+});
+
+test('calls and appointments saved by the actual editor survive offline reopen and a concurrent remote appointment',async () => {
+  const {app,db,local} = await fixture(), c=app.context, key='vendorMarketVisitCloudKey', visit=c.getCloudConfig(key).get()[0];
+  eventEditors(c); c.updateMarketVisit(visit.id,{startDate:'2026-11-09',endDate:'2026-11-12',operatorLinks:[]});
+  await c.pushPendingCloudSections(); const stale=local.getItem('marketVisitStorageKey'); db.offline(true);
+  for (const kind of ['call','appointment']) {
+    vm.runInContext('marketCallEditContext = '+JSON.stringify({visitId:visit.id,callId:'',newKind:kind,values:{}}),c);
+    let closed=false; const message={hidden:true}, form={values:{operatorName:'Test operator',title:'Test appointment',appointmentType:'Other',date:'2026-11-10',startTime:'13:00',endTime:'14:00',salesReps:'Test rep',notes:'Saved calendar notes',status:'Planned'},
+      elements:{namedItem:() => ({min:'2026-11-09',max:'2026-11-12'})},querySelector:() => message,closest:() => ({close() {closed=true;}})};
+    c.saveMarketCallEdit({currentTarget:form,preventDefault() {}}); assert.equal(closed,true); assert.equal(message.hidden,true);
+  }
+  const remote=db.rows.get(key); remote.data.value[0].calls.push({id:'remote-appointment',kind:'appointment',title:'Other device appointment'}); remote.updated_at='changed-on-other-device';
+  local.setItem('marketVisitStorageKey',stale); local.setItem('pending','[]'); const reopened=app.reopen();
+  db.offline(false); await reopened.context.loadCloudSections();
+  const fresh=reopened.reopen(); await fresh.context.loadCloudSections();
+  const calls=fresh.context.marketVisits.find(item => item.id === visit.id).calls;
+  assert.equal(calls.length,3); assert.ok(calls.some(item => item.id === 'remote-appointment'));
+  for (const kind of ['call','appointment']) {const item=calls.find(item => item.kind === kind && item.id !== 'remote-appointment');
+    assert.equal(item.date,'2026-11-10'); assert.equal(item.startTime,'1:00 PM'); assert.equal(item.endTime,'2:00 PM'); assert.equal(item.notes,'Saved calendar notes');}
+});
+
+test('a saved appointment time edit and event archive/status stay saved over a stale-window reopen',async () => {
+  const {app,db,local} = await fixture(), c=app.context, key='vendorMarketVisitCloudKey', visit=c.getCloudConfig(key).get()[0];
+  eventEditors(c); c.updateMarketVisit(visit.id,{startDate:'2026-11-09',endDate:'2026-11-12',calls:[{id:'appointment',kind:'appointment',date:'2026-11-10',title:'Training',startTime:'9:00 AM',endTime:'10:00 AM',status:'Planned',notes:'Old note'}]});
+  await c.pushPendingCloudSections(); const stale=local.getItem('marketVisitStorageKey');
+  vm.runInContext('marketCallEditContext = '+JSON.stringify({visitId:visit.id,callId:'appointment',newKind:'',values:{date:'2026-11-10',startTime:'09:00',endTime:'10:00',status:'Planned',notes:'Old note'}}),c);
+  let closed=false; const message={hidden:true};
+  const form={values:{title:'Training',date:'2026-11-11',startTime:'14:00',endTime:'15:00',status:'Completed',notes:'Updated appointment'},elements:{namedItem:() => ({min:'2026-11-09',max:'2026-11-12'})},querySelector:() => message,closest:() => ({close() {closed=true;}})};
+  c.saveMarketCallEdit({currentTarget:form,preventDefault() {}});
+  assert.equal(closed,true); assert.equal(message.hidden,true);
+  c.updateMarketVisit(visit.id,{status:'Completed',archivedAt:'2026-11-06T19:00:00Z'});
+  assert.equal(await c.pushPendingCloudSections(),true);
+  local.setItem('marketVisitStorageKey',stale); local.setItem('pending',JSON.stringify([key]));
+  const fresh=app.reopen(); assert.equal(await fresh.context.loadCloudSections(),true);
+  const actual=fresh.context.marketVisits.find(item => item.id === visit.id);
+  assert.equal(actual.status,'Completed'); assert.equal(actual.archivedAt,'2026-11-06T19:00:00Z');
+  assert.equal(actual.calls[0].date,'2026-11-11'); assert.equal(actual.calls[0].startTime,'2:00 PM'); assert.equal(actual.calls[0].notes,'Updated appointment'); assert.equal(actual.calls[0].status,'Completed');
+});
