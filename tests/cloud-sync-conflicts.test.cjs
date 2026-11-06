@@ -36,7 +36,7 @@ function setup(key = 'contacts', response = {error: {code: 'PT409', message: 'St
     todoStorageKey: 'tasks', taskOutbox: outbox, workCloudBases: sync.createBases(storage),
     peopleContactsStorageKey: 'people', addressBookStorageKey: 'contacts',
     normalizePeopleContact: value => value, normalizeAddressBookEntry: value => value,
-    writeLocalSection() {}, renderAfterCloudSync() {},
+    writeLocalSection() {}, async writeCachedLocalSection() {}, renderAfterCloudSync() {},
     failedLocalSections: new Set(),
     cloudSaveTimer: null,
     cloudSaveConfirmed: false,

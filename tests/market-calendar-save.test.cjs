@@ -28,7 +28,7 @@ function setup() {
     formatTimeOption: (hour, minute) => `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`,
     findOrCreateMarketOperator: name => ({operatorId: 'operator', operatorName: name}),
     isMarketOperatorAlreadyAttached: () => false, getMarketVisitProducts: () => [],
-    recordWorkUpdateTimes() {}, renderMarketVisits() {},
+    recordWorkUpdateTimes() {}, renderMarketVisits() {}, getCloudUser: () => null,
     localStorage: {getItem: key => stored.get(key) || null, setItem(key, value) {
       if (fail) { const error = new Error('Storage full'); error.name = 'QuotaExceededError'; throw error; }
       stored.set(key, value);
@@ -42,7 +42,7 @@ function setup() {
     window: {foodBrokerWorkSync: sync, foodBrokerSaveStatus: {recordError: error => {if (!errors.includes(error)) errors.push(error);}}}
   };
   vm.createContext(context);
-  vm.runInContext(fs.readFileSync(path.join(root, 'market-call-editor.js'), 'utf8') + '\n' + part('writeLocalSection') + '\n' + part('persistMarketVisits') + '\n' + part('updateMarketVisit'), context);
+  vm.runInContext(fs.readFileSync(path.join(root, 'market-call-editor.js'), 'utf8') + '\n' + part('completeLocalSection') + '\n' + part('writeLocalSection') + '\n' + part('persistMarketVisits') + '\n' + part('updateMarketVisit'), context);
   vm.runInContext('marketCallEditContext = {visitId: "visit", callId: "", newKind: "call", values: {}};', context);
   return {context, form, stored, queued, errors, message: errorMessage, closed: () => closed, allowWrites: () => {fail = false;}};
 }

@@ -1825,7 +1825,15 @@ function writeLocalSection(sectionKey, value, options = {}) {
       const edit = sectionJournal.capture(getCloudUser()?.id, section);
       if (edit) edits.push(edit);
     }
-    localStorage.setItem(sectionKey, JSON.stringify(value));
+    const text = JSON.stringify(value);
+    const user = getCloudUser();
+    const durableEdit = edits.length || options.durableEdit || (!options.cache && user && sections.some(section => taskOutbox.list(user.id, section.key).length));
+    const deferred = durableEdit && window.foodBrokerCompactStorage?.defer?.(sectionKey, text, error => {
+      failedLocalSections.add(sectionKey);
+      cloudSaveConfirmed = false;
+      window.foodBrokerSaveStatus?.recordError(error, {operation: 'Refresh saved browser copy', section: sectionKey, localFailure: true});
+    });
+    if (!deferred) localStorage.setItem(sectionKey, text);
   }
   catch (error) {
     if (edits.length) taskOutbox.acknowledge(edits);
@@ -1834,10 +1842,34 @@ function writeLocalSection(sectionKey, value, options = {}) {
     window.foodBrokerSaveStatus?.recordError(error, {operation: "Save browser copy", section: sectionKey, localFailure: true});
     throw error;
   }
+  completeLocalSection(sectionKey, value, sections);
+}
+
+function completeLocalSection(sectionKey, value, sections) {
   failedLocalSections.delete(sectionKey);
   if (sectionKey === todoStorageKey) todoSavedSnapshot = JSON.parse(JSON.stringify(value));
   sections.forEach(section => sectionJournal.accept(section));
   window.foodBrokerSaveStatus?.recoverSections?.([sectionKey]);
+}
+
+async function writeCachedLocalSection(sectionKey, value) {
+  const writer = window.foodBrokerCompactStorage;
+  if (!writer?.writeAsync) return writeLocalSection(sectionKey, value, {cache: true});
+  const userId = getCloudUser()?.id;
+  try {
+    await writer.writeAsync(sectionKey, JSON.stringify(value));
+    if (userId !== getCloudUser()?.id) throw new Error('The signed-in account changed. Recorded edits have been kept.');
+    const section = getLocalCloudCacheConfig(sectionKey) || getCloudConfig(sectionKey);
+    const sections = typeof sectionJournal !== 'undefined' && sectionJournal ? getCloudConfigsForKey(sectionKey) : [];
+    // A newer edit may have arrived while compression was running. Never rewind
+    // the journal or task baseline after the worker commits the latest copy.
+    completeLocalSection(sectionKey, section?.get() || value, sections);
+  } catch (error) {
+    failedLocalSections.add(sectionKey);
+    cloudSaveConfirmed = false;
+    window.foodBrokerSaveStatus?.recordError(error, {operation: 'Refresh saved browser copy', section: sectionKey, localFailure: true});
+    throw error;
+  }
 }
 
 function persist() {
@@ -1859,7 +1891,7 @@ function persistTodos() {
     recordWorkUpdateTimes(todos, todoStorageKey);
     const user = getCloudUser();
     if (user) edit = taskOutbox.keep(user.id, todoStorageKey, todoSavedSnapshot, todos);
-    writeLocalSection(todoStorageKey, todos);
+    writeLocalSection(todoStorageKey, todos, {durableEdit: edit});
     scheduleCloudSave(todoStorageKey);
     return true;
   } catch (error) {
@@ -1889,7 +1921,7 @@ function recoverPendingTaskEdits(user) {
     if (!edits.length) continue;
     section.set(normalizeWorkCloudValue(section.key, window.foodBrokerWorkSync.applyEdits(section.get(), edits)));
     const local = getLocalCloudCacheConfig(section.localKey || section.key) || section;
-    writeLocalSection(local.key, local.get(), {cache: true});
+    writeLocalSection(local.key, local.get(), {cache: true, durableEdit: edits[0]});
     pendingCloudSections.add(section.key); changed = true;
   }
   if (!changed) return;
@@ -2172,8 +2204,7 @@ function keepRecoveredSampleView(sectionKey,items,originalItems,saveRevision) {
     const currentIds=new Set(current.map(item=>String(item.id)));
     section.set([...current,...items.filter(item=>!originalIds.has(String(item.id))&&!currentIds.has(String(item.id)))]);
   }
-  writeCloudSectionsToLocalStorage([sectionKey]);
-  renderAfterCloudSync();
+  return Promise.resolve(writeCloudSectionsToLocalStorage([sectionKey])).then(() => renderAfterCloudSync());
 }
 
 function isCloudSyncConflict(error,status) {
@@ -2192,7 +2223,7 @@ async function saveDirectoryCloudPayload(client,user,payload,saveRevision,option
     section.set(window.foodBrokerWorkSync.merge(original, section.get(), saved.value));
     const remaining = taskOutbox.list(user.id, section.key).filter(entry => !edits.some(sent => sent.key === entry.key && sent.raw === entry.raw));
     section.set(window.foodBrokerWorkSync.applyEdits(section.get(), remaining));
-    writeLocalSection(section.key, section.get(), {cache: true});
+    await writeCachedLocalSection(section.key, section.get());
     await workCloudBases.remember(user.id, section.key, {...saved, journalVersion: 3});
     rememberDirectoryCloudWriteBase(section.key, saved.version, user.id);
     taskOutbox.acknowledge(edits);
@@ -2241,7 +2272,7 @@ async function saveDirectoryCloudPayload(client,user,payload,saveRevision,option
   if(typeof data?.updatedAt!=="string" || !data.updatedAt || !rememberDirectoryCloudWriteBase(payload.record_key,data.updatedAt,user.id))throw {code:"DIRECTORY_VERSION_UNCONFIRMED",message:"Could not confirm the saved "+collectionName+" version. Your browser copy has been kept."};
   if(sampleSection){
     sampleCloudSnapshots.set(payload.record_key,{data:payload.data,version:data.updatedAt});
-    if(recovered)keepRecoveredSampleView(payload.record_key,recovered.items,originalItems,saveRevision);
+    if(recovered)await keepRecoveredSampleView(payload.record_key,recovered.items,originalItems,saveRevision);
     window.foodBrokerSampleSyncRecovery?.clearSection(payload.record_key);
   }
 }
@@ -2325,7 +2356,7 @@ function hasLocalAppData() {
   });
 }
 
-function writeCloudSectionsToLocalStorage(sectionKeys = cloudSectionConfigs.map((section) => section.key)) {
+async function writeCloudSectionsToLocalStorage(sectionKeys = cloudSectionConfigs.map((section) => section.key)) {
   const localKeys = new Set();
   const failedKeys = new Set();
   expandCloudSectionKeys(sectionKeys).forEach((sectionKey) => {
@@ -2333,17 +2364,17 @@ function writeCloudSectionsToLocalStorage(sectionKeys = cloudSectionConfigs.map(
     if (!section) return;
     localKeys.add(section.localKey || section.key);
   });
-  localKeys.forEach((sectionKey) => {
+  for (const sectionKey of localKeys) {
     const section = getLocalCloudCacheConfig(sectionKey) || getCloudConfig(sectionKey);
-    if (!section) return;
+    if (!section) continue;
     try {
-      writeLocalSection(section.key, section.get(), {cache: true});
+      await writeCachedLocalSection(section.key, section.get());
     } catch (error) {
       failedKeys.add(sectionKey);
       window.foodBrokerSaveStatus?.recordError(error, { operation: "Refresh saved browser copy" });
       console.warn(`Could not refresh local cache for ${section.label}.`, error);
     }
-  });
+  }
   return failedKeys;
 }
 
@@ -2446,7 +2477,7 @@ async function saveWorkCloudPayload(client, user, payload) {
     section.set(window.foodBrokerWorkSync.applyEdits(section.get(), remaining));
   }
   const local = getLocalCloudCacheConfig(section.localKey || section.key) || section;
-  writeLocalSection(local.key, local.get(), {cache: true});
+  await writeCachedLocalSection(local.key, local.get());
   await workCloudBases.remember(user.id, section.key, {...saved, journalVersion: 3});
   taskOutbox.acknowledge(edits);
   renderAfterCloudSync();
@@ -2753,7 +2784,7 @@ async function loadCloudSections(options = {}) {
         rememberDirectoryCloudWriteBase(key,null,user.id);
         if(wasPresent){getCloudConfig(key)?.set([]);cleared.push(key);}
       }
-      if(cleared.length)writeCloudSectionsToLocalStorage(cleared);
+      if(cleared.length)await writeCloudSectionsToLocalStorage(cleared);
     }
     const personalRowMap = new Map(personalRows.map((row) => [row.record_key, row]));
     const teamRowMap = new Map(teamRows.map((row) => [row.record_key, row]));
@@ -2849,7 +2880,15 @@ async function loadCloudSections(options = {}) {
         appliedKeys.push(section.key);
         if (cloudResult.usedLegacyRow) localUploadKeys.push(section.key);
       });
-      const cacheFailures = writeCloudSectionsToLocalStorage(appliedKeys);
+      const cacheFailures = await writeCloudSectionsToLocalStorage(appliedKeys);
+      // Large cache preparation yields to the UI. A save that completed during
+      // that wait supersedes this download, including its old sync baselines.
+      if (!sampleSyncUserValid(user)) return false;
+      if (cloudSaveRequests || writeEpoch !== cloudWriteEpoch) {
+        cloudSyncReady = wasReady;
+        window.setTimeout(() => refreshCloudSectionsIfChanged({force: true}), 0);
+        return false;
+      }
       for (const [section, snapshot] of workBasesToRemember) {
         if (!cacheFailures?.has(section.localKey || section.key)) await workCloudBases.remember(user.id, section.key, snapshot);
       }
@@ -5778,12 +5817,15 @@ function stockProductsMatch(existing, incoming) {
 
 function mergeStockProduct(current, incoming) {
   const merged = { ...current, k12: Boolean(current.k12 || incoming.k12) };
+  let changed = merged.k12 !== Boolean(current.k12);
   const fields = ["distributorNumber", "apn", "supc", "manufacturerNumber", "gtin", "description", "packaging", "storage", "vendor", "brandType", "brandName", "category", "so"];
   fields.forEach((field) => {
     if (!String(merged[field] || "").trim() && String(incoming[field] || "").trim()) {
       merged[field] = incoming[field];
+      changed = true;
     }
   });
+  if (!changed) return current;
   merged.updatedAt = new Date().toISOString();
   return normalizeStockProduct(merged);
 }
@@ -8931,7 +8973,10 @@ function isTodoCompletedThisMonth(todo) {
 }
 
 function formatDateTime(value) {
-  return new Date(value).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(date);
+  formatDateTime.formatter ||= new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+  return formatDateTime.formatter.format(date);
 }
 
 function renderArchive() {
@@ -11477,10 +11522,13 @@ function todayOffset(days) {
 }
 
 function formatDate(value) {
-  return parseLocalDate(value).toLocaleDateString(undefined, {
+  const date = parseLocalDate(value);
+  if (Number.isNaN(date.getTime())) return String(date);
+  formatDate.formatter ||= new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric"
   });
+  return formatDate.formatter.format(date);
 }
 
 function escapeHtml(value) {

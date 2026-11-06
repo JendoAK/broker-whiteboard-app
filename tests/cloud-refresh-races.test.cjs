@@ -108,6 +108,18 @@ test('edits made while a save is in flight remain queued for another save', asyn
   assert.equal(s.context.cloudSaveConfirmed, false);
 });
 
+test('a newer upload supersedes a download that is waiting for background cache preparation',async()=>{
+ const s=setup(),cache=deferred();let preparing=false;
+ s.context.pendingCloudSections.clear();s.context.workCloudSectionKeys.add('tasks');
+ s.context.migratePendingBrowserCopy=async()=>{};
+ s.context.writeCloudSectionsToLocalStorage=async()=>{preparing=true;await cache.promise;return new Set();};
+ const refreshing=s.context.loadCloudSections();s.download.resolve(s.rows);await new Promise(setImmediate);assert.equal(preparing,true);
+ s.context.saveWorkCloudPayload=async()=>{const value=[{id:'confirmed',status:'Done'}];s.context.getCloudConfig('tasks').set(value);await s.context.workCloudBases.remember('test-user','tasks',{version:'new-confirmed-version',value,journalVersion:3});};
+ assert.equal(await s.context.performCloudSaveSections(['tasks'],{force:true}),true);
+ cache.resolve();assert.equal(await refreshing,false);assert.equal(s.items()[0].id,'confirmed');
+ assert.equal((await s.context.workCloudBases.get('test-user','tasks')).version,'new-confirmed-version');
+});
+
 test('a row summary fetched before a save cannot reuse an obsolete cached collection', async () => {
   const s = setup(), summary = deferred();
   s.context.fetchCloudRowSummary = () => summary.promise;

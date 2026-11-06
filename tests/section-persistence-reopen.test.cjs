@@ -91,7 +91,7 @@ function open(localStorage, db) {
     cut('function writeLocalSection(', 'function persist()'), cut('function persistTodos(', 'function getCloudClient('),
     cut('function readPendingCloudSections(', 'function extractCloudValue('),
     cut('function sampleSyncUserValid(', 'function mergeCloudSectionValues('),
-    cut('function writeCloudSectionsToLocalStorage(', 'function renderAfterCloudSync('),
+    cut('async function writeCloudSectionsToLocalStorage(', 'function renderAfterCloudSync('),
     cut('function scheduleCloudSave(', 'async function fetchCloudRowSummary('),
     cut('async function loadCloudSections(', 'function handleCloudAuthChange('),
     cut('async function mergeCloudDataIntoThisBrowser(', 'async function syncLocalDataToCloud(')
@@ -112,6 +112,48 @@ async function fixture() {
   }
   assert.equal(await app.context.loadCloudSections(), true, app.context.lastCloudError); return {app, local, db};
 }
+
+for (const key of ['storageKey','todoStorageKey']) test(`${key}: immediate offline reopen recovers a save before background compression finishes`,async()=>{
+ const {app,local,db}=await fixture(),c=app.context;
+ app.edit(key,rows=>rows.map(row=>({...row,notes:'Large existing note '.repeat(15000)})));await c.pushPendingCloudSections();
+ const old=local.getItem(key),jobs=new Map();
+ c.window.foodBrokerCompactStorage={defer(name,text){jobs.set(name,text);return true;}};
+ db.offline(true);app.edit(key,rows=>rows.map(row=>({...row,status:'In Progress',myDay:'2026-11-06'})));
+ assert.ok(jobs.has(key));assert.equal(local.getItem(key),old);assert.ok(c.taskOutbox.list('owner',key).length);
+ const reopened=app.reopen();await reopened.context.loadCloudSections();
+ const saved=reopened.context.getCloudConfig(key).get()[0];assert.equal(saved.status,'In Progress');assert.equal(saved.myDay,'2026-11-06');assert.ok(saved.notes.startsWith('Large existing note'));
+ db.offline(false);await reopened.context.loadCloudSections();assert.equal(db.rows.get(key).data.value[0].status,'In Progress');
+});
+
+for (const key of ['storageKey','todoStorageKey']) test(`${key}: cloud acknowledgements wait for the latest cache and preserve edits made during compression`,async()=>{
+ const {app,local,db}=await fixture(),c=app.context;
+ app.edit(key,rows=>rows.map(row=>({...row,notes:'Large existing note '.repeat(15000)})));await c.pushPendingCloudSections();
+ const jobs=new Map();let release,entered;const gate=new Promise(done=>{release=done;}),started=new Promise(done=>{entered=done;});
+ c.window.foodBrokerCompactStorage={defer(name,text){jobs.set(name,text);return true;},async writeAsync(name,text){if(!jobs.has(name))jobs.set(name,text);entered();await gate;local.setItem(name,jobs.get(name));}};
+ app.edit(key,rows=>rows.map(row=>({...row,status:'In Progress'})));const uploading=c.pushPendingCloudSections();await started;
+ assert.ok(c.taskOutbox.list('owner',key).length);assert.equal(c.cloudSaveConfirmed,false);
+ app.edit(key,rows=>rows.map(row=>({...row,myDay:'2026-11-06'})));release();assert.equal(await uploading,true);
+ const latest=JSON.parse(local.getItem(key))[0];assert.equal(latest.status,'In Progress');assert.equal(latest.myDay,'2026-11-06');
+ assert.ok(c.taskOutbox.list('owner',key).length);assert.equal(c.cloudSaveConfirmed,false);
+ if(key==='todoStorageKey')assert.equal(c.todoSavedSnapshot[0].myDay,'2026-11-06');
+ const reopened=app.reopen();db.offline(true);await reopened.context.loadCloudSections();assert.equal(reopened.context.getCloudConfig(key).get()[0].myDay,'2026-11-06');
+});
+
+test('a background cache failure retains the lead recovery edit even after the server accepted it',async()=>{
+ const {app,local,db}=await fixture(),c=app.context,key='storageKey';
+ app.edit(key,rows=>rows.map(row=>({...row,notes:'Large existing note '.repeat(15000)})));await c.pushPendingCloudSections();const original=local.getItem(key);
+ c.window.foodBrokerCompactStorage={defer(){return true;},async writeAsync(){throw Error('Cache worker failed');}};
+ app.edit(key,rows=>rows.map(row=>({...row,status:'Done'})));assert.equal(await c.pushPendingCloudSections(),false);
+ assert.equal(db.rows.get(key).data.value[0].status,'Done');assert.equal(local.getItem(key),original);assert.ok(c.taskOutbox.list('owner',key).length);
+ db.offline(true);const reopened=app.reopen();await reopened.context.loadCloudSections();assert.equal(reopened.context.cards[0].status,'Done');
+});
+
+test('a cache refresh without a recovery edit stays synchronous',async()=>{
+ const {app,local}=await fixture(),c=app.context;let deferred=0;
+ c.window.foodBrokerCompactStorage={defer(){deferred++;return true;}};
+ const value=c.cards.map(row=>({...row,notes:'Refreshed cached copy'}));c.cards=value;c.writeLocalSection('storageKey',value,{cache:true});
+ assert.equal(deferred,0);assert.equal(JSON.parse(local.getItem('storageKey'))[0].notes,'Refreshed cached copy');
+});
 for (const key of kinds) test(`${key}: offline updates survive a stale cache and erased queue after reopen`, async () => {
   const {app, local, db} = await fixture(), section = app.context.getCloudConfig(key), oldCache = local.getItem(section.localKey || key);
   db.offline(true);

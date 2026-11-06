@@ -82,7 +82,7 @@ function open(localStorage, db) {
     slice('function writeLocalSection(', 'function persist()'),
     slice('function persistTodos(', 'function persistManualVendorReports('),
     slice('function readPendingCloudSections(', 'function extractCloudValue('),
-    slice('function writeCloudSectionsToLocalStorage(', 'function renderAfterCloudSync('),
+    slice('async function writeCloudSectionsToLocalStorage(', 'function renderAfterCloudSync('),
     slice('function scheduleCloudSave(', 'async function fetchCloudRowSummary('),
     slice('async function loadCloudSections(', 'function handleCloudAuthChange(')
   ].join('\n'), context);

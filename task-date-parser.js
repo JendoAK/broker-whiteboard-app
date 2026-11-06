@@ -4,8 +4,9 @@
   const zone = 'America/Anchorage';
   const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
   const months = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+  const dayFormatter = new Intl.DateTimeFormat('en-US', { timeZone: zone, year:'numeric',month:'2-digit',day:'2-digit' });
   function today(now = new Date()) {
-    const parts = new Intl.DateTimeFormat('en-US', { timeZone: zone, year:'numeric',month:'2-digit',day:'2-digit' }).formatToParts(now);
+    const parts = dayFormatter.formatToParts(now);
     const part = name => parts.find(p => p.type === name).value;
     return `${part('year')}-${part('month')}-${part('day')}`;
   }
