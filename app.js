@@ -2198,11 +2198,9 @@ function keepRecoveredSampleView(sectionKey,items,originalItems,saveRevision) {
   if((cloudSectionRevisions.get(sectionKey)||0)===saveRevision&&sameContent)section.set(items);
   else {
     if((cloudSectionRevisions.get(sectionKey)||0)===saveRevision)keepSampleMutationPending(sectionKey);
-    // New local edits stay authoritative in this open app. Only add cloud-only
-    // IDs that were absent from the saved snapshot and are still absent now.
-    const originalIds=new Set(originalItems.map(item=>String(item.id)));
-    const currentIds=new Set(current.map(item=>String(item.id)));
-    section.set([...current,...items.filter(item=>!originalIds.has(String(item.id))&&!currentIds.has(String(item.id)))]);
+    // Apply only the edits made after this upload started. Keep cloud changes
+    // to other fields instead of turning stale browser fields into new edits.
+    section.set(window.foodBrokerWorkSync.merge(originalItems,correctContactNames(current),items));
   }
   return Promise.resolve(writeCloudSectionsToLocalStorage([sectionKey])).then(() => renderAfterCloudSync());
 }
@@ -2211,70 +2209,117 @@ function isCloudSyncConflict(error,status) {
   return ["PT409","40001"].includes(error?.code) || Number(error?.status || status)===409;
 }
 
-async function saveDirectoryCloudPayload(client,user,payload,saveRevision,options={}) {
-  const sampleSection=sampleCloudSectionKeys.has(payload.record_key), collectionName=sampleSection?"samples":"contacts or operators";
-  if (!sampleSection) {
-    const section = getCloudConfig(payload.record_key), original = section.get();
-    const edits = taskOutbox.list(user.id, section.key);
-    const normalize = values => section.key === peopleContactsStorageKey ? values.map(normalizePeopleContact) : values.map(normalizeAddressBookEntry);
-    const saved = await window.foodBrokerWorkSync.saveDirectory(client, {
-      payload, edits, normalize, isCurrent: () => sampleSyncUserValid(user)
-    });
-    section.set(window.foodBrokerWorkSync.merge(original, section.get(), saved.value));
-    const remaining = taskOutbox.list(user.id, section.key).filter(entry => !edits.some(sent => sent.key === entry.key && sent.raw === entry.raw));
-    section.set(window.foodBrokerWorkSync.applyEdits(section.get(), remaining));
-    await writeCachedLocalSection(section.key, section.get());
-    await workCloudBases.remember(user.id, section.key, {...saved, journalVersion: 3});
-    rememberDirectoryCloudWriteBase(section.key, saved.version, user.id);
-    taskOutbox.acknowledge(edits);
-    renderAfterCloudSync();
+function sampleCloudBaseFallbackKey(userId,key) {
+  return 'broker-whiteboard-sample-base:'+encodeURIComponent(userId)+':'+key;
+}
+
+async function readSampleCloudBase(userId,key) {
+  try {
+    const saved=JSON.parse(localStorage.getItem(sampleCloudBaseFallbackKey(userId,key))||'null');
+    if(saved&&Array.isArray(saved.value)&&(saved.version===null||typeof saved.version==='string'))return saved;
+  } catch(error) { window.foodBrokerSaveStatus?.recordError(error,{operation:'Read fallback sample sync version'}); }
+  try {
+    const saved=await workCloudBases.get(userId,'sample-base:'+key);
+    if(saved&&Array.isArray(saved.value)&&(saved.version===null||typeof saved.version==='string'))return saved;
+  } catch(error) { window.foodBrokerSaveStatus?.recordError(error,{operation:'Read browser sample sync version'}); }
+  return undefined;
+}
+
+async function rememberSampleCloudBase(userId,key,snapshot) {
+  try { await workCloudBases.remember(userId,'sample-base:'+key,snapshot); }
+  catch(error) {
+    // Some browsers cannot open IndexedDB. The regular compressed browser
+    // store can still retain a confirmed version for safe recovery.
+    localStorage.setItem(sampleCloudBaseFallbackKey(userId,key),JSON.stringify(snapshot));
     return;
   }
+  try {localStorage.removeItem(sampleCloudBaseFallbackKey(userId,key));} catch(_) {}
+}
+
+async function saveSampleCloudPayload(client,user,payload,saveRevision,options={}) {
+  const key=payload.record_key,recovery=window.foodBrokerSampleSyncRecovery;
+  const valid=()=>sampleSyncUserValid(user);
+  const assertCurrent=()=>{if(!valid())throw {code:"DIRECTORY_ACCOUNT_CHANGED",message:"The signed-in account changed before sample sync finished."};};
+  assertCurrent();
+  if(!recovery)throw {code:"SAMPLE_RECOVERY_UNAVAILABLE",message:"The sample sync helper has not loaded. Keep this app open and export a backup before reopening it."};
+  const originalItems=payload.data.value,normalize=key===dotOrderStorageKey?normalizeDotOrder:normalizeSample;
+  validateSampleSyncIds(originalItems);
   const bases=getDirectoryCloudWriteBases(user.id);
-  let expected=bases.get(payload.record_key),recovered=null;
-  const originalItems=sampleSection?payload.data.value:null;
-  if(sampleSection){
-    if(!sampleSyncUserValid(user))throw {code:"DIRECTORY_ACCOUNT_CHANGED",message:"Sign in again before syncing sample changes."};
-    const recovery=window.foodBrokerSampleSyncRecovery;
-    if(!recovery)throw {code:"SAMPLE_RECOVERY_UNAVAILABLE",message:"The sample sync helper has not loaded. Keep this app open and export a backup before reopening it."};
-    let snapshot=sampleCloudSnapshots.get(payload.record_key);
-    if(!bases.has(payload.record_key)||!snapshot||snapshot.version!==expected){
-      const {data,error}=await client.from("team_app_records").select("record_key,data,updated_at")
-        .eq("record_type",teamCloudRecordType).eq("record_key",payload.record_key).maybeSingle();
-      if(!sampleSyncUserValid(user))throw {code:"DIRECTORY_ACCOUNT_CHANGED",message:"The signed-in account changed before sample sync finished."};
-      if(error)throw error;
-      snapshot=sampleSyncSnapshot(data);
+  let base=sampleCloudSnapshots.get(key),snapshot=base;
+  // Keep a full confirmed copy, not only its revision. After reopening, it
+  // distinguishes this browser's edits from changes made by a teammate.
+  if(!base){
+    const saved=await readSampleCloudBase(user.id,key);
+    assertCurrent();
+    if(saved&&Array.isArray(saved.value))base={version:saved.version,data:{value:saved.value}};
+  }
+  const read=async()=>{
+    const {data,error}=await client.from('team_app_records').select('record_key,data,updated_at')
+      .eq('record_type',teamCloudRecordType).eq('record_key',key).maybeSingle();
+    assertCurrent();if(error)throw error;
+    const current=sampleSyncSnapshot(data);validateSampleSyncIds(current.data.value);return current;
+  };
+  const prepare=async current=>{
+    if(base&&base.version===current.version){
+      const cloudById=new Map(current.data.value.map(item=>[String(item.id),item]));
+      return {items:originalItems.map(item=>recovery.mergeKnown(item,cloudById.get(String(item.id)),normalize))};
     }
-    const normalize=payload.record_key===dotOrderStorageKey?normalizeDotOrder:normalizeSample;
-    validateSampleSyncIds(originalItems);
-    validateSampleSyncIds(snapshot.data.value);
-    if(!bases.has(payload.record_key)||snapshot.version!==expected){
-      recovered=await recovery.reconcile({local:originalItems,remote:snapshot.data.value,normalize,
-        stamp:record=>stampSharedRecord(record,"Updated"),sectionKey:payload.record_key,
-        label:payload.record_key===dotOrderStorageKey?"DOT sample orders":"samples",allowReview:Boolean(options.reviewSamples),
-        valid:()=>sampleSyncUserValid(user),onBackup:()=>exportBackup(),
-        onReview:()=>saveCloudSections([payload.record_key],{force:true,reviewSamples:true})});
-      if(!sampleSyncUserValid(user))throw {code:"DIRECTORY_ACCOUNT_CHANGED",message:"The signed-in account changed before sample review finished."};
-      if(options.reviewSamples&&((cloudSectionRevisions.get(payload.record_key)||0)!==saveRevision||JSON.stringify(correctContactNames(getCloudConfig(payload.record_key).get()))!==JSON.stringify(originalItems)))
-        throw {code:"SAMPLE_REVIEW_STALE",message:"The browser sample list changed during review. Your current entries are kept; review the latest copies again."};
-      expected=snapshot.version;
-    }
-    const cloudById=new Map(snapshot.data.value.map(item=>[String(item.id),item]));
-    const items=recovered?recovered.items:originalItems.map(item=>recovery.mergeKnown(item,cloudById.get(String(item.id)),normalize));
-    payload.data={...snapshot.data,...payload.data,value:items,
+    return await recovery.reconcile({local:originalItems,remote:current.data.value,base:base?.data.value,normalize,
+      stamp:record=>stampSharedRecord(record,'Updated'),sectionKey:key,
+      label:key===dotOrderStorageKey?'DOT sample orders':'samples',allowReview:Boolean(options.reviewSamples),
+      valid,onBackup:()=>exportBackup(),onReview:()=>saveCloudSections([key],{force:true,reviewSamples:true})});
+  };
+  if(!snapshot||!bases.has(key)||snapshot.version!==bases.get(key))snapshot=await read();
+  if(base)validateSampleSyncIds(base.data.value);
+  validateSampleSyncIds(snapshot.data.value);
+  let lastConflict;
+  for(let attempt=0;attempt<3;attempt++){
+    assertCurrent();
+    const recovered=await prepare(snapshot);assertCurrent();
+    if(options.reviewSamples&&((cloudSectionRevisions.get(key)||0)!==saveRevision||JSON.stringify(correctContactNames(getCloudConfig(key).get()))!==JSON.stringify(originalItems)))
+      throw {code:'SAMPLE_REVIEW_STALE',message:'The browser sample list changed during review. Your current entries are kept; review the latest copies again.'};
+    const value={...snapshot.data,...payload.data,value:recovered.items,
       migratedTrackerOwners:[...new Set([...(snapshot.data.migratedTrackerOwners||[]),...(payload.data.migratedTrackerOwners||[])])]};
+    const {data,error,status}=await client.rpc('save_team_sample_section',{section_key:key,section_value:value,expected_updated_at:snapshot.version});
+    assertCurrent();
+    if(error){
+      if(!isCloudSyncConflict(error,status))throw {...error,status:error.status||status};
+      lastConflict={...error,status:error.status||status};
+      if(attempt<2)snapshot=await read();
+      continue;
+    }
+    if(typeof data?.updatedAt!=='string'||!data.updatedAt)throw {code:'DIRECTORY_VERSION_UNCONFIRMED',message:'Could not confirm the saved sample version. Your browser copy has been kept.'};
+    const saved={data:{...value,directoryRevision:data.updatedAt},version:data.updatedAt};
+    sampleCloudSnapshots.set(key,saved);
+    rememberDirectoryCloudWriteBase(key,saved.version,user.id);
+    await keepRecoveredSampleView(key,recovered.items,originalItems,saveRevision);
+    assertCurrent();
+    await rememberSampleCloudBase(user.id,key,{version:saved.version,value:recovered.items});
+    assertCurrent();
+    recovery.clearSection(key);
+    return;
   }
-  else if(!bases.has(payload.record_key))throw {name:"DirectorySyncConflictError",code:"DIRECTORY_BASE_REQUIRED",message:"Could not confirm the cloud version for "+collectionName+". Your current entries are kept in this open app."};
-  if(getCloudUser()?.id!==user.id)throw {code:"DIRECTORY_ACCOUNT_CHANGED",message:"Sign in again before syncing "+collectionName+" changes."};
-  const {data,error,status}=await client.rpc(sampleSection?"save_team_sample_section":"save_team_directory_section",{section_key:payload.record_key,section_value:payload.data,expected_updated_at:expected});
-  if(sampleSection&&!sampleSyncUserValid(user))throw {code:"DIRECTORY_ACCOUNT_CHANGED",message:"The signed-in account changed before sample sync finished."};
-  if(error){const conflict=isCloudSyncConflict(error,status);if(sampleSection&&conflict)sampleCloudSnapshots.delete(payload.record_key);throw {name:conflict?"DirectorySyncConflictError":error.name,code:error.code,status:error.status || status,message:conflict?"A teammate changed "+collectionName+" while you were editing. Your current entries are kept in this open app and will be checked again before syncing.":error.message};}
-  if(typeof data?.updatedAt!=="string" || !data.updatedAt || !rememberDirectoryCloudWriteBase(payload.record_key,data.updatedAt,user.id))throw {code:"DIRECTORY_VERSION_UNCONFIRMED",message:"Could not confirm the saved "+collectionName+" version. Your browser copy has been kept."};
-  if(sampleSection){
-    sampleCloudSnapshots.set(payload.record_key,{data:payload.data,version:data.updatedAt});
-    if(recovered)await keepRecoveredSampleView(payload.record_key,recovered.items,originalItems,saveRevision);
-    window.foodBrokerSampleSyncRecovery?.clearSection(payload.record_key);
-  }
+  // Retain the confirmed base for the next attempt; replacing it with a newer
+  // cloud snapshot would make old browser fields look like intentional edits.
+  throw {...lastConflict,name:'DirectorySyncConflictError',message:'Samples changed repeatedly during this save. Your entries are kept and will be compared with the latest cloud copy on retry.'};
+}
+
+async function saveDirectoryCloudPayload(client,user,payload,saveRevision,options={}) {
+  if(sampleCloudSectionKeys.has(payload.record_key))return await saveSampleCloudPayload(client,user,payload,saveRevision,options);
+  const section = getCloudConfig(payload.record_key), original = section.get();
+  const edits = taskOutbox.list(user.id, section.key);
+  const normalize = values => section.key === peopleContactsStorageKey ? values.map(normalizePeopleContact) : values.map(normalizeAddressBookEntry);
+  const saved = await window.foodBrokerWorkSync.saveDirectory(client, {
+    payload, edits, normalize, isCurrent: () => sampleSyncUserValid(user)
+  });
+  section.set(window.foodBrokerWorkSync.merge(original, section.get(), saved.value));
+  const remaining = taskOutbox.list(user.id, section.key).filter(entry => !edits.some(sent => sent.key === entry.key && sent.raw === entry.raw));
+  section.set(window.foodBrokerWorkSync.applyEdits(section.get(), remaining));
+  await writeCachedLocalSection(section.key, section.get());
+  await workCloudBases.remember(user.id, section.key, {...saved, journalVersion: 3});
+  rememberDirectoryCloudWriteBase(section.key, saved.version, user.id);
+  taskOutbox.acknowledge(edits);
+  renderAfterCloudSync();
 }
 
 function mergeCloudSectionValues(localValue, cloudValue) {
@@ -2825,8 +2870,11 @@ async function loadCloudSections(options = {}) {
             if (edits.length || pendingCloudSections.has(section.key)) localUploadKeys.push(section.key);
             return;
           }
-          if(sampleCloudSectionKeys.has(section.key))sampleCloudSnapshots.set(section.key,sampleSyncSnapshot(teamRowMap.get(section.key)));
+          // Pending samples must keep the copy that preceded the local edits.
           if(pendingCloudSections.has(section.key)){localUploadKeys.push(section.key);return;}
+          const sampleSnapshot=sampleSyncSnapshot(teamRowMap.get(section.key));
+          sampleCloudSnapshots.set(section.key,sampleSnapshot);
+          workBasesToRemember.push([section,{version:sampleSnapshot.version,value:sampleSnapshot.data.value}]);
           const remote=teamRowMap.get(section.key);
           if(!cloudResult.found){
             const wasPresent=directoryBases.has(section.key) && directoryBases.get(section.key)!==null;
@@ -2890,7 +2938,10 @@ async function loadCloudSections(options = {}) {
         return false;
       }
       for (const [section, snapshot] of workBasesToRemember) {
-        if (!cacheFailures?.has(section.localKey || section.key)) await workCloudBases.remember(user.id, section.key, snapshot);
+        if (!cacheFailures?.has(section.localKey || section.key)) {
+          if(sampleCloudSectionKeys.has(section.key))await rememberSampleCloudBase(user.id,section.key,snapshot);
+          else await workCloudBases.remember(user.id,section.key,snapshot);
+        }
       }
       if (cacheFailures?.size) throw new Error("Cloud changes could not be stored in this browser. Export a backup and check browser storage space.");
       renderAfterCloudSync();

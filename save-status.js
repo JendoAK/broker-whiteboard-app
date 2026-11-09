@@ -5,6 +5,7 @@
   const DB_NAME = "food-broker-save-diagnostics";
   const STORE_NAME = "save-errors";
   const HISTORY_KEY = "recent";
+  const FALLBACK_HISTORY_KEY = "broker-whiteboard-save-diagnostics-v1";
   const state = { pending: 0, syncing: 0, confirmed: false, hasUser: false, ready: false, localFailure: false, syncFailure: false, touched: false };
   let errors = [];
   let database = null;
@@ -108,11 +109,16 @@
 
   const initialized = openDatabase().then(async function (db) {
     database = db;
-    if (db) {
-      const restored = await readHistory(db);
+    {
+      let restored = db ? await readHistory(db) : { entries: [], success: false };
+      // Keep the same sanitized diagnostic fields if IndexedDB is unavailable.
+      try {
+        const fallback = JSON.parse(localStorage.getItem(FALLBACK_HISTORY_KEY) || '[]');
+        if(Array.isArray(fallback))restored={entries:restored.entries.concat(fallback),success:restored.success||fallback.length>0};
+      } catch (_) {}
       const saved = restored.entries.map(restoredDiagnostic).filter(Boolean);
       const ids = new Set(errors.map(function (entry) { return entry.id; }));
-      errors = saved.filter(function (entry) { return !ids.has(entry.id); }).concat(errors)
+      errors = saved.filter(function (entry) { if(ids.has(entry.id))return false;ids.add(entry.id);return true; }).concat(errors)
         .sort(function (a, b) { return a.timestamp.localeCompare(b.timestamp); }).slice(-MAX_ERRORS);
       historyDurable = restored.success && historyRevision === 0;
     }
@@ -121,15 +127,20 @@
 
   function storeHistory() {
     persistence = persistence.then(function () { return initialized; }).then(function () {
-      if (!database) return;
+      const keepFallback = function () {
+        try {localStorage.setItem(FALLBACK_HISTORY_KEY, JSON.stringify(errors.slice(-MAX_ERRORS)));historyDurable=true;}
+        catch (_) {historyDurable=false;}
+        render();
+      };
+      if (!database) {keepFallback();return;}
       return new Promise(function (resolve) {
         const revision = historyRevision;
         try {
           const transaction = database.transaction(STORE_NAME, "readwrite");
           transaction.objectStore(STORE_NAME).put(errors.slice(-MAX_ERRORS), HISTORY_KEY);
-          transaction.oncomplete = function () { historyDurable = revision === historyRevision; render(); resolve(); };
-          transaction.onerror = transaction.onabort = function () { historyDurable = false; render(); resolve(); };
-        } catch (_) { historyDurable = false; render(); resolve(); }
+          transaction.oncomplete = function () { historyDurable = revision === historyRevision;try {localStorage.removeItem(FALLBACK_HISTORY_KEY);}catch(_){}render(); resolve(); };
+          transaction.onerror = transaction.onabort = function () { keepFallback();resolve(); };
+        } catch (_) { keepFallback();resolve(); }
       });
     }).catch(function () {});
   }
