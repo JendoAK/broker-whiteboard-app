@@ -3524,7 +3524,7 @@ function createCard(card) {
   });
   article.querySelector(".account-link").addEventListener("click", (event) => {
     event.stopPropagation();
-    openAccountWindow(card);
+    openAccountWindow(card, { singleLead: true });
   });
   article.querySelector(".archive-card").addEventListener("click", (event) => {
     event.stopPropagation();
@@ -9197,15 +9197,20 @@ function renderTrash() {
   });
 }
 
-function openAccountWindow(card) {
-  const accountName = card.account || "Account";
-  const matchingCards = cards
+function openAccountWindow(card, options = {}) {
+  const selected = cards.find((item) => item.id === card?.id && !item.deletedAt);
+  if (!selected) return;
+  const accountName = selected.account || "Account";
+  const matchingCards = options.singleLead ? [selected] : cards
     .filter((item) => !item.deletedAt && item.account.trim().toLowerCase() === accountName.trim().toLowerCase())
     .sort(compareCards);
   const accountNumber = matchingCards.find((item) => item.accountNumber)?.accountNumber || "";
 
+  elements.accountDialog.querySelector(".eyebrow").textContent = options.singleLead ? "Lead details" : "Account window";
   elements.accountDialogTitle.textContent = accountName;
-  elements.accountDialogSubtitle.textContent = accountNumber
+  elements.accountDialogSubtitle.textContent = options.singleLead
+    ? [normalizeStatus(selected.status), accountNumber ? `Account # ${accountNumber}` : ""].filter(Boolean).join(" · ")
+    : accountNumber
     ? `Account # ${accountNumber} - ${matchingCards.length} note${matchingCards.length === 1 ? "" : "s"}`
     : `${matchingCards.length} note${matchingCards.length === 1 ? "" : "s"}`;
 

@@ -113,7 +113,7 @@
       <dl class="lead-card-facts"><div>${icon('box-seam')}<dt>${products.length>1?'Products':'Product'}</dt><dd>${escapeHtml(productText||'No product added')}</dd></div><div>${icon('building')}<dt>Vendor</dt><dd>${escapeHtml(vendors.join(', ')||'No vendor selected')}</dd></div><div>${icon('truck')}<dt>Distributor</dt><dd>${escapeHtml(card.distributor||'Not selected')}</dd></div>${card.salesRep||card.syscoSalesRep?`<div>${icon('people')}<dt>Rep</dt><dd>${escapeHtml([card.salesRep,card.syscoSalesRep].filter(Boolean).join(' · '))}</dd></div>`:''}</dl>
       <div class="lead-card-note">${icon('chat')}<p>${escapeHtml(note||'No notes yet.')}</p></div></div>
       <footer class="lead-card-footer ${isOverdue(card)?'is-overdue':''}">${icon('calendar-event')}<span><strong>Follow-up:</strong> ${escapeHtml(dueLabel(card))}</span>${card.attachments?.length?`<span class="lead-file-count" title="${escapeAttribute(card.attachments.length+' attachments')}">${icon('paperclip')}${card.attachments.length}</span>`:''}</footer><span class="lead-card-feedback" data-lead-feedback="${escapeAttribute(card.id)}" role="status"></span><img class="lead-paper-fold" src="lead-assets/paper-fold.png" width="28" height="28" alt="" aria-hidden="true">`;
-    const open=()=>{closeMenus();const latest=cards.find(item=>item.id===card.id&&!item.deletedAt);if(latest)openAccountWindow(latest);};
+    const open=()=>{closeMenus();const latest=cards.find(item=>item.id===card.id&&!item.deletedAt);if(latest)openAccountWindow(latest,{singleLead:true});};
     article.querySelector('.lead-card-open').onclick=open;
     article.addEventListener('click',event=>{
       if(event.target.closest('button,select,input,a,textarea,.lead-card-menu'))return;
