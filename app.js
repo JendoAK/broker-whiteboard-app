@@ -2269,7 +2269,18 @@ async function saveSampleCloudPayload(client,user,payload,saveRevision,options={
       label:key===dotOrderStorageKey?'DOT sample orders':'samples',allowReview:Boolean(options.reviewSamples),
       valid,onBackup:()=>exportBackup(),onReview:()=>saveCloudSections([key],{force:true,reviewSamples:true})});
   };
-  if(!snapshot||!bases.has(key)||snapshot.version!==bases.get(key))snapshot=await read();
+  const finish=async(items,data,version)=>{
+    sampleCloudSnapshots.set(key,{data:{...data,value:items,...(version?{directoryRevision:version}:{})},version});
+    rememberDirectoryCloudWriteBase(key,version,user.id);
+    await keepRecoveredSampleView(key,items,originalItems,saveRevision);
+    assertCurrent();
+    await rememberSampleCloudBase(user.id,key,{version,value:items});
+    assertCurrent();
+    recovery.clearSection(key);
+  };
+  // Check the current cloud copy even when this browser remembers a version.
+  // Another open app may have saved since that version was confirmed.
+  snapshot=await read();
   if(base)validateSampleSyncIds(base.data.value);
   validateSampleSyncIds(snapshot.data.value);
   let lastConflict;
@@ -2280,7 +2291,17 @@ async function saveSampleCloudPayload(client,user,payload,saveRevision,options={
       throw {code:'SAMPLE_REVIEW_STALE',message:'The browser sample list changed during review. Your current entries are kept; review the latest copies again.'};
     const value={...snapshot.data,...payload.data,value:recovered.items,
       migratedTrackerOwners:[...new Set([...(snapshot.data.migratedTrackerOwners||[]),...(payload.data.migratedTrackerOwners||[])])]};
-    const {data,error,status}=await client.rpc('save_team_sample_section',{section_key:key,section_value:value,expected_updated_at:snapshot.version});
+    const sameOwners=JSON.stringify([...new Set(snapshot.data.migratedTrackerOwners||[])].sort())===JSON.stringify([...new Set(value.migratedTrackerOwners)].sort());
+    if(sameOwners&&recovery.sameItems(recovered.items,snapshot.data.value,normalize)){
+      // A pending retry, another window, or a refresh is not a new edit. Do not
+      // rotate the collection revision and make other users' saves conflict.
+      await finish(snapshot.data.value,snapshot.data,snapshot.version);
+      return;
+    }
+    const request=client.rpc('save_team_sample_section',{section_key:key,section_value:value,expected_updated_at:snapshot.version});
+    // The SDK otherwise retries HTTP 409 with the same stale version. This
+    // writer owns the bounded retries and must re-read before each attempt.
+    const {data,error,status}=await (typeof request.retry==='function'?request.retry(false):request);
     assertCurrent();
     if(error){
       if(!isCloudSyncConflict(error,status))throw {...error,status:error.status||status};
@@ -2289,14 +2310,7 @@ async function saveSampleCloudPayload(client,user,payload,saveRevision,options={
       continue;
     }
     if(typeof data?.updatedAt!=='string'||!data.updatedAt)throw {code:'DIRECTORY_VERSION_UNCONFIRMED',message:'Could not confirm the saved sample version. Your browser copy has been kept.'};
-    const saved={data:{...value,directoryRevision:data.updatedAt},version:data.updatedAt};
-    sampleCloudSnapshots.set(key,saved);
-    rememberDirectoryCloudWriteBase(key,saved.version,user.id);
-    await keepRecoveredSampleView(key,recovered.items,originalItems,saveRevision);
-    assertCurrent();
-    await rememberSampleCloudBase(user.id,key,{version:saved.version,value:recovered.items});
-    assertCurrent();
-    recovery.clearSection(key);
+    await finish(recovered.items,value,data.updatedAt);
     return;
   }
   // Retain the confirmed base for the next attempt; replacing it with a newer

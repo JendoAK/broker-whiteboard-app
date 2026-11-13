@@ -10,6 +10,10 @@
   function stable(value){if(Array.isArray(value))return "["+value.map(stable).join(",")+"]";if(value&&typeof value==="object")return "{"+Object.keys(value).sort().map(k=>JSON.stringify(k)+":"+stable(value[k])).join(",")+"}";return JSON.stringify(value);}
   function attachment(file){return {name:text(file?.name||"Attachment").trim(),type:text(file?.type||"application/octet-stream").trim(),size:Number(file?.size)||0,data:text(file?.data),storageId:text(file?.storageId)};}
   function projection(item,normalize){const n=normalize(item),out={};for(const field of strings)out[field]=text(n[field]);for(const field of flags)out[field]=Boolean(n[field]);out.archived=Boolean(n.archivedAt);out.attachments=(Array.isArray(n.attachments)?n.attachments:[]).map(attachment);return out;}
+  function sameItems(left,right,normalize){
+    const comparable=items=>[...keyed(items)].sort(([a],[b])=>a.localeCompare(b)).map(([id,item])=>({id,...projection(item,normalize)}));
+    return stable(comparable(left))===stable(comparable(right));
+  }
   function keyed(items){if(!Array.isArray(items))throw error("SAMPLE_REVIEW_REQUIRED","The sample list needs review before it can sync.");const result=new Map();for(const item of items){if(!item||typeof item!=="object"||Array.isArray(item)||!text(item.id).trim()||result.has(text(item.id)))throw error("SAMPLE_REVIEW_REQUIRED","A blank or repeated sample identifier needs review before syncing.");result.set(text(item.id),item);}return result;}
   function plan(local,remote,normalize){const browser=keyed(local),cloud=keyed(remote),conflicts=[],additions=[],cloudOnlyIds=[];for(const [id,item]of browser){const stored=cloud.get(id);if(!stored)additions.push({id,local:item});else {const a=projection(item,normalize),b=projection(stored,normalize);if(stable(a)!==stable(b))conflicts.push({id,local:item,remote:stored,a,b});}}for(const id of cloud.keys())if(!browser.has(id))cloudOnlyIds.push(id);return{browser,cloud,conflicts,additions,cloudOnlyIds};}
   // Compare edits with the copy this browser actually loaded. A different
@@ -80,5 +84,5 @@
   async function reconcile(options){if(!options||typeof options.valid!=="function"||!options.valid())throw error("SAMPLE_REVIEW_CANCELLED","The workspace changed before sample sync.");const p=Array.isArray(options.base)?knownPlan(options.local,options.remote,options.base,options.normalize):plan(options.local,options.remote,options.normalize);if(!p.conflicts.length&&!p.additions.length)return{items:[...p.cloud.values()],cloudOnlyIds:p.cloudOnlyIds};state.sections.set(options.sectionKey,{valid:options.valid,onReview:options.onReview,onBackup:options.onBackup});renderBanner();if(!options.allowReview)throw error("SAMPLE_REVIEW_REQUIRED","Review browser and cloud sample details before syncing. Your current entries have been kept.");return review(options,p);}
   for(const name of ["foodbrokerbase:auth-checking","foodbrokerbase:workspace-leaving"])window.addEventListener(name,clear,true);
   window.addEventListener("foodbrokerbase:auth",()=>{if([...state.sections.values()].some(item=>!item.valid())||state.dialog&&!state.dialog.valid())clear();},true);
-  window.foodBrokerSampleSyncRecovery=Object.freeze({reconcile,mergeKnown,clear,clearSection,hasReview:()=>Boolean(state.sections.size||state.dialog)});
+  window.foodBrokerSampleSyncRecovery=Object.freeze({reconcile,mergeKnown,sameItems,clear,clearSection,hasReview:()=>Boolean(state.sections.size||state.dialog)});
 })();
