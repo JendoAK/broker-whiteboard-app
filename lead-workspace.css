@@ -30,12 +30,54 @@
 .lead-filter-row .lead-date-filters{max-width:100%}
 .lead-status-targets{gap:5px;max-width:100%}
 .lead-status-targets span{font-size:12px;font-weight:700;color:#52573e}
-.lead-status-targets button{font:inherit;font-size:12px;line-height:1.25;min-height:32px;padding:6px 9px;color:#324132;background:#f7f8ec;border:1px solid #aeb69a;border-radius:6px;box-shadow:none;cursor:pointer}
-.lead-status-targets button:hover,.lead-status-targets button[aria-pressed=true]{background:#e2e9ce;border-color:#7d8f66}
-.lead-status-targets button[aria-pressed=true]{font-weight:700}
-.lead-dragging .lead-status-targets button{border-style:dashed}
-.lead-dragging .lead-status-targets .lead-drop-over{background:#314e2a;border:1px solid #263e21;color:#fff;outline:2px solid #314e2a;outline-offset:1px}
-.lead-card.lead-card-dragging{opacity:.55}
+.lead-status-targets button {
+  font: 700 12px/1.25 Arial, sans-serif;
+  min-height: 32px;
+  padding: 6px 9px;
+  color: #fff;
+  background: var(--stage-fill, #475569);
+  border: 1px solid rgb(0 0 0 / 20%);
+  border-radius: 6px;
+  box-shadow: 0 1px 1px #1c291c28;
+  cursor: pointer;
+}
+.lead-status-targets [data-lead-drop-status="New Lead"] { --stage-fill: #2464a3; }
+.lead-status-targets [data-lead-drop-status="Samples Requested"] { --stage-fill: #79459b; }
+.lead-status-targets [data-lead-drop-status="Ready to Show / Send Out"] { --stage-fill: #086b71; }
+.lead-status-targets [data-lead-drop-status="Showed / Waiting on Feedback"] { --stage-fill: #905117; }
+.lead-status-targets [data-lead-drop-status="Follow Up"] { --stage-fill: #a03d59; }
+.lead-status-targets [data-lead-drop-status="Done"] { --stage-fill: #32703f; }
+.lead-status-targets button:hover { text-decoration: underline; }
+.lead-status-targets button[aria-pressed=true] { box-shadow: inset 0 0 0 2px #fff; border-color: #1c3023; }
+.lead-dragging .lead-status-targets .lead-drop-over {
+  outline: 3px solid #222e28;
+  outline-offset: 2px;
+  box-shadow: inset 0 0 0 2px #fff;
+}
+.lead-card.lead-card-dragging { border-color: #885300; box-shadow: inset 0 0 0 2px #c98710; }
+.lead-drag-preview {
+  position: fixed;
+  inset: 0 auto auto 0;
+  z-index: 10000;
+  pointer-events: none;
+  user-select: none;
+  width: min(232px, calc(100vw - 16px));
+  overflow: hidden;
+  border: 2px solid #694307;
+  border-radius: 8px;
+  background: #ffe294;
+  box-shadow: 0 5px 12px #2c230c55;
+  color: #291e0d;
+  font: 14px/1.3 Arial, sans-serif;
+}
+.lead-drag-preview strong, .lead-drag-preview span {
+  display: block;
+  padding: 7px 10px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.lead-drag-preview strong { background: #f6b934; border-bottom: 1px solid #bd810e; font-size: 16px; }
 .lead-card img{-webkit-user-drag:none}
 .lead-dragging .lead-card{user-select:none}
 .lead-search-toolbar{display:flex;align-items:center;gap:10px;min-width:0}

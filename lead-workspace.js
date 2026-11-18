@@ -69,6 +69,9 @@
     statusTargets.append(button);
   }
   let draggingCard = null, highlightedTarget = null, touchHold = null;
+  let dragPreview = null;
+  const emptyDragImage = document.createElement('canvas');
+  emptyDragImage.width = emptyDragImage.height = 1;
   const dragBlockers = 'button:not(.lead-card-open), select, input, textarea, a, .lead-card-menu';
   function highlightDropTarget(target) {
     if (highlightedTarget === target) return;
@@ -76,17 +79,38 @@
     target?.classList.add('lead-drop-over');
     highlightedTarget = target;
   }
-  function startCardDrag(card) {
+  function positionDragPreview(x, y) {
+    if (!dragPreview) return;
+    const gap = 16;
+    dragPreview.hidden = false;
+    const left = Math.max(4, Math.min(x + gap, window.innerWidth - dragPreview.offsetWidth - 4));
+    const top = y + gap + dragPreview.offsetHeight <= window.innerHeight
+      ? y + gap : Math.max(4, y - gap - dragPreview.offsetHeight);
+    dragPreview.style.transform = `translate(${left}px, ${top}px)`;
+  }
+  function startCardDrag(card, x, y) {
     closeMenus();
     draggingCard = card;
     card.classList.add('lead-card-dragging');
     workspace.classList.add('lead-dragging');
+    dragPreview = document.createElement('div');
+    dragPreview.className = 'lead-drag-preview';
+    dragPreview.setAttribute('aria-hidden', 'true');
+    const title = document.createElement('strong');
+    title.textContent = card.querySelector('.lead-card-open').textContent;
+    const details = document.createElement('span');
+    details.textContent = card.querySelector('.lead-card-facts dd').textContent;
+    dragPreview.append(title, details);
+    document.body.append(dragPreview);
+    positionDragPreview(x, y);
   }
   function endCardDrag() {
     clearTimeout(touchHold?.timer);
     touchHold = null;
     draggingCard?.classList.remove('lead-card-dragging');
     draggingCard = null;
+    dragPreview?.remove();
+    dragPreview = null;
     highlightDropTarget(null);
     workspace.classList.remove('lead-dragging');
   }
@@ -102,9 +126,15 @@
   board.addEventListener('dragstart', event => {
     const card = event.target.closest('.lead-card');
     if (!card || !card.draggable || event.target !== card) { event.preventDefault(); return; }
-    startCardDrag(card);
+    startCardDrag(card, event.clientX, event.clientY);
+    // The browser fades its native drag image. Draw the moving card in the page at full opacity.
+    event.dataTransfer.setDragImage(emptyDragImage, 0, 0);
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('application/x-foodbroker-lead', card.dataset.leadId);
+  });
+  document.addEventListener('dragover', event => positionDragPreview(event.clientX, event.clientY));
+  document.addEventListener('dragleave', event => {
+    if (dragPreview && !event.relatedTarget) dragPreview.hidden = true;
   });
   statusTargets.addEventListener('dragover', event => {
     const target = event.target.closest('[data-lead-drop-status]');
@@ -129,7 +159,7 @@
     const card = event.target.closest('.lead-card');
     if (!card || event.touches.length !== 1 || event.target.closest(dragBlockers)) return;
     const first = event.touches[0];
-    touchHold = {x:first.clientX, y:first.clientY, moved:false, timer:setTimeout(() => startCardDrag(card), 400)};
+    touchHold = {x:first.clientX, y:first.clientY, moved:false, timer:setTimeout(() => startCardDrag(card, first.clientX, first.clientY), 400)};
   }, {passive:true});
   board.addEventListener('touchmove', event => {
     if (!touchHold) return;
@@ -138,6 +168,7 @@
     if (Math.hypot(clientX - touchHold.x, clientY - touchHold.y) > 8) touchHold.moved = true;
     if (!draggingCard) { if (touchHold.moved) endCardDrag(); return; }
     event.preventDefault();
+    positionDragPreview(clientX, clientY);
     highlightDropTarget(document.elementFromPoint(clientX, clientY)?.closest('[data-lead-drop-status]'));
   }, {passive:false});
   board.addEventListener('touchend', event => {
