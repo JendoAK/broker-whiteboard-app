@@ -82,13 +82,37 @@
       if (!exclusions.has(source)) exclusions.set(source,new Set());
       return exclusions.get(source);
     };
+    function shownEventProducts() {
+      const normalize = value => value.normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+      const words = normalize($("psPrintProductSearch").value).trim().split(/\s+/).filter(Boolean);
+      return available.filter(product => {
+        const text = normalize([product.description, product.vendor, product.brandName, product.distributor,
+          product.packaging, product.manufacturerNumber, product.apn, product.supc, product.gtin, host.itemNumber(product)].join(" "));
+        return words.every(word => text.includes(word));
+      });
+    }
     function renderSelection() {
-      const query = $("psPrintProductSearch").value.normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim(), omitted = excluded();
-      const rows = available.filter(p=>[p.description,p.vendor,p.brandName,p.manufacturerNumber,p.apn,p.supc,host.itemNumber(p)].join(" ").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().includes(query));
-      $("psPrintProductList").innerHTML = rows.map(p=>'<label class="ps-print-product-row"><input type="checkbox" data-print-product="'+esc(productKey(p))+'"'+(!omitted.has(productKey(p))?' checked':'')+' /><span><strong>'+esc(p.description || "Untitled product")+'</strong><small>'+esc([p.vendor,p.brandName,p.apn && "APN "+p.apn,p.supc && "SUPC "+p.supc,p.manufacturerNumber && "MF# "+p.manufacturerNumber,host.itemNumber(p) && "Item# "+host.itemNumber(p)].filter(Boolean).join(" · "))+'</small></span></label>').join("") || '<p class="ps-empty">'+(available.length?'No products match this search.':'Choose products or an event above.')+'</p>';
-      $("psPrintProductCount").textContent = products.length+" of "+available.length+" selected";
-      $("psPrintSelectAll").disabled = !available.length; $("psPrintSelectNone").disabled = !products.length;
       updateQuantities();
+      if (!source.startsWith("event:")) return;
+      const rows = shownEventProducts(), omitted = excluded(), list = $("psPrintProductList");
+      const focusedKey = document.activeElement?.dataset.printProduct;
+      list.innerHTML = rows.map(product => {
+        const key = productKey(product);
+        const details = [...new Set([product.vendor, product.brandName, product.distributor, product.packaging].filter(Boolean))].join(" · ");
+        const numbers = [["MF#",product.manufacturerNumber], ["APN",product.apn], ["SUPC",product.supc], ["Item#",host.itemNumber(product)]]
+          .filter(([,value]) => value).map(([label,value]) => label+" "+value).join(" · ");
+        return '<label class="ps-print-product-row pc-product-row"><input type="checkbox" data-print-product="'+esc(key)+'"'+(omitted.has(key)?'':' checked')+' />'
+          +'<span class="pc-product-info"><strong>'+esc(product.description || "Untitled product")+'</strong>'
+          +(details?'<small>'+esc(details)+'</small>':'')+(numbers?'<small class="pc-product-codes">'+esc(numbers)+'</small>':'')+'</span></label>';
+      }).join("") || '<p class="ps-empty">'+(available.length?'No event products match your search.':'This event has no products to print.')+'</p>';
+      if (focusedKey) list.querySelector('[data-print-product="'+CSS.escape(focusedKey)+'"]')?.focus({preventScroll:true});
+      const filtered = rows.length < available.length;
+      $("psPrintProductSearch").closest(".ps-print-product-toolbar").hidden = !available.length;
+      $("psPrintProductCount").textContent = products.length+" of "+available.length+" selected"+(filtered?" · "+rows.length+" shown":"");
+      $("psPrintSelectAll").textContent = filtered ? "Select "+rows.length+" shown" : "Select all "+rows.length;
+      $("psPrintSelectNone").textContent = filtered ? "Clear shown" : "Clear all";
+      $("psPrintSelectAll").disabled = !rows.some(p => omitted.has(productKey(p)));
+      $("psPrintSelectNone").disabled = !rows.some(p => !omitted.has(productKey(p)));
     }
     function updateQuantities() {
       const counts = products.map(p=>draftFor(p).copies);
@@ -490,8 +514,17 @@
       chooseProducts(); requestPreview();
     });
     $("psPrintProductSearch").addEventListener("input",()=>{if(host.allowed())renderSelection();});
-    $("psPrintSelectAll").addEventListener("click",()=>{if(!host.allowed())return;excluded().clear();chooseProducts();requestPreview();});
-    $("psPrintSelectNone").addEventListener("click",()=>{if(!host.allowed())return;available.forEach(p=>excluded().add(productKey(p)));chooseProducts();requestPreview();});
+    function selectShownProducts(checked) {
+      if (!host.allowed() || !source.startsWith("event:")) return;
+      const omitted = excluded();
+      for (const p of shownEventProducts()) {
+        if (checked) omitted.delete(productKey(p));
+        else omitted.add(productKey(p));
+      }
+      chooseProducts(); requestPreview();
+    }
+    $("psPrintSelectAll").addEventListener("click",()=>selectShownProducts(true));
+    $("psPrintSelectNone").addEventListener("click",()=>selectShownProducts(false));
     for (const [id,copies] of [["psBagOneEach",1],["psBagFullSheet",10]]) $(id).addEventListener("click",()=>{
       if(!host.allowed())return;products.forEach(p=>{draftFor(p).copies=copies;});requestPreview();loadEditor();updateQuantities();
     });
@@ -581,5 +614,58 @@
       render();
     }};
   }
-  window.foodBrokerSupportLabels = Object.freeze({create,isPrintableEvent,printableEvents,createCatalogPicker});
+  function createEventPicker(panel) {
+    const select = panel.querySelector(".pc-event-field select");
+    const choices = panel.querySelector(".pc-event-choices");
+    const empty = panel.querySelector(".pc-event-no-options");
+    const placeholder = select.options[0], prefix = placeholder.value;
+    const formatter = new Intl.DateTimeFormat(undefined, {month:"short", day:"numeric", year:"numeric"});
+    let signature;
+    choices.addEventListener("click", event => {
+      const button = event.target.closest(".pc-event-choice");
+      if (!button || select.value === button.dataset.eventValue) return;
+      select.value = button.dataset.eventValue;
+      select.dispatchEvent(new Event("change", {bubbles:true}));
+    });
+    return (events, selectedValue) => {
+      const rows = events.map(event => [prefix + event.id, event.name || "Event",
+        eventDay(event.startDate) || eventDay(event.date) || eventDay(event.endDate)]);
+      const next = JSON.stringify(rows);
+      const focused = choices.contains(document.activeElement) ? document.activeElement.dataset.eventValue : undefined;
+      if (next !== signature) {
+        const buttons = document.createDocumentFragment(), options = document.createDocumentFragment();
+        for (const [value, title, day] of rows) {
+          const dateText = formatter.format(new Date(day + "T12:00:00"));
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "pc-event-choice";
+          button.dataset.eventValue = value;
+          const name = document.createElement("span"), date = document.createElement("time");
+          name.className = "pc-event-name";
+          name.textContent = title;
+          date.className = "pc-event-date";
+          date.dateTime = day;
+          date.textContent = dateText;
+          button.append(name, " ", date);
+          buttons.append(button);
+          options.append(new Option(title + " · " + dateText, value));
+        }
+        select.replaceChildren(placeholder, options);
+        choices.replaceChildren(buttons);
+        choices.hidden = !rows.length;
+        empty.hidden = Boolean(rows.length);
+        signature = next;
+      }
+      select.value = selectedValue;
+      if (select.selectedIndex < 0) select.value = prefix;
+      for (const button of choices.children) {
+        button.setAttribute("aria-pressed", String(button.dataset.eventValue === select.value));
+      }
+      if (focused !== undefined && !choices.contains(document.activeElement)) {
+        const target = [...choices.children].find(button => button.dataset.eventValue === focused);
+        (target || choices.querySelector('[aria-pressed="true"]') || choices.firstElementChild || empty).focus();
+      }
+    };
+  }
+  window.foodBrokerSupportLabels = Object.freeze({create,isPrintableEvent,printableEvents,createCatalogPicker,createEventPicker});
 })();

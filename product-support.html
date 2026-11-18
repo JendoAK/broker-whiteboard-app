@@ -8,7 +8,7 @@
   <link rel="icon" href="broker-whiteboard-logo.png" />
   <link rel="stylesheet" href="print-logo-library.css?v=20261118-printstudio1" />
 <link rel="stylesheet" href="product-support.css?v=20261103-printgroups1" />
-<link rel="stylesheet" href="account-settings.css?v=20261023-account1" /><link rel="stylesheet" href="support-directory.css?v=20261029-contactcards1" /><link rel="stylesheet" href="print-center-navigation.css?v=20261118-catalogbuttons1" /><link rel="stylesheet" href="support-samples.css?v=20261102-supportsamples1" /></head>
+<link rel="stylesheet" href="account-settings.css?v=20261023-account1" /><link rel="stylesheet" href="support-directory.css?v=20261029-contactcards1" /><link rel="stylesheet" href="print-center-navigation.css?v=20261118-eventprint2" /><link rel="stylesheet" href="support-samples.css?v=20261102-supportsamples1" /></head>
 <body data-product-support-page>
   <div class="app-shell">
     <header class="topbar">
@@ -87,13 +87,21 @@
           </div>
           <div class="pc-selected-summary"><strong id="pspSelectedCount" role="status" aria-live="polite">0 products selected</strong><button id="pcReviewProducts" type="button" aria-controls="pcCatalogFields" hidden>Review products</button><button id="pcChangeProducts" type="button" aria-controls="pcCatalogFields" hidden>Change products</button><ul id="pcSelectedNames" aria-label="Selected products" hidden></ul></div>
         </section>
-          <section id="pspEventPanel" class="pc-event-panel" aria-label="Choose an event product lineup" hidden>
-            <label><span>Event or visit</span><select id="pspEventPicker"><option value="event:">Choose an upcoming event…</option></select></label>
-            <p class="ps-hint">Upcoming and ongoing events only. Choose which products from the lineup to print.</p>
+          <section id="pspEventPanel" class="pc-source-panel pc-event-panel" aria-label="Choose an event product lineup" hidden>
+            <fieldset class="pc-event-field">
+              <legend>Event or visit</legend>
+              <select id="pspEventPicker" hidden><option value="event:">Choose an event</option></select>
+              <div class="pc-event-choices" hidden></div>
+              <p class="pc-event-no-options" tabindex="-1">No upcoming or ongoing events.</p>
+            </fieldset>
         <section id="psPrintProducts" class="ps-print-products pc-event-products">
           <h3 class="pc-event-selection-heading">Event products <span id="psPrintProductCount" role="status" aria-live="polite"></span></h3>
-          <div class="ps-print-product-toolbar"><label class="ps-print-product-search"><span class="ps-print-sr-only">Find a product in this print job</span><input id="psPrintProductSearch" type="search" placeholder="Find a product in this print job…" /></label><button id="psPrintSelectAll" type="button" class="ps-text">Select all</button><button id="psPrintSelectNone" type="button" class="ps-text">Clear</button></div>
-          <div id="psPrintProductList" class="ps-print-product-list"></div>
+          <div class="ps-print-product-toolbar">
+            <label class="ps-print-product-search"><span class="ps-print-sr-only">Find a product in this event</span><input id="psPrintProductSearch" type="search" placeholder="Find a product in this event…" /></label>
+            <button id="psPrintSelectAll" type="button">Select all</button>
+            <button id="psPrintSelectNone" type="button">Clear all</button>
+          </div>
+          <div id="psPrintProductList" class="ps-print-product-list pc-catalog-products"></div>
         </section>
           </section>
 
@@ -186,8 +194,8 @@
   <script src="product-bag-labels.js?v=20261026-nooutlines1"></script>
   <script src="product-print-logos.js?v=20261118-margherita1"></script>
   <script src="print-logo-library.js?v=20261118-printstudio1"></script>
-  <script src="product-support-labels.js?v=20261118-catalogbuttons1"></script>
-  <script src="contact-directory-model.js?v=20261029-contactcards1"></script><script src="support-directory.js?v=20261104-syncfix1"></script><script src="support-samples.js?v=20261104-syncfix1"></script><script src="product-support.js?v=20261118-catalogbuttons1"></script>
+  <script src="product-support-labels.js?v=20261118-eventprint2"></script>
+  <script src="contact-directory-model.js?v=20261029-contactcards1"></script><script src="support-directory.js?v=20261104-syncfix1"></script><script src="support-samples.js?v=20261104-syncfix1"></script><script src="product-support.js?v=20261118-eventprint2"></script>
 </body>
 </html>
 

@@ -13,7 +13,7 @@
   const logos = { usFoods: ["us-foods-logo.svg", "US Foods"], sysco: ["sysco-logo.png?v=20260917-official1", "Sysco"], linford: ["linford-logo.svg", "Linford"], qualitySales: ["quality-sales-logo.png", "Quality Sales"] };
   const pageSize = 100;
   const state = { userId: "", generation: 0, request: 0, stock: [], new: [], events: [], selected: new Set(), collection: "stock", schoolOnly: false, visibleLimit: pageSize, date: "upcoming", view: "products", editing: null, attachments: [], attachmentsChanged: false, importRows: [], importRunning: false, saving: false, readingFiles: false, frames: new Set(), eventId: "", loaded: false };
-  let labelPrint, catalogPicker;
+  let labelPrint, catalogPicker, updateEventPicker;
 
   function auth() { return window.foodBrokerBaseAuth; }
   function allowed() { return Boolean(auth()?.getCurrentUser()?.id && auth()?.getCurrentProfile()?.role === "product_support" && !auth()?.isPasswordRecovery?.()); }
@@ -422,10 +422,12 @@
     $("pspCollection").disabled=false;
     catalogPicker?.update([]);
     $("pspVendorButtons").replaceChildren();$("pspProductList").replaceChildren();$("pspCount").textContent="";$("pspSelectedCount").textContent="0 selected";
-    $("pspEventPicker").innerHTML='<option value="event:">Choose an upcoming event…</option>';$("psPrintLayout").hidden=true;$("psBagQuantity").hidden=true;$("psPreparePrint").disabled=true;$("pspEmptySelection").hidden=false;syncPrintNavigation();
+    updateEventPicker?.([], "event:");
+    $("psPrintLayout").hidden=true;$("psBagQuantity").hidden=true;$("psPreparePrint").disabled=true;$("pspEmptySelection").hidden=false;syncPrintNavigation();
   }
   function initPrintNavigation() {
     catalogPicker = window.foodBrokerSupportLabels.createCatalogPicker($("pspCatalogPanel"));
+    updateEventPicker = window.foodBrokerSupportLabels.createEventPicker($("pspEventPanel"));
     document.querySelectorAll("[data-psp-mode]").forEach(button=>button.addEventListener("click",()=>setPrintMode(button.dataset.pspMode)));
     $("pspSearch").addEventListener("input",()=>{printPicker.query=$("pspSearch").value;printPicker.visibleLimit=pageSize;renderPrintCatalog();});
     [["pspCollection","collection"],["pspDistributor","distributor"],["pspVendor","vendor"]].forEach(([id,field])=>$(id).addEventListener("change",()=>{printPicker[field]=$(id).value;printPicker.visibleLimit=pageSize;renderPrintCatalog();}));
@@ -448,9 +450,8 @@
     const options=events.map(e=>'<option value="event:'+esc(e.id)+'">'+esc(e.name || "Event")+' · '+esc(dateText(eventDate(e) || e.endDate))+'</option>').join("");
     $("psPrintSource").innerHTML='<option value="selected">Selected products</option><option value="shown">Current product search</option><option value="event:">Choose an upcoming event…</option>'+options;
     $("psPrintSource").value=[...$("psPrintSource").options].some(o=>o.value===current)?current:current.startsWith("event:")?"event:":"selected";
-    $("pspEventPicker").innerHTML='<option value="event:">Choose an upcoming event…</option>'+options;
-    $("pspEventPicker").value=$("psPrintSource").value.startsWith("event:")?$("psPrintSource").value:"event:"+printPicker.lastEvent;
-    if(!$("pspEventPicker").value)$("pspEventPicker").value="event:";
+    if ($("psPrintSource").value.startsWith("event:")) printPicker.lastEvent = $("psPrintSource").value.slice(6);
+    updateEventPicker(events, "event:" + printPicker.lastEvent);
     syncPrintNavigation();
   }
   function refreshPrintSources() {updatePrintSummary();}
@@ -464,7 +465,8 @@
   function renderPrintCount() {
     const count=labelPrint?.getProducts().length || 0;
     $("pspSelectedCount").textContent=count+" product"+(count===1?"":"s")+" selected";
-    $("psPrintLayout").hidden=!count;$("psBagQuantity").hidden=!count || $("psPrintFormat").value!=="labels";$("psPreparePrint").disabled=!count;$("pspEmptySelection").hidden=Boolean(count);
+    $("psPrintLayout").hidden=!count;$("psBagQuantity").hidden=!count || $("psPrintFormat").value!=="labels";$("psPreparePrint").disabled=!count;
+    $("pspEmptySelection").hidden=Boolean(count) || $("psPrintSource").value.startsWith("event:");
     syncPrintNavigation();
   }
   function updatePrintSummary() {if(!allowed())return;renderPrintCatalog();labelPrint?.sync();renderPrintCount();}

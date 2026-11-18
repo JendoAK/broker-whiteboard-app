@@ -40,12 +40,20 @@
           <div class="pc-selected-summary"><strong id="tpSelectedCount" role="status" aria-live="polite">0 products selected</strong><button id="pcReviewProducts" type="button" aria-controls="pcCatalogFields" hidden>Review products</button><button id="pcChangeProducts" type="button" aria-controls="pcCatalogFields" hidden>Change products</button><ul id="pcSelectedNames" aria-label="Selected products" hidden></ul></div>
         </section>
       <section id="tpEventPanel" class="pc-source-panel pc-event-panel" aria-label="Choose an event" hidden>
-        <label><span>Event or visit</span><select id="tpEventPicker"><option value="">Choose an upcoming or ongoing event</option></select></label>
-        <p id="tpEventSummary" class="ps-hint">Choose an event, then select the products you need.</p>
+        <fieldset class="pc-event-field">
+          <legend>Event or visit</legend>
+          <select id="tpEventPicker" hidden><option value="">Choose an event</option></select>
+          <div class="pc-event-choices" hidden></div>
+          <p class="pc-event-no-options" tabindex="-1">No upcoming or ongoing events.</p>
+        </fieldset>
     <section id="psPrintProducts" class="ps-print-products pc-event-products">
           <h3 class="pc-event-selection-heading">Event products <span id="psPrintProductCount" role="status" aria-live="polite"></span></h3>
-          <div class="ps-print-product-toolbar"><label class="ps-print-product-search"><span class="ps-print-sr-only">Find a product in this print job</span><input id="psPrintProductSearch" type="search" placeholder="Find a product in this print job…" /></label><button id="psPrintSelectAll" type="button" class="ps-text">Select all</button><button id="psPrintSelectNone" type="button" class="ps-text">Clear</button></div>
-          <div id="psPrintProductList" class="ps-print-product-list"></div>
+          <div class="ps-print-product-toolbar">
+            <label class="ps-print-product-search"><span class="ps-print-sr-only">Find a product in this event</span><input id="psPrintProductSearch" type="search" placeholder="Find a product in this event…" /></label>
+            <button id="psPrintSelectAll" type="button">Select all</button>
+            <button id="psPrintSelectNone" type="button">Clear all</button>
+          </div>
+          <div id="psPrintProductList" class="ps-print-product-list pc-catalog-products"></div>
         </section>
       </section>
     </div>
