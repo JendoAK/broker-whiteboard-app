@@ -9,6 +9,19 @@
   const data = freeze({
   "entries": [
     {
+      "id": "brand-margherita",
+      "name": "Margherita",
+      "family": "brand",
+      "logos": [
+        {
+          "src": "print-logos/margherita.jpg",
+          "alt": "Margherita logo",
+          "widthPt": 105,
+          "heightPt": 70.0875
+        }
+      ]
+    },
+    {
       "id": "manufacturer-ajinomoto",
       "name": "Ajinomoto",
       "family": "manufacturer",
@@ -1301,6 +1314,8 @@
     "snyderslance": "manufacturer-snyderslance"
   },
   "brandAliases": {
+    "margherita": "brand-margherita",
+    "margheritapepperoni": "brand-margherita",
     "papettis": "papettis",
     "papetti": "papettis",
     "roastworks": "roastworks",
@@ -1414,5 +1429,5 @@
     if (maker) return result(maker, mode === "automatic" && brand ? "No logo is available for “" + brand + "”; showing the " + maker.name + " manufacturer logo." : mode === "automatic" && key(product.brandType) === "eb" ? "No Exclusive Brand name is recorded; showing the " + maker.name + " manufacturer logo." : "");
     return missing(mode, manufacturer ? "No manufacturer logo is available for “" + manufacturer + "”. Choose a logo or upload your own." : "No manufacturer logo is available. Choose a logo or upload your own.");
   }
-  scope.foodBrokerPrintLogos = Object.freeze({version:"20261105-syscocurated1",resolve,options});
+  scope.foodBrokerPrintLogos = Object.freeze({version:"20261118-margherita1",resolve,options});
 })(typeof window !== "undefined" ? window : globalThis);
