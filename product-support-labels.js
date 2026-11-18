@@ -23,7 +23,9 @@
   function create(host) {
     const $ = id => document.getElementById(id), renderer = window.foodBrokerBagLabels, catalog = window.foodBrokerPrintLogos;
     const drafts = new Map(), assets = new Map(), controllers = new Set(), frames = new Set(), resourceGroups = new Set(), exclusions = new Map();
-    let products = [], available = [], active = "", source = "", signature = "", revision = 0, ready = null, view = "label", pageNumber = 0, uploadRevision = 0;
+    const defaultSheetZoom = 75;
+    const previewZoom = {sheet:defaultSheetZoom, label:100};
+    let products = [], available = [], active = "", source = "", signature = "", revision = 0, ready = null, view = "sheet", pageNumber = 0, uploadRevision = 0;
     let previewTimer = 0, previewDirty = false, displayedResources = null, lastErrorStep = "";
     const startGrid = $("psBagStartGrid");
     for (const option of $("psBagStart").options) {
@@ -180,7 +182,8 @@
       $("psBagCopies").value = "1"; $("psBagStart").value = "1"; $("psBagLogoMode").value = "automatic"; $("psBagTextSize").value = "standard";
       ["psBagShowMf","psBagShowApn","psBagShowSupc","psBagShowItem"].forEach(id => {$(id).checked = true;});
       startGrid.querySelector('input[value="1"]').checked = true;
-      view = "label"; pageNumber = 0; updateFormat();
+      previewZoom.sheet = defaultSheetZoom;
+      view = "sheet"; pageNumber = 0; updateFormat();
     }
     function updateFormat() {
       const labels = $("psPrintFormat").value === "labels";
@@ -418,13 +421,13 @@
       }
     }
     // Zoom applies only to the screen copy. The print frame keeps its physical dimensions.
-    const previewZoom = {sheet:75, label:100};
     function scalePreview() {
       const paper = $("psBagPreviewPaper");
       if (!paper) return;
       const viewport = paper.parentElement;
       const inner = paper.querySelector(".ps-bag-paper-inner");
       const sheet = view === "sheet";
+      viewport.classList.toggle("ps-bag-full-height", sheet && previewZoom.sheet <= defaultSheetZoom);
       const width = sheet ? 816 : 384, height = sheet ? 1056 : 192;
       const fit = Math.min(viewport.clientWidth / width, sheet ? 1 : 1.6);
       const ratio = fit * previewZoom[view] / 100;
