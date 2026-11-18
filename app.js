@@ -10059,10 +10059,8 @@ function printCurrentLead(mode) {
 function renderLeadPrintDocument(card, mode) {
   const isProductsOnly = mode === "products";
   const title = isProductsOnly ? `${card.account} - Product List` : `${card.account} - Lead`;
-  const products = normalizeProducts(card).map(product => {
-    const source = Array.isArray(card.products) ? card.products.find(item => item.id === product.id) : null;
-    return source?.brandName ? {...product, brandName:source.brandName} : product;
-  });
+  const products = (Array.isArray(card.products) ? card.products : normalizeProducts(card))
+    .map(product => getLeadPrintProduct(product, card.distributor));
   const imageAttachments = (card.attachments || []).filter((file) => String(file.type || "").startsWith("image/"));
   return `<!doctype html>
     <html>
@@ -10130,13 +10128,28 @@ function renderProductPrintGroupHeading(vendor) {
   return `<strong>${escapeHtml(vendor)}</strong>`;
 }
 
+// Resolve a print copy: legacy lead rows store the distributor number in apn.
+function getLeadPrintProduct(product, distributor = "US Foods") {
+  const item = {...product};
+  if (distributor === "Sysco" && !item.supc) {
+    item.supc = getLeadItemNumber(item);
+    item.apn = "";
+  } else if (["Quality Sales", "Linford", "Other"].includes(distributor)) {
+    item.distributorNumber = getLeadItemNumber(item);
+    item.apn = "";
+  }
+  const resolved = window.foodBrokerProducts?.resolve?.({...item, distributor}, stockProducts);
+  return {...item, apn: item.apn || resolved?.apn || "", supc: item.supc || resolved?.supc || ""};
+}
+
 function renderProductPrintTable(products, distributor = "US Foods") {
   if (!products.length) return `<div class="note">No products entered.</div>`;
+  const showItem = ["Quality Sales", "Linford", "Other"].includes(distributor);
   return `<table>
-    <thead><tr><th>${escapeHtml(getDistributorItemLabel(distributor))}</th><th>Description</th><th>Vendor / Brand</th></tr></thead>
+    <thead><tr><th>APN</th><th>SUPC</th>${showItem ? "<th>Item #</th>" : ""}<th>Description</th><th>Vendor / Brand</th></tr></thead>
     <tbody>${groupVisitProducts(products).map(group =>
-      `<tr class="print-vendor-heading"><th colspan="3">${renderProductPrintGroupHeading(group.vendor)}</th></tr>${group.products.map(product =>
-        `<tr><td>${escapeHtml(getLeadItemNumber(product) || "")}</td><td>${escapeHtml(product.description || "")}</td><td>${escapeHtml([product.vendor, product.brandName].filter(Boolean).join(" · "))}</td></tr>`
+      `<tr class="print-vendor-heading"><th colspan="${showItem ? 5 : 4}">${renderProductPrintGroupHeading(group.vendor)}</th></tr>${group.products.map(product =>
+        `<tr><td>${escapeHtml(product.apn || "")}</td><td>${escapeHtml(product.supc || "")}</td>${showItem ? `<td>${escapeHtml(product.distributorNumber || "")}</td>` : ""}<td>${escapeHtml(product.description || "")}</td><td>${escapeHtml([product.vendor, product.brandName].filter(Boolean).join(" · "))}</td></tr>`
       ).join("")}`
     ).join("")}</tbody>
   </table>`;
