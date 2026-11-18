@@ -1192,7 +1192,7 @@ document.addEventListener("click", (event) => {
   if (!button) return;
   event.preventDefault();
   const note = cards.find((item) => item.id === button.dataset.printId);
-  if (note) openPrintWindow(renderLeadPrintDocument(note, "lead"));
+  if (note) openLeadPrintOptions(note, "lead");
 });
 
 document.addEventListener("click", (event) => {
@@ -1200,7 +1200,7 @@ document.addEventListener("click", (event) => {
   if (!button) return;
   event.preventDefault();
   const note = cards.find((item) => item.id === button.dataset.printProductsId);
-  if (note) openPrintWindow(renderLeadPrintDocument(note, "products"));
+  if (note) openLeadPrintOptions(note, "products");
 });
 
 document.addEventListener("paste", (event) => {
@@ -10053,10 +10053,15 @@ function printCurrentLead(mode) {
     alert("No products to print for this lead yet.");
     return;
   }
-  openPrintWindow(renderLeadPrintDocument(card, mode));
+  openLeadPrintOptions(card, mode);
 }
 
-function renderLeadPrintDocument(card, mode) {
+function openLeadPrintOptions(card, mode) {
+  const products = Array.isArray(card.products) ? card.products : normalizeProducts(card);
+  openPrintOptions(numbers => renderLeadPrintDocument(card, mode, numbers), { chooseProductNumbers: products.length > 0 });
+}
+
+function renderLeadPrintDocument(card, mode, numbers = "both") {
   const isProductsOnly = mode === "products";
   const title = isProductsOnly ? `${card.account} - Product List` : `${card.account} - Lead`;
   const products = (Array.isArray(card.products) ? card.products : normalizeProducts(card))
@@ -10092,7 +10097,7 @@ function renderLeadPrintDocument(card, mode) {
         ${isProductsOnly ? "" : renderLeadPrintMeta(card)}
         ${isProductsOnly ? "" : `<h2>Note</h2><div class="note">${escapeHtml(card.note || "No note")}</div>`}
         <h2>Products</h2>
-        ${renderProductPrintTable(products, card.distributor)}
+        ${renderProductPrintTable(products, card.distributor, numbers)}
         ${!isProductsOnly && imageAttachments.length ? `<h2>Attached Screenshots / Images</h2><div class="images">${imageAttachments.map((file) => `<div><strong>${escapeHtml(file.name)}</strong><img src="${escapeAttribute(file.data)}" alt="${escapeAttribute(file.name)}" /></div>`).join("")}</div>` : ""}
       </body>
     </html>`;
@@ -10142,14 +10147,19 @@ function getLeadPrintProduct(product, distributor = "US Foods") {
   return {...item, apn: item.apn || resolved?.apn || "", supc: item.supc || resolved?.supc || ""};
 }
 
-function renderProductPrintTable(products, distributor = "US Foods") {
+function renderProductPrintTable(products, distributor = "US Foods", numbers = "both") {
   if (!products.length) return `<div class="note">No products entered.</div>`;
-  const showItem = ["Quality Sales", "Linford", "Other"].includes(distributor);
+  const numberColumns = [];
+  if (numbers === "both" || numbers === "apn") numberColumns.push({ key: "apn", label: "APN" });
+  if (numbers === "both" || numbers === "supc") numberColumns.push({ key: "supc", label: "SUPC" });
+  if (["Quality Sales", "Linford", "Other"].includes(distributor)) {
+    numberColumns.push({ key: "distributorNumber", label: "Item #" });
+  }
   return `<table>
-    <thead><tr><th>APN</th><th>SUPC</th>${showItem ? "<th>Item #</th>" : ""}<th>Description</th><th>Vendor / Brand</th></tr></thead>
+    <thead><tr>${numberColumns.map(column => `<th>${column.label}</th>`).join("")}<th>Description</th><th>Vendor / Brand</th></tr></thead>
     <tbody>${groupVisitProducts(products).map(group =>
-      `<tr class="print-vendor-heading"><th colspan="${showItem ? 5 : 4}">${renderProductPrintGroupHeading(group.vendor)}</th></tr>${group.products.map(product =>
-        `<tr><td>${escapeHtml(product.apn || "")}</td><td>${escapeHtml(product.supc || "")}</td>${showItem ? `<td>${escapeHtml(product.distributorNumber || "")}</td>` : ""}<td>${escapeHtml(product.description || "")}</td><td>${escapeHtml([product.vendor, product.brandName].filter(Boolean).join(" · "))}</td></tr>`
+      `<tr class="print-vendor-heading"><th colspan="${numberColumns.length + 2}">${renderProductPrintGroupHeading(group.vendor)}</th></tr>${group.products.map(product =>
+        `<tr>${numberColumns.map(column => `<td>${escapeHtml(product[column.key] || "")}</td>`).join("")}<td>${escapeHtml(product.description || "")}</td><td>${escapeHtml([product.vendor, product.brandName].filter(Boolean).join(" · "))}</td></tr>`
       ).join("")}`
     ).join("")}</tbody>
   </table>`;
@@ -10534,12 +10544,13 @@ function renderLeadListPrintRow(card) {
   </tr>`;
 }
 
-function openPrintLogoOptions(html) {
+function openPrintOptions(renderDocument, { chooseProductNumbers = false } = {}) {
   const dialog = document.createElement("dialog");
   dialog.className = "note-dialog market-print-dialog";
   dialog.id = "printLogoDialog";
   dialog.innerHTML = `<form class="note-form">
     <div class="form-header"><div><p class="eyebrow">Print options</p><h2>Print list</h2></div><button class="icon-button" type="button" data-close-print aria-label="Close">&times;</button></div>
+    ${chooseProductNumbers ? `<label><span>APN and SUPC columns</span><select name="productNumbers"><option value="both">APN and SUPC</option><option value="apn">APN only</option><option value="supc">SUPC only</option><option value="none">Neither</option></select></label>` : ""}
     <label><span>Distributor logo</span><select name="logo"><option value="none">No distributor logo</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales">Quality Sales</option></select></label>
     <div class="form-actions"><button class="ghost-action" type="button" data-cancel-print>Cancel</button><button class="primary-action" type="submit">Print</button></div>
   </form>`;
@@ -10550,8 +10561,9 @@ function openPrintLogoOptions(html) {
   dialog.querySelector("[data-cancel-print]").onclick = closeDialog;
   dialog.querySelector("form").onsubmit = event => {
     event.preventDefault();
-    const selected = dialog.querySelector("select").value;
-    const printDocument = new DOMParser().parseFromString(html, "text/html");
+    const selected = event.currentTarget.elements.logo.value;
+    const numbers = event.currentTarget.elements.productNumbers?.value;
+    const printDocument = new DOMParser().parseFromString(renderDocument(numbers), "text/html");
     printDocument.querySelectorAll(".print-brand-header").forEach(header => {
       header.querySelectorAll(".print-brand-usf").forEach(image => image.remove());
       const logo = getEventPrintLogo(selected);
@@ -10572,7 +10584,7 @@ function openPrintLogoOptions(html) {
 
 function openPrintWindow(html, options = {}) {
   if (!options.logoChosen) {
-    openPrintLogoOptions(html);
+    openPrintOptions(() => html);
     return;
   }
   const printWindow = window.open("", "_blank", "width=900,height=700");

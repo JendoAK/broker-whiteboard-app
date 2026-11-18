@@ -12,8 +12,8 @@
   const icon=name=>`<img class="lead-icon" src="task-icons/${name}.svg" width="18" height="18" alt="">`;
   const workspace=document.createElement('section');workspace.className='lead-workspace';workspace.setAttribute('aria-label','Leads workspace');
   workspace.innerHTML=`<aside class="lead-sidebar" aria-label="Lead views"><h2>Lead views</h2><nav class="lead-views" aria-label="Lead lists"></nav><div class="lead-archive-slot"><button type="button" class="lead-archive-view">${icon('archive')}<span>Archive</span></button></div></aside>
-    <section class="lead-main"><header class="lead-list-heading"><div><h1 id="leadViewTitle">All leads</h1><p><span id="leadViewCount"></span><span class="lead-open-help">Click a card to open lead details</span></p></div><div class="lead-heading-actions"></div></header>
-    <div class="lead-date-filters" role="group" aria-label="Filter leads by date"></div>
+    <section class="lead-main"><header class="lead-list-heading"><div><h1 id="leadViewTitle">All leads</h1><p><span id="leadViewCount"></span><span class="lead-open-help">Click a card to open it or drag it to a status.</span></p></div><div class="lead-heading-actions"></div></header>
+    <div class="lead-filter-row"><div class="lead-date-filters" role="group" aria-label="Filter leads by date"></div><div class="lead-status-targets" role="group" aria-label="Filter by status or drop a lead to change its status"><span>Status</span></div></div>
     <div class="lead-search-toolbar"><div class="lead-search-slot"></div><button type="button" class="lead-filter-toggle" aria-expanded="false" aria-controls="leadAdvancedFilters">Filters</button><div class="lead-sort-slot"></div></div>
     <section id="leadAdvancedFilters" class="lead-filters" hidden></section><p class="lead-workspace-status" role="status"></p><div class="lead-cards-slot"></div></section>`;
   shell.insertBefore(workspace,board);
@@ -52,6 +52,105 @@
     const button=document.createElement('button');button.type='button';button.textContent=label;button.dataset.leadDate=key;
     button.onclick=()=>{dateRange=key;elements.dueFilter.value='';activeLeadQuickFilter='';leadQuickListMode=false;render();};dateFilters.append(button);
   });
+  const statusTargets = workspace.querySelector('.lead-status-targets');
+  const statusLabel = status => ({'Ready to Show / Send Out':'Ready to Show','Showed / Waiting on Feedback':'Waiting on Feedback'}[status] || status);
+  for (const status of columns) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = statusLabel(status);
+    button.dataset.leadDropStatus = status;
+    button.title = 'Filter by ' + status + ' or drop a lead here';
+    button.onclick = () => {
+      elements.statusFilter.value = elements.statusFilter.value === status ? '' : status;
+      activeLeadQuickFilter = '';
+      leadQuickListMode = false;
+      render();
+    };
+    statusTargets.append(button);
+  }
+  let draggingCard = null, highlightedTarget = null, touchHold = null;
+  const dragBlockers = 'button:not(.lead-card-open), select, input, textarea, a, .lead-card-menu';
+  function highlightDropTarget(target) {
+    if (highlightedTarget === target) return;
+    highlightedTarget?.classList.remove('lead-drop-over');
+    target?.classList.add('lead-drop-over');
+    highlightedTarget = target;
+  }
+  function startCardDrag(card) {
+    closeMenus();
+    draggingCard = card;
+    card.classList.add('lead-card-dragging');
+    workspace.classList.add('lead-dragging');
+  }
+  function endCardDrag() {
+    clearTimeout(touchHold?.timer);
+    touchHold = null;
+    draggingCard?.classList.remove('lead-card-dragging');
+    draggingCard = null;
+    highlightDropTarget(null);
+    workspace.classList.remove('lead-dragging');
+  }
+  function dropOn(target) {
+    const id = draggingCard?.dataset.leadId;
+    endCardDrag();
+    if (id && target) saveStatus(id, target.dataset.leadDropStatus);
+  }
+  board.addEventListener('pointerdown', event => {
+    const card = event.target.closest('.lead-card');
+    if (card) card.draggable = event.pointerType !== 'touch' && !event.target.closest(dragBlockers);
+  });
+  board.addEventListener('dragstart', event => {
+    const card = event.target.closest('.lead-card');
+    if (!card || !card.draggable || event.target !== card) { event.preventDefault(); return; }
+    startCardDrag(card);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('application/x-foodbroker-lead', card.dataset.leadId);
+  });
+  statusTargets.addEventListener('dragover', event => {
+    const target = event.target.closest('[data-lead-drop-status]');
+    if (!draggingCard || !target) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    highlightDropTarget(target);
+  });
+  statusTargets.addEventListener('dragleave', event => {
+    if (!highlightedTarget?.contains(event.relatedTarget)) highlightDropTarget(null);
+  });
+  statusTargets.addEventListener('drop', event => {
+    if (!draggingCard) return;
+    event.preventDefault();
+    dropOn(event.target.closest('[data-lead-drop-status]'));
+  });
+  board.addEventListener('dragend', endCardDrag);
+
+  // Let a swipe scroll the list. A stationary hold picks up a card for touch dragging.
+  board.addEventListener('touchstart', event => {
+    endCardDrag();
+    const card = event.target.closest('.lead-card');
+    if (!card || event.touches.length !== 1 || event.target.closest(dragBlockers)) return;
+    const first = event.touches[0];
+    touchHold = {x:first.clientX, y:first.clientY, moved:false, timer:setTimeout(() => startCardDrag(card), 400)};
+  }, {passive:true});
+  board.addEventListener('touchmove', event => {
+    if (!touchHold) return;
+    if (event.touches.length !== 1) { endCardDrag(); return; }
+    const {clientX, clientY} = event.touches[0];
+    if (Math.hypot(clientX - touchHold.x, clientY - touchHold.y) > 8) touchHold.moved = true;
+    if (!draggingCard) { if (touchHold.moved) endCardDrag(); return; }
+    event.preventDefault();
+    highlightDropTarget(document.elementFromPoint(clientX, clientY)?.closest('[data-lead-drop-status]'));
+  }, {passive:false});
+  board.addEventListener('touchend', event => {
+    if (!draggingCard || !touchHold) { endCardDrag(); return; }
+    event.preventDefault();
+    const {clientX, clientY} = event.changedTouches[0];
+    dropOn(touchHold.moved && document.elementFromPoint(clientX, clientY)?.closest('[data-lead-drop-status]'));
+  }, {passive:false});
+  board.addEventListener('touchcancel', endCardDrag);
+  board.addEventListener('contextmenu', event => { if (touchHold) event.preventDefault(); });
+  window.addEventListener('blur', endCardDrag);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) endCardDrag(); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') endCardDrag(); });
   const toggle=workspace.querySelector('.lead-filter-toggle'), advanced=workspace.querySelector('.lead-filters');
   toggle.onclick=()=>{advanced.hidden=!advanced.hidden;toggle.setAttribute('aria-expanded',String(!advanced.hidden));};
   // The old controls continue to drive filtering; do not combine conflicting dates.
@@ -103,16 +202,18 @@
   }
   function createLeadCard(card){
     const article=document.createElement('article');article.className='lead-card';article.dataset.leadId=card.id;
+    article.draggable = true;
     const titleId='lead-title-'+card.id;
     article.setAttribute('aria-labelledby',titleId);
     const products=normalizeProducts(card), vendors=[...new Set(products.map(product=>product.vendor).filter(Boolean))];
     const productText=products.map(product=>[product.description,getLeadItemNumber(product)?getDistributorItemLabel(card.distributor)+': '+getLeadItemNumber(product):''].filter(Boolean).join(' · ')).filter(Boolean).join('; ');
     const note=latestNote(card), status=normalizeStatus(card.status), priority=Object.hasOwn(priorities,card.priority)?card.priority:'Medium';
     article.innerHTML=`<header class="lead-card-header"><h2 id="${escapeAttribute(titleId)}"><button type="button" class="lead-card-open" aria-haspopup="dialog" aria-label="${escapeAttribute('Open lead: '+card.account)}">${escapeHtml(card.account||'Untitled lead')}</button></h2><div class="lead-card-actions"><button type="button" class="lead-save lead-icon-action" aria-label="${escapeAttribute('Save lead: '+card.account)}" title="Save lead">${icon('floppy')}</button><button type="button" class="lead-archive lead-icon-action" aria-label="${escapeAttribute('Archive lead: '+card.account)}" title="Archive lead">${icon('archive')}</button><div class="lead-card-menu"><button type="button" class="lead-card-more lead-icon-action" aria-label="${escapeAttribute('More actions for '+card.account)}" title="More lead actions" aria-expanded="false" aria-controls="${escapeAttribute('lead-actions-'+card.id)}">${icon('three-dots')}</button><div id="${escapeAttribute('lead-actions-'+card.id)}" role="group" aria-label="Lead actions" hidden><button type="button" class="lead-edit">Edit lead</button><button type="button" class="lead-to-report">Turn into Vendor Report</button></div></div></div></header>
-      <div class="lead-card-body"><div class="lead-card-flow"><select class="lead-card-status" aria-label="${escapeAttribute('Status for '+card.account)}" title="${escapeAttribute(status)}">${columns.map(value=>`<option value="${escapeAttribute(value)}" ${value===status?'selected':''}>${escapeHtml(value==='Ready to Show / Send Out'?'Ready to Show':value==='Showed / Waiting on Feedback'?'Waiting on Feedback':value)}</option>`).join('')}</select><span class="lead-priority lead-priority-${priority.toLowerCase()}">${icon(priority==='High'?'fire':priority==='Low'?'circle':'circle-fill')}${escapeHtml(priority)}</span></div>
+      <div class="lead-card-body"><div class="lead-card-flow"><select class="lead-card-status" aria-label="${escapeAttribute('Status for '+card.account)}" title="${escapeAttribute(status)}">${columns.map(value=>`<option value="${escapeAttribute(value)}" ${value===status?'selected':''}>${escapeHtml(statusLabel(value))}</option>`).join('')}</select><span class="lead-priority lead-priority-${priority.toLowerCase()}">${icon(priority==='High'?'fire':priority==='Low'?'circle':'circle-fill')}${escapeHtml(priority)}</span></div>
       <dl class="lead-card-facts"><div>${icon('box-seam')}<dt>${products.length>1?'Products':'Product'}</dt><dd>${escapeHtml(productText||'No product added')}</dd></div><div>${icon('building')}<dt>Vendor</dt><dd>${escapeHtml(vendors.join(', ')||'No vendor selected')}</dd></div><div>${icon('truck')}<dt>Distributor</dt><dd>${escapeHtml(card.distributor||'Not selected')}</dd></div>${card.salesRep||card.syscoSalesRep?`<div>${icon('people')}<dt>Rep</dt><dd>${escapeHtml([card.salesRep,card.syscoSalesRep].filter(Boolean).join(' · '))}</dd></div>`:''}</dl>
       <div class="lead-card-note">${icon('chat')}<p>${escapeHtml(note||'No notes yet.')}</p></div></div>
       <footer class="lead-card-footer ${isOverdue(card)?'is-overdue':''}">${icon('calendar-event')}<span><strong>Follow-up:</strong> ${escapeHtml(dueLabel(card))}</span>${card.attachments?.length?`<span class="lead-file-count" title="${escapeAttribute(card.attachments.length+' attachments')}">${icon('paperclip')}${card.attachments.length}</span>`:''}</footer><span class="lead-card-feedback" data-lead-feedback="${escapeAttribute(card.id)}" role="status"></span><img class="lead-paper-fold" src="lead-assets/paper-fold.png" width="28" height="28" alt="" aria-hidden="true">`;
+    article.querySelectorAll('img').forEach(image => { image.draggable = false; });
     const open=()=>{closeMenus();const latest=cards.find(item=>item.id===card.id&&!item.deletedAt);if(latest)openAccountWindow(latest,{singleLead:true});};
     article.querySelector('.lead-card-open').onclick=open;
     article.addEventListener('click',event=>{
@@ -130,6 +231,7 @@
   }
   render=function(){
     if(!workspace.isConnected){originalRender();return;}
+    endCardDrag();
     const focused=workspace.contains(document.activeElement)?document.activeElement:null;
     const focusId=focused?.closest('.lead-card')?.dataset.leadId;
     const focusControl=['lead-card-status','lead-save','lead-archive','lead-card-open','lead-card-more'].find(name=>focused?.classList.contains(name));
@@ -149,6 +251,7 @@
       button.querySelector('small').textContent=key==='all'?active.length:key==='overdue'?active.filter(isOverdue).length:key==='important'?active.filter(card=>card.priority==='High'&&normalizeStatus(card.status)!==closedStatus).length:active.filter(card=>normalizeStatus(card.status)===key).length;
     });
     dateFilters.querySelectorAll('button').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.leadDate===dateRange)));
+    statusTargets.querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.leadDropStatus === elements.statusFilter.value)));
     board.className='board lead-card-grid';board.innerHTML='';
     if(visible.length)visible.forEach(card=>board.append(createLeadCard(card)));
     else board.innerHTML='<div class="lead-empty"><h2>No leads match this view</h2><p>Choose another view or clear your filters.</p><button type="button" class="lead-empty-clear">Clear filters</button></div>';
