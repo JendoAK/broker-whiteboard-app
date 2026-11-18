@@ -58,20 +58,27 @@
         <div id="psPrintLayout" class="ps-print-layout" data-format="labels">
       <aside id="psBagSettings" class="ps-bag-settings" aria-labelledby="psBagSettingsTitle">
         <h3 id="psBagSettingsTitle">Label setup</h3>
-        <label><span>Product</span><select id="psBagProduct"><option value="">Choose products to print first</option></select></label>
-        <div class="ps-bag-field-pair ps-bag-logo-fields">
-          <label><span>Logo for this product</span><select id="psBagLogoMode"><option value="automatic">Automatic product logo</option><option value="manufacturer">Manufacturer logo</option><option value="usFoodsEb">US Foods Exclusive Brand</option><option value="syscoEb">Sysco Exclusive Brand</option><option value="none">No logo</option><option value="custom">Uploaded logo</option></select></label>
-          <label><span>Choose logo</span><select id="psBagLogoChoice"><option value="">Automatic for this product</option></select></label>
+        <div class="ps-bag-product-row">
+          <label><span>Product</span><select id="psBagProduct"><option value="">Choose products to print first</option></select></label>
+          <label><span>Copies</span><input id="psBagCopies" type="number" min="1" max="100" step="1" value="1" /></label>
         </div>
-        <div class="ps-bag-logo-actions"><button type="button" id="psBagBrowseLogos">Logo library</button><button type="button" id="psBagUploadLogo" title="Upload a PNG, JPEG, WebP, or GIF up to 4 MB">Upload logo</button></div>
-        <p id="psBagLogoStatus" class="ps-bag-logo-status" role="status" aria-live="polite"></p>
-        <div class="ps-bag-logo-upload" hidden><input id="psBagLogoFile" type="file" aria-label="Upload logo" accept="image/png,image/jpeg,image/webp,image/gif" hidden /><button type="button" id="psBagClearLogo">Remove from this label</button></div>
         <div class="ps-bag-placement">
-          <div class="ps-bag-quantity-fields"><label><span>Copies of this product</span><input id="psBagCopies" type="number" min="1" max="100" step="1" value="1" /></label><fieldset class="ps-bag-code-options"><legend>Include item numbers</legend><label><input id="psBagShowMf" type="checkbox" checked />MF#</label><label><input id="psBagShowApn" type="checkbox" checked />APN</label><label><input id="psBagShowSupc" type="checkbox" checked />SUPC</label><label><input id="psBagShowItem" type="checkbox" checked />Item#</label></fieldset></div>
+          <div class="ps-bag-artwork">
+            <div class="ps-bag-field-pair ps-bag-logo-fields">
+              <label><span>Logo for this product</span><select id="psBagLogoMode"><option value="automatic">Automatic</option><option value="manufacturer">Manufacturer logo</option><option value="usFoodsEb">US Foods Exclusive Brand</option><option value="syscoEb">Sysco Exclusive Brand</option><option value="none">No logo</option><option value="custom">Uploaded logo</option></select></label>
+              <label><span>Choose logo</span><select id="psBagLogoChoice"><option value="">Automatic for this product</option></select></label>
+            </div>
+            <div class="ps-bag-logo-tools">
+              <div class="ps-bag-logo-actions"><button type="button" id="psBagBrowseLogos">Logo library</button><button type="button" id="psBagUploadLogo" title="Upload a PNG, JPEG, WebP, or GIF up to 4 MB">Upload logo</button></div>
+              <p id="psBagLogoStatus" class="ps-bag-logo-status" role="status" aria-live="polite"></p>
+              <div class="ps-bag-logo-upload" hidden><input id="psBagLogoFile" type="file" aria-label="Upload logo" accept="image/png,image/jpeg,image/webp,image/gif" hidden /><button type="button" id="psBagClearLogo">Remove from this label</button></div>
+            </div>
+            <fieldset class="ps-bag-code-options"><legend>Include item numbers</legend><label><input id="psBagShowMf" type="checkbox" checked />MF#</label><label><input id="psBagShowApn" type="checkbox" checked />APN</label><label><input id="psBagShowSupc" type="checkbox" checked />SUPC</label><label><input id="psBagShowItem" type="checkbox" checked />Item#</label></fieldset>
+          </div>
           <fieldset class="ps-bag-position"><legend>First label on sheet</legend><div id="psBagStartGrid" class="ps-bag-start-grid"></div></fieldset>
           <select id="psBagStart" hidden aria-hidden="true"><option value="1">1 · top left</option><option value="2">2 · top right</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10 · bottom right</option></select>
         </div>
-        <details class="ps-bag-edit"><summary>Edit label wording</summary><label><span>Product description</span><textarea id="psBagTitle" rows="2" maxlength="200"></textarea></label><div class="ps-bag-field-pair"><label><span>Short description / brand line</span><input id="psBagSubtitle" maxlength="180" /></label><label><span>Packaging</span><input id="psBagPackaging" maxlength="80" /></label></div><div class="ps-bag-field-pair"><label><span>MF#</span><input id="psBagMf" maxlength="80" /></label><label><span>US Foods APN</span><input id="psBagApn" maxlength="80" /></label><label><span>Sysco SUPC</span><input id="psBagSupc" maxlength="80" /></label><label><span>Other item number</span><input id="psBagItem" maxlength="80" /></label></div><button type="button" id="psBagReset" class="ps-text">Reset this label</button></details>
+        <details class="ps-bag-edit"><summary>Edit label wording</summary><label><span>Product description</span><textarea id="psBagTitle" rows="2" maxlength="200"></textarea></label><div class="ps-bag-field-pair"><label><span>Short description / brand line</span><input id="psBagSubtitle" maxlength="180" /></label><label><span>Packaging</span><input id="psBagPackaging" maxlength="80" /></label></div><div class="ps-bag-field-pair ps-bag-number-fields"><label><span>MF#</span><input id="psBagMf" maxlength="80" /></label><label><span>US Foods APN</span><input id="psBagApn" maxlength="80" /></label><label><span>Sysco SUPC</span><input id="psBagSupc" maxlength="80" /></label><label><span>Other item #</span><input id="psBagItem" maxlength="80" /></label></div><button type="button" id="psBagReset" class="ps-text">Reset this label</button></details>
         <details class="ps-bag-appearance"><summary>Sheet appearance</summary><label><span>Preferred text size</span><select id="psBagTextSize"><option value="standard">Standard · 16 pt name / 12 pt details</option><option value="compact">Compact · 14 pt name / 11 pt details</option><option value="large">Large · 18 pt name / 14 pt details</option></select></label><p class="ps-hint">Long labels fit automatically. All wording and item numbers are kept.</p></details>
         <p id="psBagHelp" class="ps-hint">Preview the full sheet to check each label before printing.</p>
       </aside>

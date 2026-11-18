@@ -96,7 +96,21 @@
   }
   :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-settings {
     container: label-setup / inline-size;
-    padding: 14px;
+    padding: 12px 14px;
+  }
+  :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-settings h3 {
+    margin: 0 0 9px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #408279;
+    color: #173f38;
+    font: 700 18px/1.2 Arial,sans-serif;
+  }
+  .ps-bag-product-row {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) 6rem;
+    align-items: end;
+    gap: 8px;
+    margin-bottom: 9px;
   }
   :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-settings :is(label,select,input,fieldset) { min-width: 0; }
   :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-settings > label,
@@ -107,18 +121,36 @@
     align-items: end;
     gap: 7px 10px;
   }
-  :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-settings label > span { font: 600 12px/1.35 Arial,sans-serif; text-transform: none; letter-spacing: normal; }
+  :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-settings label { gap: 3px; }
+  :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-settings :is(label > span:first-child, legend) {
+    color: #163e37;
+    font: 700 14px/1.25 Arial,sans-serif;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+  :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-settings label > span { margin: 0; }
   :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-settings textarea { min-height: 48px; }
-  :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-settings details { margin-top: 8px; padding-top: 8px; }
+  :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-settings details { margin-top: 8px; padding: 0; border: 0; }
+  :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-settings summary {
+    padding: 6px 9px;
+    border-left: 3px solid #37786d;
+    border-radius: 3px;
+    background: #deece5;
+    color: #173f38;
+    font: 700 15px/1.3 Arial,sans-serif;
+  }
+  :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-settings details[open] > summary { margin-bottom: 7px; }
+  .ps-bag-logo-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 9px; }
   :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-logo-actions { display: flex; flex-wrap: wrap; gap: 6px; }
   :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-logo-actions button { padding: 5px 10px; min-height: 32px; }
-  :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-logo-status { margin: 4px 0 10px; }
-  :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-logo-upload { padding: 0; border: 0; margin: 0 0 8px; }
+  :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-logo-status { margin: 0; min-height: 0; }
+  :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-logo-upload { padding: 0; border: 0; margin: 0; }
   :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-logo-upload button { margin-top: 0; }
   .ps-bag-placement { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px 16px; align-items: start; }
-  .ps-bag-quantity-fields { display: grid; gap: 12px; }
+  .ps-bag-artwork { display: grid; min-width: 0; gap: 7px; }
+  :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-artwork :is(.ps-bag-field-pair,fieldset) { margin: 0; }
   .ps-bag-position { border: 0; padding: 0; margin: 0; }
-  :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-position legend { margin: 0 0 5px; padding: 0; font: 600 12px/1.35 Arial,sans-serif; }
+  :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-position legend { margin: 0 0 4px; padding: 0; }
   .ps-bag-start-grid { display: grid; grid-template-columns: repeat(2, 42px); gap: 2px; width: max-content; padding: 4px; border: 1px solid #a5bbb1; border-radius: 4px; background: #edf2ee; }
   :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-start-grid label { position: relative; display: block; margin: 0; cursor: pointer; }
   :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-start-grid input { position: absolute; opacity: 0; inset: 0; margin: 0; width: 100%; height: 100%; cursor: pointer; }
@@ -131,8 +163,18 @@
   .ps-bag-viewport { overflow: auto; max-height: 74vh; }
   .ps-bag-viewport.ps-bag-full-height { max-height: none; }
   :is(#teamPrintCenterDialog, #psPrinting) #psBagPreviewPaper { overflow: hidden; }
-  @container label-setup (max-width: 350px) {
+  @container label-setup (min-width: 480px) {
+    :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-number-fields { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  }
+  @container label-setup (max-width: 475px) {
     :is(#teamPrintCenterDialog, #psPrinting) .ps-bag-logo-fields { grid-template-columns: minmax(0,1fr); }
+    .ps-bag-artwork { display: contents; }
+    .ps-bag-placement { grid-template-areas: "logos start" "tools tools" "codes codes"; gap: 6px 10px; }
+    .ps-bag-logo-fields { grid-area: logos; }
+    .ps-bag-position { grid-area: start; }
+    .ps-bag-logo-tools { grid-area: tools; }
+    .ps-bag-code-options { grid-area: codes; }
+    .ps-bag-product-row { grid-template-columns: minmax(0,1fr) 4.5rem; }
   }
 }
 @media screen and (max-width: 720px) {
