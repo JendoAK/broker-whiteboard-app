@@ -70,8 +70,7 @@
   }
   let draggingCard = null, highlightedTarget = null, touchHold = null;
   let dragPreview = null;
-  const emptyDragImage = document.createElement('canvas');
-  emptyDragImage.width = emptyDragImage.height = 1;
+  let pointerDrag = null, suppressDragClick = false;
   const dragBlockers = 'button:not(.lead-card-open), select, input, textarea, a, .lead-card-menu';
   function highlightDropTarget(target) {
     if (highlightedTarget === target) return;
@@ -96,15 +95,14 @@
     dragPreview = document.createElement('div');
     dragPreview.className = 'lead-drag-preview';
     dragPreview.setAttribute('aria-hidden', 'true');
-    const title = document.createElement('strong');
-    title.textContent = card.querySelector('.lead-card-open').textContent;
-    const details = document.createElement('span');
-    details.textContent = card.querySelector('.lead-card-facts dd').textContent;
-    dragPreview.append(title, details);
+    dragPreview.textContent = card.querySelector('.lead-card-open').textContent;
     document.body.append(dragPreview);
     positionDragPreview(x, y);
   }
   function endCardDrag() {
+    const pointerId = pointerDrag?.id;
+    pointerDrag = null;
+    if (pointerId != null && board.hasPointerCapture(pointerId)) board.releasePointerCapture(pointerId);
     clearTimeout(touchHold?.timer);
     touchHold = null;
     draggingCard?.classList.remove('lead-card-dragging');
@@ -119,39 +117,46 @@
     endCardDrag();
     if (id && target) saveStatus(id, target.dataset.leadDropStatus);
   }
-  board.addEventListener('pointerdown', event => {
-    const card = event.target.closest('.lead-card');
-    if (card) card.draggable = event.pointerType !== 'touch' && !event.target.closest(dragBlockers);
-  });
+  // Keep the browser from drawing a native drag image, including for selected text.
   board.addEventListener('dragstart', event => {
+    if (event.target.closest('.lead-card')) event.preventDefault();
+  });
+  document.addEventListener('pointerdown', () => { suppressDragClick = false; }, true);
+  workspace.addEventListener('click', event => {
+    if (suppressDragClick && event.detail > 0) {
+      suppressDragClick = false;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }, true);
+  board.addEventListener('pointerdown', event => {
+    if (event.pointerType === 'touch' || !event.isPrimary || event.button !== 0 || event.target.closest(dragBlockers)) return;
     const card = event.target.closest('.lead-card');
-    if (!card || !card.draggable || event.target !== card) { event.preventDefault(); return; }
-    startCardDrag(card, event.clientX, event.clientY);
-    // The browser fades its native drag image. Draw the moving card in the page at full opacity.
-    event.dataTransfer.setDragImage(emptyDragImage, 0, 0);
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('application/x-foodbroker-lead', card.dataset.leadId);
+    if (card) pointerDrag = {card, id:event.pointerId, x:event.clientX, y:event.clientY};
   });
-  document.addEventListener('dragover', event => positionDragPreview(event.clientX, event.clientY));
-  document.addEventListener('dragleave', event => {
-    if (dragPreview && !event.relatedTarget) dragPreview.hidden = true;
+  const targetAt = (x, y) => document.elementFromPoint(x, y)?.closest('[data-lead-drop-status]');
+  document.addEventListener('pointermove', event => {
+    if (event.pointerId !== pointerDrag?.id) return;
+    if (!(event.buttons & 1)) { endCardDrag(); return; }
+    if (!draggingCard) {
+      if (Math.hypot(event.clientX - pointerDrag.x, event.clientY - pointerDrag.y) < 6) return;
+      startCardDrag(pointerDrag.card, event.clientX, event.clientY);
+      board.setPointerCapture(event.pointerId);
+      suppressDragClick = true;
+    }
+    positionDragPreview(event.clientX, event.clientY);
+    highlightDropTarget(targetAt(event.clientX, event.clientY));
   });
-  statusTargets.addEventListener('dragover', event => {
-    const target = event.target.closest('[data-lead-drop-status]');
-    if (!draggingCard || !target) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-    highlightDropTarget(target);
+  document.addEventListener('pointerup', event => {
+    if (event.pointerId !== pointerDrag?.id) return;
+    dropOn(draggingCard && targetAt(event.clientX, event.clientY));
   });
-  statusTargets.addEventListener('dragleave', event => {
-    if (!highlightedTarget?.contains(event.relatedTarget)) highlightDropTarget(null);
+  document.addEventListener('pointercancel', event => {
+    if (event.pointerId === pointerDrag?.id) endCardDrag();
   });
-  statusTargets.addEventListener('drop', event => {
-    if (!draggingCard) return;
-    event.preventDefault();
-    dropOn(event.target.closest('[data-lead-drop-status]'));
+  board.addEventListener('lostpointercapture', event => {
+    if (event.target === board && event.pointerId === pointerDrag?.id) endCardDrag();
   });
-  board.addEventListener('dragend', endCardDrag);
 
   // Let a swipe scroll the list. A stationary hold picks up a card for touch dragging.
   board.addEventListener('touchstart', event => {
@@ -169,13 +174,13 @@
     if (!draggingCard) { if (touchHold.moved) endCardDrag(); return; }
     event.preventDefault();
     positionDragPreview(clientX, clientY);
-    highlightDropTarget(document.elementFromPoint(clientX, clientY)?.closest('[data-lead-drop-status]'));
+    highlightDropTarget(targetAt(clientX, clientY));
   }, {passive:false});
   board.addEventListener('touchend', event => {
     if (!draggingCard || !touchHold) { endCardDrag(); return; }
     event.preventDefault();
     const {clientX, clientY} = event.changedTouches[0];
-    dropOn(touchHold.moved && document.elementFromPoint(clientX, clientY)?.closest('[data-lead-drop-status]'));
+    dropOn(touchHold.moved && targetAt(clientX, clientY));
   }, {passive:false});
   board.addEventListener('touchcancel', endCardDrag);
   board.addEventListener('contextmenu', event => { if (touchHold) event.preventDefault(); });
@@ -233,7 +238,6 @@
   }
   function createLeadCard(card){
     const article=document.createElement('article');article.className='lead-card';article.dataset.leadId=card.id;
-    article.draggable = true;
     const titleId='lead-title-'+card.id;
     article.setAttribute('aria-labelledby',titleId);
     const products=normalizeProducts(card), vendors=[...new Set(products.map(product=>product.vendor).filter(Boolean))];
