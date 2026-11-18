@@ -13,6 +13,7 @@
         <button type="button" class="pc-mode-option" data-tp-mode="event" aria-pressed="false"><strong>From an event</strong><span>Use a visit, test kitchen or foodshow</span></button>
       </div>
       <section id="tpCatalogPicker" class="pc-source-panel" aria-label="Choose products">
+          <div id="pcCatalogFields">
         <div class="pc-catalog-toolbar">
           <label class="pc-search"><span>Find a product</span><input id="tpSearch" type="search" placeholder="Product, vendor, brand, MF#, APN or SUPC…" /></label>
           <label><span>Product list</span><select id="tpCollection"><option value="stock">Stocked products</option><option value="new">New products</option></select></label>
@@ -27,8 +28,9 @@
             <div class="tp-load-more"><button id="tpLoadMore" type="button" class="ghost-action" hidden>Load more products</button></div>
           </div>
         </div>
-        <p id="tpSelectedCount" class="pc-selected-summary" role="status" aria-live="polite">0 products selected</p>
-      </section>
+          </div>
+          <div class="pc-selected-summary"><strong id="tpSelectedCount" role="status" aria-live="polite">0 products selected</strong><button id="pcReviewProducts" type="button" aria-controls="pcCatalogFields" hidden>Review products</button><button id="pcChangeProducts" type="button" aria-controls="pcCatalogFields" hidden>Change products</button><ul id="pcSelectedNames" aria-label="Selected products" hidden></ul></div>
+        </section>
       <section id="tpEventPanel" class="pc-source-panel pc-event-panel" aria-label="Choose an event" hidden>
         <label><span>Event or visit</span><select id="tpEventPicker"><option value="">Choose an upcoming or ongoing event</option></select></label>
         <p id="tpEventSummary" class="ps-hint">Choose an event, then select the products you need.</p>
@@ -44,16 +46,20 @@
       <h3 class="pc-step-heading">2. Format &amp; print</h3>
     <div class="ps-print-options">
       <label><span>Format</span><select id="psPrintFormat"><option value="labels" selected>Sample bag labels · 4 × 2 in (Avery 8163)</option><option value="list">Product list</option><option value="cards">4 × 6 inch presentation cards</option></select></label>
+      <div id="psBagQuantity" class="ps-bag-quantity" hidden>
+        <span id="psBagQuantityTitle">Labels per product</span>
+        <div class="ps-bag-quantity-buttons" role="group" aria-labelledby="psBagQuantityTitle">
+          <button id="psBagOneEach" type="button" aria-pressed="false">1 each</button>
+          <button id="psBagFullSheet" type="button" aria-pressed="false">10 each</button>
+        </div>
+      </div>
       <label data-print-document hidden><span>Distributor logo</span><select id="psPrintLogo"><option value="none">No distributor logo</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales">Quality Sales</option></select></label>
       <label data-print-document hidden><span>Heading</span><input id="psPrintHeading" value="Product presentation" maxlength="120" /></label>
       <label data-print-document hidden><span>Copies of each card</span><input id="psPrintCopies" type="number" min="1" max="20" value="1" /></label>
-      <button type="button" id="psPreparePrint" class="primary-action">Refresh preview</button>
+
     </div>
     </section>
-    <p id="tpPrintEmpty" class="pc-empty-job">Choose one or more products above. Then set the format and preview your print job.</p>
-    <p id="psPrintSummary" class="ps-hint"></p>
-
-        <div id="psBagQuantity" class="ps-bag-quantity"><span>Labels for selected products</span><div class="ps-bag-quantity-buttons" role="group" aria-label="Labels for selected products"><button id="psBagOneEach" type="button" aria-pressed="true">1 per product</button><button id="psBagFullSheet" type="button" aria-pressed="false">10 per product</button></div><small>Automatic fitting is on for every selected product. Change quantities in Label setup.</small></div>
+    <p id="tpPrintEmpty" class="pc-empty-job">Choose products above to start a print job.</p>
         <details id="psPrintErrors" class="ps-print-errors" hidden><summary>Last print error</summary><pre id="psPrintErrorDetails"></pre><div class="ps-print-error-actions"><button id="psPrintCopyError" type="button">Copy error details</button><button id="psPrintDismissError" type="button" class="ps-text">Dismiss</button></div><p id="psPrintCopyStatus" role="status" aria-live="polite"></p></details>
         <div id="psPrintLayout" class="ps-print-layout" data-format="labels">
       <aside id="psBagSettings" class="ps-bag-settings" aria-labelledby="psBagSettingsTitle">
@@ -82,9 +88,17 @@
         <details class="ps-bag-appearance"><summary>Sheet appearance</summary><label><span>Preferred text size</span><select id="psBagTextSize"><option value="standard">Standard · 16 pt name / 12 pt details</option><option value="compact">Compact · 14 pt name / 11 pt details</option><option value="large">Large · 18 pt name / 14 pt details</option></select></label><p class="ps-hint">Long labels fit automatically. All wording and item numbers are kept.</p></details>
         <p id="psBagHelp" class="ps-hint">Preview the full sheet to check each label before printing.</p>
       </aside>
-      <div id="psPrintPreview" class="ps-print-preview"><p class="ps-empty">Choose products to see a preview.</p></div>
+      <div class="ps-output-panel">
+          <div class="ps-output-actions">
+            <span id="psPreviewState" role="status"></span>
+            <button id="psPreparePrint" type="button" hidden>Retry preview</button>
+            <button id="psPrintNow" type="button" class="primary-action" aria-describedby="psPrintScaleNote" disabled>Print labels</button>
+            <small id="psPrintScaleNote">Print at 100% / Actual size.</small>
+          </div>
+          <div id="psPrintPreview" class="ps-print-preview"><p class="ps-empty">Choose products to see a preview.</p></div>
+        </div>
     </div>
-    <p class="tp-print-note">Labels use Letter paper at 100% / actual size. Presentation cards are 6 inches wide × 4 inches tall. Check a plain-paper sheet before using label stock.</p>
+    <p class="tp-print-note">Labels use Letter paper. Presentation cards are 6 inches wide × 4 inches tall. Check a plain-paper sheet before using label stock.</p>
   </form>
 </dialog>`;
 })();

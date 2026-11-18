@@ -8,7 +8,7 @@
   const pageSize = 100;
   const productFields = ["description","vendor","brandName","brandType","distributor","distributorNumber","manufacturerNumber","apn","supc","gtin","packaging","storage","updatedAt"];
   const distributorLogos = {usFoods:["us-foods-logo.svg","US Foods"],sysco:["sysco-logo.png?v=20260917-official1","Sysco"],linford:["linford-logo.svg","Linford"],qualitySales:["quality-sales-logo.png","Quality Sales"]};
-  let dialog, labels;
+  let dialog, labels, catalogReview;
   const state = {uid:"",role:"",generation:0,stock:[],new:[],all:new Map(),events:[],eventProducts:new Map(),selected:new Set(),mode:"products",eventChoice:"",selectedOnly:false,visibleLimit:pageSize,frames:new Set()};
   const $ = id => document.getElementById(id);
   const auth = () => window.foodBrokerBaseAuth;
@@ -131,11 +131,10 @@
   function renderPrintCount() {
     if(!allowed())return;
     const count=labels?.getProducts().length || 0,isLabels=$("psPrintFormat").value==="labels";
-    $("psPrintSummary").textContent=count?(isLabels?"Labels fit automatically. Adjust wording, logos and quantities in Label setup.":"Choose a distributor logo and heading for your "+(count===1?"product.":"products.")):"";
     $("tpSelectedCount").textContent=state.selected.size+" product"+(state.selected.size===1?"":"s")+" selected across your product lists";
     const event=state.events.find(event=>event.id===$("tpEventPicker").value);
     $("tpEventSummary").textContent=event?"Choose the products you need from this event.":"Choose an event, then select the products you need.";
-    $("psPrintSummary").hidden=!count;$("psPrintLayout").hidden=!count;$("psBagQuantity").hidden=!count || !isLabels;$("tpPrintEmpty").hidden=Boolean(count);
+    $("psPrintLayout").hidden=!count;$("psBagQuantity").hidden=!count || !isLabels;$("tpPrintEmpty").hidden=Boolean(count);
     $("psPreparePrint").disabled=!count;renderMode();
   }
   function renderVendors() {
@@ -154,11 +153,16 @@
     let previous="";
     $("tpProductList").innerHTML=visible.length ? visible.map(product=>{
       const vendor=vendorName(product),heading=normal(vendor)!==previous?'<h4 class="pc-vendor-heading">'+esc(vendor)+'</h4>':"";previous=normal(vendor);
-      return heading+'<label class="tp-product-row pc-product-row"><input type="checkbox" data-tp-product="'+esc(productKey(product))+'"'+(state.selected.has(productKey(product))?' checked':'')+' /><span class="tp-product-info pc-product-info"><strong>'+esc(product.description)+'</strong><small>'+esc([product.brandName,product.distributor,codes(product),product.packaging,product.storage].filter(Boolean).join(" · "))+'</small></span></label>';
+      const details = [product.brandName,product.distributor,product.packaging,product.storage].filter(Boolean).join(" · ");
+      const numbers = codes(product);
+      const metadata = [esc(details), numbers && '<span class="pc-product-codes">'+esc(numbers)+'</span>'].filter(Boolean).join(" · ");
+      return heading+'<label class="tp-product-row pc-product-row"><input type="checkbox" data-tp-product="'+esc(productKey(product))+'"'+(state.selected.has(productKey(product))?' checked':'')+' /><span class="tp-product-info pc-product-info"><strong>'+esc(product.description)+'</strong><small>'+metadata+'</small></span></label>';
     }).join("") : '<p class="ps-empty">'+(state.selectedOnly?"No selected products match these filters.":"No products match. Try All vendors or a different search.")+'</p>';
     $("tpCount").textContent=found.length+" product"+(found.length===1?"":"s")+(visible.length<found.length?" · first "+visible.length+" shown":"");
     $("tpSelectedOnly").setAttribute("aria-pressed",String(state.selectedOnly));$("tpSelectedOnly").textContent="Selected only ("+state.selected.size+")";
     $("tpLoadMore").hidden=visible.length>=found.length;$("tpClearSelection").disabled=!state.selected.size;$("tpSelectShown").disabled=!visible.length;
+    $("tpSelectShown").textContent = `Select all ${visible.length} shown`;
+    catalogReview.update([...state.selected].map(id => state.all.get(id)?.description).filter(Boolean));
     updateSummary();
   }
   function chooseMode(mode) {
@@ -168,12 +172,13 @@
   }
   function cleanupFrames() {state.frames.forEach(frame=>frame.remove());state.frames.clear();}
   function clear() {
+    catalogReview?.update([]);
     state.generation++;state.uid="";state.role="";
     labels?.clear();cleanupFrames();state.stock=[];state.new=[];state.all.clear();state.events=[];state.eventProducts.clear();state.selected.clear();state.mode="products";state.eventChoice="";state.selectedOnly=false;state.visibleLimit=pageSize;
     $("tpSearch").value="";$("tpCollection").value="stock";$("tpDistributor").value="";$("tpVendor").innerHTML='<option value="">All vendors</option>';$("tpVendorButtons").replaceChildren();$("tpSelectedOnly").setAttribute("aria-pressed","false");$("tpSelectedOnly").textContent="Selected only (0)";$("tpEventPicker").innerHTML='<option value="">Choose an upcoming or ongoing event</option>';$("tpEventSummary").textContent="Choose an event, then select the products you need.";
     $("tpProductList").replaceChildren();$("tpCount").textContent="";$("tpSelectedCount").textContent="";
     $("psPrintSource").innerHTML='<option value="selected">Selected products</option><option value="shown">Current product search</option><option value="event:">Choose an event</option>';
-    $("psPrintFormat").value="labels";$("psPrintLogo").value="none";$("psPrintHeading").value="Product presentation";$("psPrintCopies").value="1";$("psPrintSummary").textContent="";$("psPrintSummary").hidden=true;status("");
+    $("psPrintFormat").value="labels";$("psPrintLogo").value="none";$("psPrintHeading").value="Product presentation";$("psPrintCopies").value="1";status("");
     $("tpLoadMore").hidden=true;$("tpClearSelection").disabled=true;$("psPrintLayout").hidden=true;$("psPrintProducts").hidden=true;$("psBagQuantity").hidden=true;$("tpPrintEmpty").hidden=false;$("psPreparePrint").disabled=true;renderMode();
   }
   function close() {clear();if(dialog.open)dialog.close();}
@@ -228,27 +233,27 @@
         if(!valid(captured) || revision!==labels.getRevision()){frame.remove();state.frames.delete(frame);return;}
         if(format==="cards" && [...frame.contentDocument.querySelectorAll(".ps-preview-label")].some(card=>card.scrollHeight>card.clientHeight+1 || card.scrollWidth>card.clientWidth+1))throw new Error("A presentation card has more text than fits. Shorten the product wording or print a product list.");
         frame.contentWindow.addEventListener("afterprint",()=>{frame.remove();state.frames.delete(frame);},{once:true});frame.contentWindow.focus();frame.contentWindow.print();
-      }catch(error){frame.remove();state.frames.delete(frame);if(valid(captured) && revision===labels.getRevision()){labels.recordError(error,"PRODUCT_DOCUMENT_PRINT");status(error.message || "Could not load a print logo. Try again after refreshing the app.","error");}}
+      }catch(error){frame.remove();state.frames.delete(frame);if(valid(captured) && revision===labels.getRevision())labels.previewFailed(error,"PRODUCT_DOCUMENT_PRINT");}
     };
     document.body.appendChild(frame);
   }
   function prepareDocument() {
     if(!allowed())return;
     const products=labels.getProducts(),format=$("psPrintFormat").value,copies=Number($("psPrintCopies").value),heading=$("psPrintHeading").value.trim() || "Product presentation";
-    if(!products.length){status("Choose products or an event lineup before printing.","waiting");return;}
-    if(!["list","cards"].includes(format) || !Number.isInteger(copies) || copies<1 || copies>20){status("Choose a valid print format and a whole number of copies from 1 to 20.","error");return;}
-    if(products.length*(format==="cards"?copies:1)>1000){status("Print no more than 1,000 products or cards per job. Narrow the search or reduce copies.","error");return;}
+    if(!products.length)return;
+    if(format==="cards" && (!Number.isInteger(copies) || copies<1 || copies>20))throw new Error("Choose a whole number of copies from 1 to 20.");
+    if(products.length*(format==="cards"?copies:1)>1000)throw new Error("Print no more than 1,000 products or cards per job. Narrow the search or reduce copies.");
     cleanupFrames();
     const revision=labels.getRevision(),captured=identity(),markup=documentMarkup(products,format,$("psPrintLogo").value,heading,copies);
-    $("psPrintPreview").innerHTML='<div class="ps-dialog-actions ps-preview-actions"><button type="button" id="psPrintNow" class="primary-action">Print this preview</button></div>'+markup;
-    $("psPrintNow").addEventListener("click",()=>{if(valid(captured) && revision===labels.getRevision())sendDocument(markup,format,heading,revision);});
-    status("Preview ready · Check the format and logo, then print.");
+    $("psPrintPreview").innerHTML=markup;
+    return ()=>{if(valid(captured) && revision===labels.getRevision())sendDocument(markup,format,heading,revision);};
   }
   function init() {
     const triggers=document.querySelectorAll("[data-open-print-center]");
     if(!triggers.length)return;
     const template=document.createElement("template");template.innerHTML=window.foodBrokerTeamPrintTemplate;
     document.querySelector(".app-shell").append(template.content.cloneNode(true));dialog=$("teamPrintCenterDialog");
+    catalogReview=window.foodBrokerSupportLabels.createCatalogReview($("tpCatalogPicker"));
     labels=window.foodBrokerSupportLabels.create({allowed,identity,valid,beforeSync:refreshPrintSources,prepareDocument,getProducts:printProducts,productKey,itemNumber,status,selectionChanged:renderPrintCount,frames:state.frames});
     triggers.forEach(trigger=>trigger.addEventListener("click",open));$("tpClose").addEventListener("click",close);dialog.addEventListener("close",()=>{if(!dialog.open)clear();});dialog.addEventListener("cancel",event=>{event.preventDefault();close();});
     $("teamPrintForm").addEventListener("submit",event=>event.preventDefault());

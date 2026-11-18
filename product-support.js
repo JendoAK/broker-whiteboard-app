@@ -13,7 +13,7 @@
   const logos = { usFoods: ["us-foods-logo.svg", "US Foods"], sysco: ["sysco-logo.png?v=20260917-official1", "Sysco"], linford: ["linford-logo.svg", "Linford"], qualitySales: ["quality-sales-logo.png", "Quality Sales"] };
   const pageSize = 100;
   const state = { userId: "", generation: 0, request: 0, stock: [], new: [], events: [], selected: new Set(), collection: "stock", schoolOnly: false, visibleLimit: pageSize, date: "upcoming", view: "products", editing: null, attachments: [], attachmentsChanged: false, importRows: [], importRunning: false, saving: false, readingFiles: false, frames: new Set(), eventId: "", loaded: false };
-  let labelPrint;
+  let labelPrint, catalogReview;
 
   function auth() { return window.foodBrokerBaseAuth; }
   function allowed() { return Boolean(auth()?.getCurrentUser()?.id && auth()?.getCurrentProfile()?.role === "product_support" && !auth()?.isPasswordRecovery?.()); }
@@ -117,7 +117,7 @@
     resetPrintNavigation();
     document.querySelectorAll("dialog").forEach(d => d.close());
     $("psProductForm").reset(); $("psProductForm").elements.id.value = "";
-    ["psProductList", "psEventList", "psEventBody", "psPrintPreview", "psAttachments", "psImportPreview", "psUser", "psCount", "psSelectionCount", "psVendors", "psCategories", "psPrintSummary"].forEach(id => $(id).replaceChildren());
+    ["psProductList", "psEventList", "psEventBody", "psPrintPreview", "psAttachments", "psImportPreview", "psUser", "psCount", "psSelectionCount", "psVendors", "psCategories"].forEach(id => $(id).replaceChildren());
     ["psSearch", "psEventSearch", "psCsvInput", "psFileInput"].forEach(id => { $(id).value = ""; });
     $("psVendor").innerHTML = '<option value="">All vendors</option>'; $("psDistributor").value = ""; $("psEventType").value = "";
     syncDistributorButtons(); updateSelectionActions(); $("psLoadMore").hidden = true;
@@ -391,9 +391,14 @@
     let vendor="";
     $("pspProductList").innerHTML=visible.map(({product})=>{
       const name=printVendorName(product),heading=normal(name)!==vendor?'<h4 class="pc-vendor-heading">'+esc(name)+'</h4>':"";vendor=normal(name);
-      return heading+'<label class="pc-product-row"><input type="checkbox" data-psp-product="'+esc(printKey(product))+'"'+(selected.has(printKey(product))?' checked':'')+' /><span class="pc-product-info"><strong>'+esc(description(product))+'</strong><small>'+esc([normal(product.brandName)!==normal(product.vendor)?product.brandName:"",product.distributor,codes(product),product.packaging,product.storage].filter(Boolean).join(" · "))+'</small></span></label>';
+      const details = [normal(product.brandName)!==normal(product.vendor)?product.brandName:"",product.distributor,product.packaging,product.storage].filter(Boolean).join(" · ");
+      const numbers = codes(product);
+      const metadata = [esc(details), numbers && '<span class="pc-product-codes">'+esc(numbers)+'</span>'].filter(Boolean).join(" · ");
+      return heading+'<label class="pc-product-row"><input type="checkbox" data-psp-product="'+esc(printKey(product))+'"'+(selected.has(printKey(product))?' checked':'')+' /><span class="pc-product-info"><strong>'+esc(description(product))+'</strong><small>'+metadata+'</small></span></label>';
     }).join("") || '<p class="ps-empty">'+(printPicker.selectedOnly?"No selected products match these filters.":"No products match. Try another vendor or search.")+'</p>';
     $("pspCount").textContent=found.length+" product"+(found.length===1?"":"s")+(visible.length<found.length?" · first "+visible.length+" shown":"");
+    $("pspSelectShown").textContent = `Select all ${visible.length} shown`;
+    catalogReview?.update([...selected].map(productFromKey).filter(Boolean).map(description));
     $("pspLoadMore").hidden=visible.length>=found.length;$("pspSelectShown").disabled=!visible.length;$("pspClearSelection").disabled=!selected.size;
   }
   function syncPrintNavigation() {
@@ -412,12 +417,14 @@
     updatePrintSummary();
   }
   function resetPrintNavigation() {
+    catalogReview?.update([]);
     Object.assign(printPicker,{collection:"stock",vendor:"",query:"",distributor:"",selectedOnly:false,visibleLimit:pageSize,lastEvent:""});
     $("pspSearch").value="";$("pspCollection").value="stock";$("pspDistributor").value="";$("pspVendor").innerHTML='<option value="">All vendors</option>';
     $("pspVendorButtons").replaceChildren();$("pspProductList").replaceChildren();$("pspCount").textContent="";$("pspSelectedCount").textContent="0 selected";
     $("pspEventPicker").innerHTML='<option value="event:">Choose an upcoming event…</option>';$("psPrintLayout").hidden=true;$("psBagQuantity").hidden=true;$("psPreparePrint").disabled=true;$("pspEmptySelection").hidden=false;syncPrintNavigation();
   }
   function initPrintNavigation() {
+    catalogReview = window.foodBrokerSupportLabels.createCatalogReview($("pspCatalogPanel"));
     document.querySelectorAll("[data-psp-mode]").forEach(button=>button.addEventListener("click",()=>setPrintMode(button.dataset.pspMode)));
     $("pspSearch").addEventListener("input",()=>{printPicker.query=$("pspSearch").value;printPicker.visibleLimit=pageSize;renderPrintCatalog();});
     [["pspCollection","collection"],["pspDistributor","distributor"],["pspVendor","vendor"]].forEach(([id,field])=>$(id).addEventListener("change",()=>{printPicker[field]=$(id).value;printPicker.visibleLimit=pageSize;renderPrintCatalog();}));
@@ -456,7 +463,6 @@
   function renderPrintCount() {
     const count=labelPrint?.getProducts().length || 0;
     $("pspSelectedCount").textContent=count+" product"+(count===1?"":"s")+" selected";
-    $("psPrintSummary").hidden=!count;$("psPrintSummary").textContent=count ? count+" product"+(count===1?"":"s")+" selected to print. "+($("psPrintFormat").value==="labels"?"One label per product is the default. Adjust wording, logos and quantities below.":"Choose a distributor logo.") : "";
     $("psPrintLayout").hidden=!count;$("psBagQuantity").hidden=!count || $("psPrintFormat").value!=="labels";$("psPreparePrint").disabled=!count;$("pspEmptySelection").hidden=Boolean(count);
     syncPrintNavigation();
   }
@@ -496,14 +502,14 @@
   }
   function prepareDocument() {
     if (!allowed()) return;
-    const products = labelPrint.getProducts(), format = $("psPrintFormat").value, logo = $("psPrintLogo").value, heading = $("psPrintHeading").value.trim() || "Product presentation", copies = Math.max(1, Math.min(20, Number($("psPrintCopies").value) || 1));
-    if (!products.length) { status("Choose products or an event lineup before printing.", "waiting"); return; }
-    if (products.length * (format === "list" ? 1 : copies) > 1000) { status("Choose no more than 1,000 products or labels per print job. Narrow the search or reduce copies.", "error"); return; }
+    const products = labelPrint.getProducts(), format = $("psPrintFormat").value, logo = $("psPrintLogo").value, heading = $("psPrintHeading").value.trim() || "Product presentation", copies = Number($("psPrintCopies").value);
+    if (!products.length) return;
+    if (format === "cards" && (!Number.isInteger(copies) || copies < 1 || copies > 20)) throw new Error("Choose a whole number of copies from 1 to 20.");
+    if (products.length * (format === "list" ? 1 : copies) > 1000) throw new Error("Choose no more than 1,000 products or cards per print job. Narrow the search or reduce copies.");
     const markup = printMarkup(products, format, logo, heading, copies);
-    $("psPrintPreview").innerHTML = `<div class="ps-dialog-actions ps-preview-actions"><button type="button" id="psPrintNow" class="primary-action">Print this preview</button></div>${markup}`;
+    $("psPrintPreview").innerHTML = markup;
     const revision = labelPrint.getRevision();
-    $("psPrintNow").addEventListener("click", () => {if(revision === labelPrint.getRevision())sendToPrinter(markup, format, heading, revision);});
-    status("Preview ready · Check the format and logo, then print.");
+    return () => {if(revision === labelPrint.getRevision())sendToPrinter(markup, format, heading, revision);};
   }
   function sendToPrinter(markup, format, heading, revision) {
     if (!allowed()) return;
@@ -519,7 +525,7 @@
         if (!valid(gen, uid) || revision !== labelPrint.getRevision()) { frame.remove(); state.frames.delete(frame); return; }
         frame.contentWindow.addEventListener("afterprint", () => {frame.remove(); state.frames.delete(frame);}, {once:true});
         frame.contentWindow.focus(); frame.contentWindow.print();
-      } catch(error) {frame.remove();state.frames.delete(frame);if(valid(gen,uid) && revision===labelPrint.getRevision()){labelPrint.recordError(error,"PRODUCT_DOCUMENT_PRINT");status(error.message || "Printing could not start. The error details are kept below.","error");}}
+      } catch(error) {frame.remove();state.frames.delete(frame);if(valid(gen,uid) && revision===labelPrint.getRevision())labelPrint.previewFailed(error,"PRODUCT_DOCUMENT_PRINT");}
     };
     document.body.appendChild(frame);
   }

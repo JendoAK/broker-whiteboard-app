@@ -8,7 +8,7 @@
   <link rel="icon" href="broker-whiteboard-logo.png" />
   <link rel="stylesheet" href="print-logo-library.css?v=20261118-printstudio1" />
 <link rel="stylesheet" href="product-support.css?v=20261103-printgroups1" />
-<link rel="stylesheet" href="account-settings.css?v=20261023-account1" /><link rel="stylesheet" href="support-directory.css?v=20261029-contactcards1" /><link rel="stylesheet" href="print-center-navigation.css?v=20261118-setuptitles1" /><link rel="stylesheet" href="support-samples.css?v=20261102-supportsamples1" /></head>
+<link rel="stylesheet" href="account-settings.css?v=20261023-account1" /><link rel="stylesheet" href="support-directory.css?v=20261029-contactcards1" /><link rel="stylesheet" href="print-center-navigation.css?v=20261118-printflow1" /><link rel="stylesheet" href="support-samples.css?v=20261102-supportsamples1" /></head>
 <body data-product-support-page>
   <div class="app-shell">
     <header class="topbar">
@@ -61,6 +61,7 @@
             <button type="button" class="pc-mode-option" data-psp-mode="event" aria-pressed="false"><strong>From an event</strong><small>Use a visit, test kitchen or foodshow</small></button>
           </div>
           <section id="pspCatalogPanel" class="pc-source-panel" aria-label="Find products to print">
+          <div id="pcCatalogFields">
             <div class="pc-catalog-toolbar">
               <label class="pc-search"><span>Search products</span><input id="pspSearch" type="search" placeholder="Product, brand, MF#, APN or SUPC…" /></label>
               <label><span>Product list</span><select id="pspCollection"><option value="stock">Stocked products</option><option value="new">New products</option></select></label>
@@ -75,7 +76,9 @@
                 <button id="pspLoadMore" type="button" class="ps-text" hidden>Load more products</button>
               </div>
             </div>
-          </section>
+          </div>
+          <div class="pc-selected-summary"><strong id="pspSelectedCount" role="status" aria-live="polite">0 products selected</strong><button id="pcReviewProducts" type="button" aria-controls="pcCatalogFields" hidden>Review products</button><button id="pcChangeProducts" type="button" aria-controls="pcCatalogFields" hidden>Change products</button><ul id="pcSelectedNames" aria-label="Selected products" hidden></ul></div>
+        </section>
           <section id="pspEventPanel" class="pc-event-panel" aria-label="Choose an event product lineup" hidden>
             <label><span>Event or visit</span><select id="pspEventPicker"><option value="event:">Choose an upcoming event…</option></select></label>
             <p class="ps-hint">Upcoming and ongoing events only. Choose which products from the lineup to print.</p>
@@ -85,7 +88,7 @@
           <div id="psPrintProductList" class="ps-print-product-list"></div>
         </section>
           </section>
-          <div class="pc-selected-summary"><strong id="pspSelectedCount" role="status" aria-live="polite">0 products selected</strong><span>Your choices stay selected when you change vendors or search.</span></div>
+
           <p id="pspEmptySelection" class="pc-empty-job">Choose products above to start a print job.</p>
         </div>
         <div class="pc-format-panel">
@@ -93,14 +96,19 @@
         <div class="ps-print-options">
           <label hidden aria-hidden="true"><span>Print source</span><select id="psPrintSource" tabindex="-1"><option value="selected">Selected products</option><option value="shown">Current product search</option><option value="event:">Choose an upcoming event…</option></select></label>
           <label><span>Format</span><select id="psPrintFormat"><option value="list">Product list</option><option value="labels">Sample bag labels · 4 × 2 in (Avery 8163)</option><option value="cards">4 × 6 inch presentation cards</option></select></label>
+          <div id="psBagQuantity" class="ps-bag-quantity" hidden>
+            <span id="psBagQuantityTitle">Labels per product</span>
+            <div class="ps-bag-quantity-buttons" role="group" aria-labelledby="psBagQuantityTitle">
+              <button id="psBagOneEach" type="button" aria-pressed="false">1 each</button>
+              <button id="psBagFullSheet" type="button" aria-pressed="false">10 each</button>
+            </div>
+          </div>
           <label data-print-document><span>Distributor logo</span><select id="psPrintLogo"><option value="none">No distributor logo</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales">Quality Sales</option></select></label>
           <label data-print-document><span>Heading</span><input id="psPrintHeading" value="Product presentation" maxlength="120" /></label>
           <label data-print-document><span>Copies of each card</span><input id="psPrintCopies" type="number" min="1" max="20" value="1" /></label>
-          <button type="button" id="psPreparePrint" class="primary-action">Refresh preview</button>
-        </div>
-        <p id="psPrintSummary" class="ps-hint"></p><p class="ps-hint">Labels use Letter paper at 100% / actual size. Presentation cards are 6 inches wide × 4 inches tall. Check a plain-paper sheet before using label stock.</p>
 
-        <div id="psBagQuantity" class="ps-bag-quantity"><span>Labels for selected products</span><div class="ps-bag-quantity-buttons" role="group" aria-label="Labels for selected products"><button id="psBagOneEach" type="button" aria-pressed="true">1 per product</button><button id="psBagFullSheet" type="button" aria-pressed="false">10 per product</button></div><small>Automatic fitting is on for every selected product. Change quantities in Label setup.</small></div>
+        </div>
+        </div>
         <details id="psPrintErrors" class="ps-print-errors" hidden><summary>Last print error</summary><pre id="psPrintErrorDetails"></pre><div class="ps-print-error-actions"><button id="psPrintCopyError" type="button">Copy error details</button><button id="psPrintDismissError" type="button" class="ps-text">Dismiss</button></div><p id="psPrintCopyStatus" role="status" aria-live="polite"></p></details>
         <div id="psPrintLayout" class="ps-print-layout">
           <aside id="psBagSettings" class="ps-bag-settings" aria-labelledby="psBagSettingsTitle" hidden>
@@ -129,6 +137,13 @@
             <details class="ps-bag-appearance"><summary>Sheet appearance</summary><label><span>Preferred text size</span><select id="psBagTextSize"><option value="standard">Standard · 16 pt name / 12 pt details</option><option value="compact">Compact · 14 pt name / 11 pt details</option><option value="large">Large · 18 pt name / 14 pt details</option></select></label><p class="ps-hint">Long labels fit automatically. All wording and item numbers are kept.</p></details>
             <p id="psBagHelp" class="ps-hint">Preview the full sheet to check each label before printing.</p>
           </aside>
+          <div class="ps-output-panel">
+          <div class="ps-output-actions">
+            <span id="psPreviewState" role="status"></span>
+            <button id="psPreparePrint" type="button" hidden>Retry preview</button>
+            <button id="psPrintNow" type="button" class="primary-action" aria-describedby="psPrintScaleNote" disabled>Print labels</button>
+            <small id="psPrintScaleNote">Print at 100% / Actual size.</small>
+          </div>
           <div id="psPrintPreview" class="ps-print-preview"><p class="ps-empty">Choose products to see a preview.</p></div>
         </div>
         </div>
@@ -163,8 +178,8 @@
   <script src="product-bag-labels.js?v=20261026-nooutlines1"></script>
   <script src="product-print-logos.js?v=20261118-margherita1"></script>
   <script src="print-logo-library.js?v=20261118-printstudio1"></script>
-  <script src="product-support-labels.js?v=20261118-fullsheet1"></script>
-  <script src="contact-directory-model.js?v=20261029-contactcards1"></script><script src="support-directory.js?v=20261104-syncfix1"></script><script src="support-samples.js?v=20261104-syncfix1"></script><script src="product-support.js?v=20261118-printstudio1"></script>
+  <script src="product-support-labels.js?v=20261118-printflow1"></script>
+  <script src="contact-directory-model.js?v=20261029-contactcards1"></script><script src="support-directory.js?v=20261104-syncfix1"></script><script src="support-samples.js?v=20261104-syncfix1"></script><script src="product-support.js?v=20261118-printflow1"></script>
 </body>
 </html>
 

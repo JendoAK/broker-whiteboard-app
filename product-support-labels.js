@@ -133,16 +133,32 @@
       draft.source = p;
       return draft;
     }
+    function setPreviewState(state, printAction = null) {
+      const button = $("psPrintNow"), status = $("psPreviewState");
+      const messages = {empty:"", updating:"Updating preview…", ready:"Preview ready", error:"Preview needs attention"};
+      status.textContent = messages[state];
+      status.dataset.state = state;
+      button.textContent = ({labels:"Print labels", list:"Print list", cards:"Print cards"})[$("psPrintFormat").value];
+      button.disabled = state !== "ready";
+      button.onclick = printAction;
+      $("psPreparePrint").hidden = state !== "error";
+      if (state === "ready" && ["LABEL_PRINT","LABEL_PREVIEW","PRODUCT_DOCUMENT_PRINT","PRODUCT_DOCUMENT_PREVIEW"].includes(lastErrorStep)) clearErrors();
+    }
+    function previewFailed(error, step) {
+      invalidate(error.message);
+      previewDirty = false;
+      setPreviewState("error");
+      $("psPrintPreview").innerHTML = '<p id="psBagFit" class="ps-status" data-tone="error" role="alert">'+esc(error.message)+'</p>';
+      recordError(error, step);
+    }
     function invalidate(message = "Updating preview…", keepLayout = false) {
       clearTimeout(previewTimer);
       previewDirty = true;
       revision++; ready = null;
       controllers.forEach(c => c.abort()); controllers.clear();
       frames.forEach(frame => {frame.remove();host.frames.delete(frame);}); frames.clear();
-      const printButton = $("psPrintNow");
-      if (keepLayout && printButton) {
-        printButton.disabled = true;
-      } else {
+      setPreviewState(products.length ? "updating" : "empty");
+      if (!keepLayout) {
         displayedResources = null;
         $("psPrintPreview").innerHTML = '<p class="ps-empty">'+esc(message)+'</p>';
       }
@@ -164,7 +180,10 @@
           releaseResources(displayedResources);
           displayedResources = null;
           $("psPrintPreview").replaceChildren();
-          host.prepareDocument();
+          try {
+            const printAction = host.prepareDocument();
+            if (typeof printAction === "function" && isCurrent(identity, rev)) setPreviewState("ready", printAction);
+          } catch (error) { if (isCurrent(identity, rev)) previewFailed(error, "PRODUCT_DOCUMENT_PREVIEW"); }
         }
       };
       if (immediate === true) refresh();
@@ -394,7 +413,6 @@
     }
     async function prepareLabels(identity, rev) {
       const resources = {byData:new Map(),bytes:0,released:false}; resourceGroups.add(resources);
-      host.status("Checking label size and logos…","waiting");
       let ownedFrame = null;
       try {
         const job=await buildJob(identity,rev,resources);
@@ -407,17 +425,12 @@
         renderPreview();
         releaseResources(displayedResources);
         displayedResources = resources;
-        if (lastErrorStep === "LABEL_PREVIEW") clearErrors();
-        host.status("Preview ready · "+(job.autoFitCount?job.autoFitCount+" product"+(job.autoFitCount===1?"":"s")+" adjusted automatically to fit. ":"")+"Label wording is for this print job only. Print Letter paper at 100% / actual size.");
+        setPreviewState("ready", print);
       } catch(error) {
         if (ownedFrame) {ownedFrame.remove();frames.delete(ownedFrame);host.frames.delete(ownedFrame);}
         if (ready?.resources === resources) ready = null;
-        const currentJob = isCurrent(identity,rev);
-        try {if(currentJob){$("psPrintPreview").innerHTML='<p id="psBagFit" class="ps-status" data-tone="error" role="alert">'+esc(error.message)+'</p>';releaseResources(displayedResources);displayedResources=null;}}
-        finally {releaseResources(resources);}
-        if (!currentJob) return;
-        recordError(error,"LABEL_PREVIEW");
-        host.status("Labels need an adjustment before printing.","error");
+        releaseResources(resources);
+        if (isCurrent(identity,rev)) previewFailed(error, "LABEL_PREVIEW");
       }
     }
     // Zoom applies only to the screen copy. The print frame keeps its physical dimensions.
@@ -450,12 +463,11 @@
       let content;
       if(view==="sheet")content=pages[pageNumber].outerHTML;
       else {const index=Math.max(0,ready.keys.indexOf(active)),offset=job.products.slice(0,index).reduce((n,p)=>n+p.copies,0);content='<div class="bag-label-single">'+holder.querySelector('[data-label-index="'+(offset+1)+'"]').outerHTML+'</div>';}
-      $("psPrintPreview").innerHTML='<style>'+output.css+'</style><div class="ps-bag-stagebar"><div class="ps-bag-view-controls" role="group" aria-label="Label preview"><button type="button" data-bag-view="label" aria-pressed="'+(view==="label")+'">One label</button><button type="button" data-bag-view="sheet" aria-pressed="'+(view==="sheet")+'">Full sheet</button></div>'+zoomControl()+'<button id="psPrintNow" type="button" class="primary-action">Print this preview</button></div><div class="ps-bag-viewport"><div id="psBagPreviewPaper"><div class="ps-bag-paper-inner">'+content+'</div></div></div><div class="ps-bag-preview-footer"><p id="psBagFit" role="status">'+output.labelCount+' labels · '+output.pageCount+' sheet'+(output.pageCount===1?"":"s")+' · Content fits'+(job.autoFitCount?' · '+job.autoFitCount+' product'+(job.autoFitCount===1?'':'s')+' adjusted automatically':'')+'</p><div class="ps-bag-pagination"'+(view!=="sheet"||pages.length<2?' hidden':'')+'><button id="psBagPrev" type="button" aria-label="Previous sheet"'+(pageNumber===0?' disabled':'')+'>←</button><span>Sheet '+(pageNumber+1)+' of '+pages.length+'</span><button id="psBagNext" type="button" aria-label="Next sheet"'+(pageNumber===pages.length-1?' disabled':'')+'>→</button></div></div>';
+      $("psPrintPreview").innerHTML='<style>'+output.css+'</style><div class="ps-bag-stagebar"><div class="ps-bag-view-controls" role="group" aria-label="Label preview"><button type="button" data-bag-view="label" aria-pressed="'+(view==="label")+'">One label</button><button type="button" data-bag-view="sheet" aria-pressed="'+(view==="sheet")+'">Full sheet</button></div>'+zoomControl()+'</div><div class="ps-bag-viewport"><div id="psBagPreviewPaper"><div class="ps-bag-paper-inner">'+content+'</div></div></div><div class="ps-bag-preview-footer"><p id="psBagFit" role="status">'+output.labelCount+' labels · '+output.pageCount+' sheet'+(output.pageCount===1?"":"s")+' · Content fits'+(job.autoFitCount?' · '+job.autoFitCount+' product'+(job.autoFitCount===1?'':'s')+' adjusted automatically':'')+'</p><div class="ps-bag-pagination"'+(view!=="sheet"||pages.length<2?' hidden':'')+'><button id="psBagPrev" type="button" aria-label="Previous sheet"'+(pageNumber===0?' disabled':'')+'>←</button><span>Sheet '+(pageNumber+1)+' of '+pages.length+'</span><button id="psBagNext" type="button" aria-label="Next sheet"'+(pageNumber===pages.length-1?' disabled':'')+'>→</button></div></div>';
       $("psBagZoom").addEventListener("change", event => {
         previewZoom[view] = Number(event.target.value);
         scalePreview();
       });
-      $("psPrintNow").addEventListener("click",print);
       $("psPrintPreview").querySelectorAll("[data-bag-view]").forEach(button=>button.addEventListener("click",()=>{view=button.dataset.bagView;renderPreview();}));
       $("psBagPrev").addEventListener("click",()=>{pageNumber--;renderPreview();});$("psBagNext").addEventListener("click",()=>{pageNumber++;renderPreview();});scalePreview();
     }
@@ -468,7 +480,7 @@
         if(!fit.ok)throw new Error("The label content changed. Refresh the preview to check it again.");
         frame.contentWindow.addEventListener("afterprint",()=>{frame.remove();frames.delete(frame);host.frames.delete(frame);if(ready?.frame===frame)requestPreview();else releaseResources(resources);},{once:true});
         frame.contentWindow.focus();frame.contentWindow.print();
-      } catch(error) {requestPreview();recordError(error,"LABEL_PRINT");host.status("Printing could not start. The error details are kept below.","error");}
+      } catch(error) {previewFailed(error, "LABEL_PRINT");}
     }
     $("psPrintProductList").addEventListener("change",event=>{
       if (!host.allowed()) return;
@@ -505,7 +517,42 @@
     $("psPrintFormat").addEventListener("change",sync);
     ["psPrintLogo","psPrintHeading","psPrintCopies"].forEach(id=>$(id).addEventListener(id==="psPrintLogo"?"change":"input",()=>requestPreview()));
     new ResizeObserver(scalePreview).observe($("psPrintPreview"));
-    return Object.freeze({sync,clear,invalidate,prepare,recordError,clearErrors,getProducts:()=>host.allowed()?products.slice():[],getRevision:()=>revision});
+    return Object.freeze({sync,clear,invalidate,prepare,previewFailed,recordError,clearErrors,getProducts:()=>host.allowed()?products.slice():[],getRevision:()=>revision});
   }
-  window.foodBrokerSupportLabels = Object.freeze({create,isPrintableEvent,printableEvents});
+  function createCatalogReview(root) {
+    const fields = root.querySelector("#pcCatalogFields");
+    const review = root.querySelector("#pcReviewProducts");
+    const change = root.querySelector("#pcChangeProducts");
+    const list = root.querySelector("#pcSelectedNames");
+    let names = [];
+    function render() {
+      if (!names.length) fields.hidden = false;
+      review.hidden = fields.hidden || !names.length;
+      change.hidden = !fields.hidden;
+      list.hidden = !fields.hidden;
+      review.textContent = `Review ${names.length} selected product${names.length === 1 ? "" : "s"}`;
+      list.replaceChildren();
+      if (fields.hidden) {
+        const fragment = document.createDocumentFragment();
+        for (const name of names) {
+          const item = document.createElement("li");
+          item.textContent = name;
+          fragment.append(item);
+        }
+        list.append(fragment);
+      }
+    }
+    review.addEventListener("click", () => {
+      fields.hidden = true;
+      render();
+      change.focus();
+    });
+    change.addEventListener("click", () => {
+      fields.hidden = false;
+      render();
+      fields.querySelector('input[type="search"]').focus();
+    });
+    return {update(selectedNames) {names = selectedNames; render();}};
+  }
+  window.foodBrokerSupportLabels = Object.freeze({create,isPrintableEvent,printableEvents,createCatalogReview});
 })();
