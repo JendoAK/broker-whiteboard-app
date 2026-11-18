@@ -9,32 +9,49 @@
 :is(#teamPrintCenterDialog,#psPrinting) .pc-mode-option[aria-pressed=true] :is(span,small){color:#e0eeE8}
 :is(#teamPrintCenterDialog,#psPrinting) .pc-navigation button:focus-visible{outline:3px solid #3f8d82;outline-offset:2px}
 :is(#teamPrintCenterDialog,#psPrinting) .pc-source-panel{min-width:0;border:1px solid var(--pc-line);border-radius:9px;background:var(--pc-paper);padding:12px;margin:0}
-:is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-toolbar{display:grid;grid-template-columns:minmax(200px,1fr) minmax(140px,180px) minmax(140px,180px);gap:9px;align-items:end;margin-bottom:11px;min-width:0}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-toolbar{display:grid;grid-template-columns:minmax(12rem,24rem) max-content minmax(0,1fr);gap:10px 14px;align-items:start;margin-bottom:12px;min-width:0}
 :is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-toolbar label,:is(#teamPrintCenterDialog,#psPrinting) .pc-event-panel>label,:is(#teamPrintCenterDialog,#psPrinting) label.pc-vendor-select{display:grid;gap:4px;min-width:0;font-size:11px;font-weight:700}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-filter-field{min-width:0;margin:0;padding:0;border:0}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-toolbar :is(label>span,legend){margin:0;padding:0;color:#284d41;font:700 13px/1.3 Arial,Helvetica,sans-serif;text-transform:none;letter-spacing:normal}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-filter-field legend{margin-bottom:4px}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-filter-buttons{display:flex;flex-wrap:wrap;gap:4px}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-filter-buttons button{min-height:36px;margin:0;padding:6px 10px;border:1px solid #a6bdb1;border-radius:6px;background:#fff;color:#284d41;box-shadow:none;white-space:nowrap;font:600 13px/1.25 Arial,Helvetica,sans-serif}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-filter-buttons button:hover:enabled{border-color:#507f70}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-filter-buttons button[aria-pressed=true]{background:#245e5b;color:#fff;border-color:#184946}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-filter-buttons button:disabled{opacity:.6;cursor:default}
 :is(#teamPrintCenterDialog,#psPrinting) .pc-navigation input[type=search],:is(#teamPrintCenterDialog,#psPrinting) .pc-navigation select{width:100%;max-width:100%;min-width:0;min-height:36px;border:1px solid #adc4b8;border-radius:6px;background:white;color:#244e45;padding:7px 9px;font:13px Arial,Helvetica,sans-serif;box-sizing:border-box}
-:is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-layout{display:grid;grid-template-columns:180px minmax(0,1fr);gap:12px;min-width:0;align-items:start}
-:is(#teamPrintCenterDialog,#psPrinting) .pc-vendors{max-height:350px;min-width:0;overflow-y:auto;overscroll-behavior:contain;padding:0 4px 0 0;border-right:1px solid #d5e1da}
-:is(#teamPrintCenterDialog,#psPrinting) .pc-vendors h3{font-size:11px;font-weight:700;color:#60786e;margin:0 0 7px;padding:0 9px;text-transform:uppercase;letter-spacing:.04em}
-:is(#teamPrintCenterDialog,#psPrinting) .pc-vendors button{display:flex;align-items:center;justify-content:space-between;gap:7px;width:100%;min-height:32px;padding:7px 9px;border:0;border-radius:6px;background:transparent;color:#3a5b51;box-shadow:none;text-align:left;white-space:normal;overflow-wrap:anywhere;font:12px/1.3 Arial,Helvetica,sans-serif}
-:is(#teamPrintCenterDialog,#psPrinting) .pc-vendors button:hover{background:#edf4ee}
-:is(#teamPrintCenterDialog,#psPrinting) .pc-vendors button[aria-pressed=true],:is(#teamPrintCenterDialog,#psPrinting) .pc-vendors button.is-active{background:#dceee4;color:#194f42;font-weight:700}
-:is(#teamPrintCenterDialog,#psPrinting) .pc-vendors button small,:is(#teamPrintCenterDialog,#psPrinting) .pc-vendors button .pc-vendor-count{flex-shrink:0;font-size:11px;font-weight:600;color:#60786e}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-layout{display:grid;grid-template-columns:clamp(11rem,17%,14rem) minmax(0,1fr);gap:14px;min-width:0;align-items:start}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-vendors{max-height:350px;min-width:0;overflow-y:auto;overscroll-behavior:contain;padding:3px 6px 4px 3px}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-vendors :is(h3,h4){margin:0 0 8px;color:#244e45;font:700 15px/1.3 Arial,Helvetica,sans-serif}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-vendors>div{display:grid;gap:5px}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-vendors button{display:flex;align-items:center;justify-content:space-between;gap:7px;width:100%;min-width:0;min-height:38px;padding:7px 9px;border:1px solid #acbfb5;border-radius:6px;background:#f8fbf8;color:#284d41;box-shadow:none;text-align:left;white-space:normal;overflow-wrap:anywhere;font:600 15px/1.25 Arial,Helvetica,sans-serif}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-vendors button:hover{background:#e7f2eb;border-color:#769d8b}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-vendors button[aria-pressed=true]{background:#245e5b;color:white;border-color:#184946}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-vendors button small{flex-shrink:0;font:600 12px/1.2 Arial,Helvetica,sans-serif;font-variant-numeric:tabular-nums;color:inherit}
 :is(#teamPrintCenterDialog,#psPrinting) label.pc-vendor-select,:is(#teamPrintCenterDialog,#psPrinting) select.pc-vendor-select{display:none}
-:is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-main{min-width:0}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-main{min-width:0;container:print-catalog / inline-size}
 :is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:30px;margin:0 0 6px;color:#60766d;font-size:12px}
 :is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-actions>span:first-child{margin-right:auto}
 :is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-actions button{min-height:28px;padding:4px 7px;border:1px solid #bed0c6;border-radius:5px;background:#f8fbf7;color:#315f50;box-shadow:none;font-size:11px}
 :is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-actions button[aria-pressed=true]{background:#dceee4;border-color:#59927a;color:#194f42}
-:is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-products{min-width:0;max-height:310px;overflow-y:auto;overscroll-behavior:contain;border:1px solid #d1dfd6;border-radius:6px;background:white}
-:is(#teamPrintCenterDialog,#psPrinting) .pc-vendor-heading{position:sticky;top:0;z-index:1;padding:7px 10px;margin:0;background:#e7f1e9;border-bottom:1px solid #ccded1;color:#325c47;font-size:12px;font-weight:700;line-height:1.35}
-:is(#teamPrintCenterDialog,#psPrinting) .pc-product-row{display:flex;align-items:center;gap:10px;min-width:0;margin:0;padding:9px 11px;border-bottom:1px solid #e2e9e3;cursor:pointer;font-weight:400;line-height:1.35}
-:is(#teamPrintCenterDialog,#psPrinting) .pc-product-row:last-child{border-bottom:0}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-products{display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:6px;min-width:0;max-height:310px;padding:6px;overflow-y:auto;overscroll-behavior:contain;scroll-padding-block-start:2.25rem;border:1px solid #c3d4ca;border-radius:7px;background:#f4f8f4;box-sizing:border-box}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-products>:is(.pc-vendor-heading,.ps-empty){grid-column:1/-1}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-vendor-heading{position:sticky;top:0;z-index:1;padding:5px 9px;margin:0;background:#deebe3;border-radius:3px;color:#284c3d;font:700 14px/1.35 Arial,Helvetica,sans-serif}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-products .pc-product-row{display:flex;align-items:flex-start;gap:8px;min-width:0;margin:0;padding:8px 10px;border:1px solid #d2dfd6;border-radius:5px;background:white;cursor:pointer;font-weight:400;line-height:1.35}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-products .pc-product-row:hover{border-color:#8cb09b}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-product-row:focus-within{outline:2px solid #37786d;outline-offset:-2px}
+@container print-catalog (min-width:36rem){
+ :is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-products{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@container print-catalog (min-width:55rem){
+ :is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-products{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 :is(#teamPrintCenterDialog,#psPrinting) :is(.pc-product-row,.ps-print-product-row):has(input:checked){background:#dcefe4;box-shadow:inset 4px 0 #28705e}
 :is(#teamPrintCenterDialog,#psPrinting) .pc-product-row input[type=checkbox]{width:17px;height:17px;min-width:17px;margin:0;accent-color:#245e5b;flex:0 0 17px}
-:is(#teamPrintCenterDialog,#psPrinting) .pc-product-info{display:block;min-width:0}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-product-info{display:block;min-width:0;margin:0;color:#234b45}
 :is(#teamPrintCenterDialog,#psPrinting) :is(.pc-product-info,.ps-print-product-row) strong{display:block;font:700 15px/1.3 Arial,Helvetica,sans-serif;overflow-wrap:anywhere}
 :is(#teamPrintCenterDialog,#psPrinting) :is(.pc-product-info,.ps-print-product-row) small{display:block;margin-top:3px;color:#495f54;font:12px/1.4 Arial,Helvetica,sans-serif;overflow-wrap:anywhere}
-:is(#teamPrintCenterDialog,#psPrinting) .pc-product-codes{font-weight:600;color:#304e43;font-variant-numeric:tabular-nums}
+:is(#teamPrintCenterDialog,#psPrinting) .pc-product-codes{display:inline;margin:0;font-weight:600;color:#304e43;font-variant-numeric:tabular-nums}
 :is(#teamPrintCenterDialog,#psPrinting) .pc-selected-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0;margin:10px 0 0;padding:8px 10px;border:1px solid #c7ddcc;border-radius:6px;background:#ecf5eb;font-size:12px;color:#32583f}
 :is(#teamPrintCenterDialog,#psPrinting) .pc-selected-summary strong{font-weight:700}
 :is(#teamPrintCenterDialog,#psPrinting) .pc-selected-summary button{margin-left:auto;min-height:34px;padding:6px 12px}
@@ -56,15 +73,15 @@
 :is(#teamPrintCenterDialog,#psPrinting) .pc-format-panel .ps-bag-quantity-buttons button{min-height:35px;padding:6px 14px;font:600 13px/1.25 Arial,Helvetica,sans-serif;box-shadow:none}
 :is(#teamPrintCenterDialog,#psPrinting) .pc-format-panel .ps-bag-quantity-buttons button[aria-pressed=true]{background:#245e5b;border-color:#174541;color:white}
 :is(#teamPrintCenterDialog,#psPrinting) .pc-format-panel .ps-bag-quantity-buttons button:focus-visible{outline:3px solid #3f8d82;outline-offset:2px}
-@media(max-width:900px){
- :is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
- :is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-toolbar .pc-search{grid-column:1/-1}
- :is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-layout{grid-template-columns:155px minmax(0,1fr)}
+@media(min-width:721px) and (max-width:1050px){
+ :is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-toolbar{grid-template-columns:minmax(0,24rem) minmax(0,1fr)}
+ :is(#teamPrintCenterDialog,#psPrinting) .pc-filter-field:has(.pc-filter-buttons[data-catalog-filter$=Distributor]){grid-column:1/-1}
 }
 @media(max-width:720px){
+ :is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
  :is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-layout{grid-template-columns:minmax(0,1fr);gap:8px}
  :is(#teamPrintCenterDialog,#psPrinting) .pc-vendors{display:none}
- :is(#teamPrintCenterDialog,#psPrinting) label.pc-vendor-select{display:grid;margin:0 0 8px}
+ :is(#teamPrintCenterDialog,#psPrinting) label.pc-vendor-select{display:grid}
  :is(#teamPrintCenterDialog,#psPrinting) select.pc-vendor-select{display:block}
  :is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-products{max-height:260px}
  :is(#teamPrintCenterDialog,#psPrinting) .pc-mode-option strong{font-size:14px}
@@ -75,6 +92,7 @@
  :is(#teamPrintCenterDialog,#psPrinting) .pc-navigation input[type=search],:is(#teamPrintCenterDialog,#psPrinting) .pc-navigation select{font-size:16px}
 }
 @media(max-width:430px){
+ :is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-toolbar{grid-template-columns:minmax(0,1fr)}
  :is(#teamPrintCenterDialog,#psPrinting) .pc-mode-bar{gap:7px}
  :is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-actions{gap:5px}
  :is(#teamPrintCenterDialog,#psPrinting) .pc-selected-summary{font-size:11px}
@@ -91,7 +109,6 @@
 :is(#teamPrintCenterDialog,#psPrinting) .pc-event-selection-heading span{font-size:12px;font-weight:400;color:#657b6e}
 
 :is(#teamPrintCenterDialog,#psPrinting) .pc-product-info,:is(#teamPrintCenterDialog,#psPrinting) .pc-product-info strong,:is(#teamPrintCenterDialog,#psPrinting) .pc-product-info small{text-transform:none;letter-spacing:normal}
-@media(max-width:720px){:is(#teamPrintCenterDialog,#psPrinting) .pc-catalog-toolbar .pc-vendor-select{grid-column:1/-1}}
 
 :is(#teamPrintCenterDialog,#psPrinting) .pc-event-products .ps-print-product-row strong,:is(#teamPrintCenterDialog,#psPrinting) .pc-event-products .ps-print-product-row small{text-transform:none;letter-spacing:normal}
 

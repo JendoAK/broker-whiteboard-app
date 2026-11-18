@@ -16,8 +16,16 @@
           <div id="pcCatalogFields">
         <div class="pc-catalog-toolbar">
           <label class="pc-search"><span>Find a product</span><input id="tpSearch" type="search" placeholder="Product, vendor, brand, MF#, APN or SUPC…" /></label>
-          <label><span>Product list</span><select id="tpCollection"><option value="stock">Stocked products</option><option value="new">New products</option></select></label>
-          <label><span>Distributor</span><select id="tpDistributor"><option value="">All distributors</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales">Quality Sales</option><option value="other">Other</option></select></label>
+          <fieldset class="pc-filter-field">
+            <legend>Product list</legend>
+            <select id="tpCollection" hidden><option value="stock">Stocked products</option><option value="new">New products</option></select>
+            <div class="pc-filter-buttons" data-catalog-filter="tpCollection"></div>
+          </fieldset>
+          <fieldset class="pc-filter-field">
+            <legend>Distributor</legend>
+            <select id="tpDistributor" hidden><option value="">All distributors</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales">Quality Sales</option><option value="other">Other</option></select>
+            <div class="pc-filter-buttons" data-catalog-filter="tpDistributor"></div>
+          </fieldset>
           <label class="pc-vendor-select"><span>Vendor</span><select id="tpVendor"><option value="">All vendors</option></select></label>
         </div>
         <div class="pc-catalog-layout">

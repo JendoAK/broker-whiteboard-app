@@ -13,7 +13,7 @@
   const logos = { usFoods: ["us-foods-logo.svg", "US Foods"], sysco: ["sysco-logo.png?v=20260917-official1", "Sysco"], linford: ["linford-logo.svg", "Linford"], qualitySales: ["quality-sales-logo.png", "Quality Sales"] };
   const pageSize = 100;
   const state = { userId: "", generation: 0, request: 0, stock: [], new: [], events: [], selected: new Set(), collection: "stock", schoolOnly: false, visibleLimit: pageSize, date: "upcoming", view: "products", editing: null, attachments: [], attachmentsChanged: false, importRows: [], importRunning: false, saving: false, readingFiles: false, frames: new Set(), eventId: "", loaded: false };
-  let labelPrint, catalogReview;
+  let labelPrint, catalogPicker;
 
   function auth() { return window.foodBrokerBaseAuth; }
   function allowed() { return Boolean(auth()?.getCurrentUser()?.id && auth()?.getCurrentProfile()?.role === "product_support" && !auth()?.isPasswordRecovery?.()); }
@@ -398,7 +398,7 @@
     }).join("") || '<p class="ps-empty">'+(printPicker.selectedOnly?"No selected products match these filters.":"No products match. Try another vendor or search.")+'</p>';
     $("pspCount").textContent=found.length+" product"+(found.length===1?"":"s")+(visible.length<found.length?" · first "+visible.length+" shown":"");
     $("pspSelectShown").textContent = `Select all ${visible.length} shown`;
-    catalogReview?.update([...selected].map(productFromKey).filter(Boolean).map(description));
+    catalogPicker?.update([...selected].map(productFromKey).filter(Boolean).map(description));
     $("pspLoadMore").hidden=visible.length>=found.length;$("pspSelectShown").disabled=!visible.length;$("pspClearSelection").disabled=!selected.size;
   }
   function syncPrintNavigation() {
@@ -417,14 +417,15 @@
     updatePrintSummary();
   }
   function resetPrintNavigation() {
-    catalogReview?.update([]);
     Object.assign(printPicker,{collection:"stock",vendor:"",query:"",distributor:"",selectedOnly:false,visibleLimit:pageSize,lastEvent:""});
     $("pspSearch").value="";$("pspCollection").value="stock";$("pspDistributor").value="";$("pspVendor").innerHTML='<option value="">All vendors</option>';
+    $("pspCollection").disabled=false;
+    catalogPicker?.update([]);
     $("pspVendorButtons").replaceChildren();$("pspProductList").replaceChildren();$("pspCount").textContent="";$("pspSelectedCount").textContent="0 selected";
     $("pspEventPicker").innerHTML='<option value="event:">Choose an upcoming event…</option>';$("psPrintLayout").hidden=true;$("psBagQuantity").hidden=true;$("psPreparePrint").disabled=true;$("pspEmptySelection").hidden=false;syncPrintNavigation();
   }
   function initPrintNavigation() {
-    catalogReview = window.foodBrokerSupportLabels.createCatalogReview($("pspCatalogPanel"));
+    catalogPicker = window.foodBrokerSupportLabels.createCatalogPicker($("pspCatalogPanel"));
     document.querySelectorAll("[data-psp-mode]").forEach(button=>button.addEventListener("click",()=>setPrintMode(button.dataset.pspMode)));
     $("pspSearch").addEventListener("input",()=>{printPicker.query=$("pspSearch").value;printPicker.visibleLimit=pageSize;renderPrintCatalog();});
     [["pspCollection","collection"],["pspDistributor","distributor"],["pspVendor","vendor"]].forEach(([id,field])=>$(id).addEventListener("change",()=>{printPicker[field]=$(id).value;printPicker.visibleLimit=pageSize;renderPrintCatalog();}));

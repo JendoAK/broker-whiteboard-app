@@ -8,7 +8,7 @@
   const pageSize = 100;
   const productFields = ["description","vendor","brandName","brandType","distributor","distributorNumber","manufacturerNumber","apn","supc","gtin","packaging","storage","updatedAt"];
   const distributorLogos = {usFoods:["us-foods-logo.svg","US Foods"],sysco:["sysco-logo.png?v=20260917-official1","Sysco"],linford:["linford-logo.svg","Linford"],qualitySales:["quality-sales-logo.png","Quality Sales"]};
-  let dialog, labels, catalogReview;
+  let dialog, labels, catalogPicker;
   const state = {uid:"",role:"",generation:0,stock:[],new:[],all:new Map(),events:[],eventProducts:new Map(),selected:new Set(),mode:"products",eventChoice:"",selectedOnly:false,visibleLimit:pageSize,frames:new Set()};
   const $ = id => document.getElementById(id);
   const auth = () => window.foodBrokerBaseAuth;
@@ -162,7 +162,7 @@
     $("tpSelectedOnly").setAttribute("aria-pressed",String(state.selectedOnly));$("tpSelectedOnly").textContent="Selected only ("+state.selected.size+")";
     $("tpLoadMore").hidden=visible.length>=found.length;$("tpClearSelection").disabled=!state.selected.size;$("tpSelectShown").disabled=!visible.length;
     $("tpSelectShown").textContent = `Select all ${visible.length} shown`;
-    catalogReview.update([...state.selected].map(id => state.all.get(id)?.description).filter(Boolean));
+    catalogPicker.update([...state.selected].map(id => state.all.get(id)?.description).filter(Boolean));
     updateSummary();
   }
   function chooseMode(mode) {
@@ -172,10 +172,10 @@
   }
   function cleanupFrames() {state.frames.forEach(frame=>frame.remove());state.frames.clear();}
   function clear() {
-    catalogReview?.update([]);
     state.generation++;state.uid="";state.role="";
     labels?.clear();cleanupFrames();state.stock=[];state.new=[];state.all.clear();state.events=[];state.eventProducts.clear();state.selected.clear();state.mode="products";state.eventChoice="";state.selectedOnly=false;state.visibleLimit=pageSize;
     $("tpSearch").value="";$("tpCollection").value="stock";$("tpDistributor").value="";$("tpVendor").innerHTML='<option value="">All vendors</option>';$("tpVendorButtons").replaceChildren();$("tpSelectedOnly").setAttribute("aria-pressed","false");$("tpSelectedOnly").textContent="Selected only (0)";$("tpEventPicker").innerHTML='<option value="">Choose an upcoming or ongoing event</option>';$("tpEventSummary").textContent="Choose an event, then select the products you need.";
+    catalogPicker?.update([]);
     $("tpProductList").replaceChildren();$("tpCount").textContent="";$("tpSelectedCount").textContent="";
     $("psPrintSource").innerHTML='<option value="selected">Selected products</option><option value="shown">Current product search</option><option value="event:">Choose an event</option>';
     $("psPrintFormat").value="labels";$("psPrintLogo").value="none";$("psPrintHeading").value="Product presentation";$("psPrintCopies").value="1";status("");
@@ -253,7 +253,7 @@
     if(!triggers.length)return;
     const template=document.createElement("template");template.innerHTML=window.foodBrokerTeamPrintTemplate;
     document.querySelector(".app-shell").append(template.content.cloneNode(true));dialog=$("teamPrintCenterDialog");
-    catalogReview=window.foodBrokerSupportLabels.createCatalogReview($("tpCatalogPicker"));
+    catalogPicker=window.foodBrokerSupportLabels.createCatalogPicker($("tpCatalogPicker"));
     labels=window.foodBrokerSupportLabels.create({allowed,identity,valid,beforeSync:refreshPrintSources,prepareDocument,getProducts:printProducts,productKey,itemNumber,status,selectionChanged:renderPrintCount,frames:state.frames});
     triggers.forEach(trigger=>trigger.addEventListener("click",open));$("tpClose").addEventListener("click",close);dialog.addEventListener("close",()=>{if(!dialog.open)clear();});dialog.addEventListener("cancel",event=>{event.preventDefault();close();});
     $("teamPrintForm").addEventListener("submit",event=>event.preventDefault());

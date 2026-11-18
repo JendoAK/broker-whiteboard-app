@@ -519,7 +519,30 @@
     new ResizeObserver(scalePreview).observe($("psPrintPreview"));
     return Object.freeze({sync,clear,invalidate,prepare,previewFailed,recordError,clearErrors,getProducts:()=>host.allowed()?products.slice():[],getRevision:()=>revision});
   }
-  function createCatalogReview(root) {
+  function bindCatalogFilter(group) {
+    const select = document.getElementById(group.dataset.catalogFilter);
+    const buttons = Array.from(select.options, option => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = option.text;
+      button.dataset.value = option.value;
+      button.addEventListener("click", () => {
+        if (select.value === option.value) return;
+        select.value = option.value;
+        select.dispatchEvent(new Event("change", {bubbles:true}));
+      });
+      return button;
+    });
+    group.replaceChildren(...buttons);
+    return () => {
+      for (const button of buttons) {
+        button.setAttribute("aria-pressed", String(button.dataset.value === select.value));
+        button.disabled = select.disabled;
+      }
+    };
+  }
+  function createCatalogPicker(root) {
+    const filters = Array.from(root.querySelectorAll("[data-catalog-filter]"), bindCatalogFilter);
     const fields = root.querySelector("#pcCatalogFields");
     const review = root.querySelector("#pcReviewProducts");
     const change = root.querySelector("#pcChangeProducts");
@@ -552,7 +575,11 @@
       render();
       fields.querySelector('input[type="search"]').focus();
     });
-    return {update(selectedNames) {names = selectedNames; render();}};
+    return {update(selectedNames) {
+      for (const syncFilter of filters) syncFilter();
+      names = selectedNames;
+      render();
+    }};
   }
-  window.foodBrokerSupportLabels = Object.freeze({create,isPrintableEvent,printableEvents,createCatalogReview});
+  window.foodBrokerSupportLabels = Object.freeze({create,isPrintableEvent,printableEvents,createCatalogPicker});
 })();

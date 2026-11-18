@@ -8,7 +8,7 @@
   <link rel="icon" href="broker-whiteboard-logo.png" />
   <link rel="stylesheet" href="print-logo-library.css?v=20261118-printstudio1" />
 <link rel="stylesheet" href="product-support.css?v=20261103-printgroups1" />
-<link rel="stylesheet" href="account-settings.css?v=20261023-account1" /><link rel="stylesheet" href="support-directory.css?v=20261029-contactcards1" /><link rel="stylesheet" href="print-center-navigation.css?v=20261118-printflow1" /><link rel="stylesheet" href="support-samples.css?v=20261102-supportsamples1" /></head>
+<link rel="stylesheet" href="account-settings.css?v=20261023-account1" /><link rel="stylesheet" href="support-directory.css?v=20261029-contactcards1" /><link rel="stylesheet" href="print-center-navigation.css?v=20261118-catalogbuttons1" /><link rel="stylesheet" href="support-samples.css?v=20261102-supportsamples1" /></head>
 <body data-product-support-page>
   <div class="app-shell">
     <header class="topbar">
@@ -64,8 +64,16 @@
           <div id="pcCatalogFields">
             <div class="pc-catalog-toolbar">
               <label class="pc-search"><span>Search products</span><input id="pspSearch" type="search" placeholder="Product, brand, MF#, APN or SUPC…" /></label>
-              <label><span>Product list</span><select id="pspCollection"><option value="stock">Stocked products</option><option value="new">New products</option></select></label>
-              <label><span>Distributor</span><select id="pspDistributor"><option value="">All distributors</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales">Quality Sales</option><option value="other">Other</option></select></label>
+              <fieldset class="pc-filter-field">
+                <legend>Product list</legend>
+                <select id="pspCollection" hidden><option value="stock">Stocked products</option><option value="new">New products</option></select>
+                <div class="pc-filter-buttons" data-catalog-filter="pspCollection"></div>
+              </fieldset>
+              <fieldset class="pc-filter-field">
+                <legend>Distributor</legend>
+                <select id="pspDistributor" hidden><option value="">All distributors</option><option value="usFoods">US Foods</option><option value="sysco">Sysco</option><option value="linford">Linford</option><option value="qualitySales">Quality Sales</option><option value="other">Other</option></select>
+                <div class="pc-filter-buttons" data-catalog-filter="pspDistributor"></div>
+              </fieldset>
               <label class="pc-vendor-select"><span>Vendor</span><select id="pspVendor"><option value="">All vendors</option></select></label>
             </div>
             <div class="pc-catalog-layout">
@@ -178,8 +186,8 @@
   <script src="product-bag-labels.js?v=20261026-nooutlines1"></script>
   <script src="product-print-logos.js?v=20261118-margherita1"></script>
   <script src="print-logo-library.js?v=20261118-printstudio1"></script>
-  <script src="product-support-labels.js?v=20261118-printflow1"></script>
-  <script src="contact-directory-model.js?v=20261029-contactcards1"></script><script src="support-directory.js?v=20261104-syncfix1"></script><script src="support-samples.js?v=20261104-syncfix1"></script><script src="product-support.js?v=20261118-printflow1"></script>
+  <script src="product-support-labels.js?v=20261118-catalogbuttons1"></script>
+  <script src="contact-directory-model.js?v=20261029-contactcards1"></script><script src="support-directory.js?v=20261104-syncfix1"></script><script src="support-samples.js?v=20261104-syncfix1"></script><script src="product-support.js?v=20261118-catalogbuttons1"></script>
 </body>
 </html>
 
