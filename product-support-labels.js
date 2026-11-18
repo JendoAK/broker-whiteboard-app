@@ -1,4 +1,4 @@
-/* Print-job drafts only. No product writes, browser business cache, or cloud client. */
+/* Label drafts and preview rendering. Saved artwork is handled by the shared logo library. */
 (function () {
   "use strict";
   const esc = value => String(value == null ? "" : value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
@@ -24,15 +24,53 @@
     const $ = id => document.getElementById(id), renderer = window.foodBrokerBagLabels, catalog = window.foodBrokerPrintLogos;
     const drafts = new Map(), assets = new Map(), controllers = new Set(), frames = new Set(), resourceGroups = new Set(), exclusions = new Map();
     let products = [], available = [], active = "", source = "", signature = "", revision = 0, ready = null, view = "label", pageNumber = 0, uploadRevision = 0;
+    let previewTimer = 0, previewDirty = false, displayedResources = null, lastErrorStep = "";
+    const startGrid = $("psBagStartGrid");
+    for (const option of $("psBagStart").options) {
+      const position = Number(option.value);
+      const label = document.createElement("label");
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = "bagStartPosition";
+      input.value = option.value;
+      input.checked = option.selected;
+      input.setAttribute("aria-label", `Position ${position}, row ${Math.ceil(position / 2)}, ${position % 2 ? "left" : "right"}`);
+      const cell = document.createElement("span");
+      cell.textContent = option.value;
+      label.append(input, cell);
+      startGrid.append(label);
+    }
+    startGrid.addEventListener("change", event => {
+      $("psBagStart").value = event.target.value;
+      $("psBagStart").dispatchEvent(new Event("change", {bubbles:true}));
+    });
+    $("psBagStart").addEventListener("change", () => {
+      const cell = startGrid.querySelector(`input[value="${$("psBagStart").value}"]`);
+      if (cell) cell.checked = true;
+    });
+    startGrid.addEventListener("keydown", event => {
+      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+      event.preventDefault();
+      const next = Number(event.target.value) + (event.key === "ArrowUp" ? -2 : 2);
+      const input = startGrid.querySelector(`input[value="${next}"]`);
+      if (input) { input.focus(); input.click(); }
+    });
     const productKey = p => host.productKey(p);
     const current = () => drafts.get(active);
+    let logoLibraryDialog = null;
+    function closeLogoLibrary() {
+      if (logoLibraryDialog?.open) logoLibraryDialog.close();
+      logoLibraryDialog = null;
+    }
     const isCurrent = (identity, rev) => host.valid(identity) && revision === rev;
     function clearErrors() {
+      lastErrorStep = "";
       $("psPrintErrors").hidden = true; $("psPrintErrors").open = false;
       $("psPrintErrorDetails").textContent = ""; $("psPrintCopyStatus").textContent = "";
     }
     function recordError(error, context = "LABEL_PREVIEW") {
       if (!host.allowed()) return;
+      lastErrorStep = context;
       const clean = value => String(value == null ? "" : value).replace(/Bearer\s+\S+/gi,"Bearer [redacted]").replace(/\beyJ[\w-]+\.[\w-]+(?:\.[\w-]+)?\b/g,"[token redacted]").replace(/\b(?:sb_secret_\S+|sb_publishable_\S+)\b/g,"[key redacted]").replace(/https?:\/\/[^\s]+/gi,"[URL]").replace(/\b(?:Failing row contains|row contains)\s*\([^)]*\)/gi,"Row [values redacted]").replace(/\bKey\s*\([^)]*\)\s*=\s*\([^)]*\)/gi,"Key [values redacted]").replace(/\{[^{}]*\}/g,"[record details redacted]").slice(0,1200);
       $("psPrintErrorDetails").textContent = [new Date().toISOString(),"Step: "+clean(context),error?.name && "Type: "+clean(error.name),error?.code && "Code: "+clean(error.code),"Message: "+clean(error?.message || error || "The print job could not be completed.")].filter(Boolean).join("\n");
       $("psPrintErrors").hidden = false; $("psPrintErrors").open = true; $("psPrintCopyStatus").textContent = "Details stay here until dismissed or you leave this workspace.";
@@ -71,7 +109,7 @@
       group.byData.clear(); resourceGroups.delete(group);
     }
     function imageResource(group, dataUrl) {
-      if (group.released) throw new Error("This label preview was replaced. Select Preview layout again.");
+      if (group.released) throw new Error("The label preview has changed.");
       if (group.byData.has(dataUrl)) return group.byData.get(dataUrl);
       const match = /^data:(image\/(?:png|jpe?g|webp|gif));base64,([A-Za-z0-9+/]+={0,2})$/i.exec(dataUrl);
       if (!match) throw new Error("Choose a valid PNG, JPEG, WebP or GIF logo.");
@@ -93,17 +131,46 @@
       draft.source = p;
       return draft;
     }
-    function invalidate(message = "Label settings changed · Select Preview layout to check the updated labels.") {
+    function invalidate(message = "Updating preview…", keepLayout = false) {
+      clearTimeout(previewTimer);
+      previewDirty = true;
       revision++; ready = null;
       controllers.forEach(c => c.abort()); controllers.clear();
       frames.forEach(frame => {frame.remove();host.frames.delete(frame);}); frames.clear();
-      $("psPrintNow")?.remove();
-      $("psPrintPreview").innerHTML = '<p class="ps-empty">'+esc(message)+'</p>';
-      [...resourceGroups].forEach(releaseResources);
+      const printButton = $("psPrintNow");
+      if (keepLayout && printButton) {
+        printButton.disabled = true;
+      } else {
+        displayedResources = null;
+        $("psPrintPreview").innerHTML = '<p class="ps-empty">'+esc(message)+'</p>';
+      }
+      for (const group of resourceGroups) if (group !== displayedResources) releaseResources(group);
       return revision;
     }
+    function requestPreview(immediate = false) {
+      const rev = invalidate(products.length ? "Updating preview…" : "Choose products to see a preview.", products.length > 0);
+      if (!products.length) { previewDirty = false; return; }
+      if (!host.allowed() || host.previewVisible?.() === false) return;
+      previewDirty = false;
+      const identity = host.identity();
+      const refresh = () => {
+        if (!isCurrent(identity, rev)) return;
+        if (host.previewVisible?.() === false) { previewDirty = true; return; }
+        if ($("psPrintFormat").value === "labels") {
+          prepareLabels(identity, rev);
+        } else {
+          releaseResources(displayedResources);
+          displayedResources = null;
+          $("psPrintPreview").replaceChildren();
+          host.prepareDocument();
+        }
+      };
+      if (immediate === true) refresh();
+      else previewTimer = setTimeout(refresh, 220);
+    }
     function clear() {
-      invalidate("Choose products, then select Preview layout.");
+      closeLogoLibrary();
+      invalidate("Choose products to see a preview.");
       drafts.clear(); assets.clear(); exclusions.clear(); products = []; available = []; active = ""; source = ""; signature = ""; uploadRevision++;
       clearErrors(); $("psPrintProductList").replaceChildren(); $("psPrintProductSearch").value = ""; $("psPrintProductCount").textContent = "";
       $("psPrintSelectAll").disabled = true; $("psPrintSelectNone").disabled = true; updateQuantities();
@@ -112,6 +179,7 @@
       Object.keys(fields).forEach(id => {$(id).value = "";});
       $("psBagCopies").value = "1"; $("psBagStart").value = "1"; $("psBagLogoMode").value = "automatic"; $("psBagTextSize").value = "standard";
       ["psBagShowMf","psBagShowApn","psBagShowSupc","psBagShowItem"].forEach(id => {$(id).checked = true;});
+      startGrid.querySelector('input[value="1"]').checked = true;
       view = "label"; pageNumber = 0; updateFormat();
     }
     function updateFormat() {
@@ -125,13 +193,15 @@
       host.beforeSync?.();
       const next = host.getProducts();
       if (source !== $("psPrintSource").value) {source = $("psPrintSource").value;$("psPrintProductSearch").value = "";}
-      const nextSignature = JSON.stringify([$("psPrintSource").value,$("psPrintFormat").value,next.map(p=>[productKey(p),p.updatedAt,p.description,p.vendor,p.brandName,p.brandType,p.distributor,p.packaging,p.manufacturerNumber,p.apn,p.supc,host.itemNumber(p)])]);
-      if (signature !== nextSignature) {invalidate("Choose the label wording and logo, then select Preview layout.");signature = nextSignature;}
+      const nextSignature = JSON.stringify([$("psPrintSource").value,$("psPrintFormat").value,next.map(p=>[productKey(p),p.updatedAt,p.description,p.vendor,p.brandName,p.brandType,p.distributor,p.packaging,p.storage,p.manufacturerNumber,p.apn,p.supc,host.itemNumber(p)])]);
+      const changed = signature !== nextSignature;
+      signature = nextSignature;
       available = [...new Map(next.map(p=>[productKey(p),p])).values()];
       chooseProducts();
+      if (changed || (previewDirty && host.previewVisible?.() !== false)) requestPreview();
     }
     function resolveLogo(draft) {
-      if (draft.logoMode === "custom") return draft.customLogo ? {name:"Uploaded logo",logos:[draft.customLogo]} : {missing:true,reason:"Upload a logo for this label, or choose another logo option."};
+      if (draft.logoMode === "custom") return draft.customLogo ? {name:draft.customLogo.alt,notice:draft.logoSaveStatus,logos:[draft.customLogo]} : {missing:true,reason:"Upload a logo or select one from the logo library."};
       if (draft.logoMode === "none") return {name:"No logo",logos:[]};
       return catalog.resolve(draft.source,draft.logoMode,draft.logoChoice);
     }
@@ -142,7 +212,7 @@
       $("psBagLogoChoice").innerHTML = '<option value="">Match this product</option>'+options.map(o=>'<option value="'+esc(o.id)+'">'+esc(o.name)+'</option>').join("");
       $("psBagLogoChoice").value = draft.logoChoice;
       $("psBagLogoChoice").parentElement.hidden = ["none","custom"].includes(draft.logoMode);
-      const uploadBox = $("psBagLogoFile").closest(".ps-bag-logo-upload"); if (uploadBox) uploadBox.hidden = draft.logoMode !== "custom";
+      const uploadBox = $("psBagLogoFile").closest(".ps-bag-logo-upload"); if (uploadBox) uploadBox.hidden = draft.logoMode !== "custom" || !draft.customLogo;
       $("psBagClearLogo").disabled = !draft.customLogo;
       const logo = resolveLogo(draft);
       $("psBagLogoStatus").textContent = logo.missing ? logo.reason || "Choose the matching brand logo, upload one, or select No logo." : [logo.name,logo.notice || logo.reason].filter(Boolean).join(" · ");
@@ -154,7 +224,7 @@
       if (!draft) {Object.keys(fields).forEach(id=>{$(id).value="";});$("psBagHelp").textContent="Choose products or an event lineup to prepare labels.";$("psBagLogoStatus").textContent="";return;}
       Object.entries(fields).forEach(([id,field])=>{$(id).value=draft[field];});
       $("psBagCopies").value = draft.copies; $("psBagLogoMode").value = draft.logoMode; $("psBagLogoFile").value = "";
-      $("psBagHelp").textContent = "Edits apply to this print job only. Stock-list products stay unchanged.";
+      $("psBagHelp").textContent = "Wording edits apply to this print job.";
       logoOptions();
     }
     function rasterMime(bytes) {
@@ -176,24 +246,67 @@
         const ratio=Math.min(1,1200/image.naturalWidth,360/image.naturalHeight),canvas=document.createElement("canvas");
         canvas.width=Math.max(1,Math.round(image.naturalWidth*ratio));canvas.height=Math.max(1,Math.round(image.naturalHeight*ratio));
         canvas.getContext("2d").drawImage(image,0,0,canvas.width,canvas.height);
-        return {dataUrl:canvas.toDataURL(mime === "image/jpeg" ? "image/jpeg" : "image/png",.92),width:canvas.width,height:canvas.height};
+        const thumb = document.createElement("canvas"), thumbScale = Math.min(1,96/canvas.width,48/canvas.height);
+        thumb.width = Math.max(1,Math.round(canvas.width*thumbScale));
+        thumb.height = Math.max(1,Math.round(canvas.height*thumbScale));
+        thumb.getContext("2d").drawImage(canvas,0,0,thumb.width,thumb.height);
+        return {dataUrl:canvas.toDataURL(mime === "image/jpeg" ? "image/jpeg" : "image/png",.92),width:canvas.width,height:canvas.height,thumbnail:thumb.toDataURL("image/png")};
       }
       return {dataUrl:url,width:image.naturalWidth,height:image.naturalHeight};
+    }
+    function useUploadedLogo(draft,name,image) {
+      const scale = Math.min(234/image.width,50.4/image.height);
+      draft.customLogo = {dataUrl:image.dataUrl,alt:name,widthPt:image.width*scale,heightPt:image.height*scale};
+      draft.logoMode = "custom"; draft.logoChoice = "";
+      $("psBagLogoMode").value = draft.logoMode;
+    }
+    function browseLogos() {
+      if (!host.allowed() || !current()) return;
+      const draft = current(), identity = host.identity();
+      closeLogoLibrary();
+      logoLibraryDialog = window.foodBrokerLogoLibrary.open({
+        valid:() => host.valid(identity) && current() === draft,
+        choose:(entry,image) => {
+          uploadRevision++;
+          if (image) {
+            useUploadedLogo(draft,image.name,image);
+            draft.logoSaveStatus = "";
+          } else {
+            draft.logoMode = "automatic"; draft.logoChoice = entry.id;
+            $("psBagLogoMode").value = draft.logoMode;
+          }
+          logoOptions(); requestPreview();
+        }
+      });
     }
     async function upload(file) {
       if (!host.allowed() || !current() || !file) return;
       const draft = current(), identity = host.identity(), rev = ++uploadRevision;
-      invalidate("Reading the logo · Preview layout will be available when it is ready.");
+      invalidate("Reading logo…",true);
       $("psBagLogoStatus").textContent = "Reading logo…";
       try {
         const image = await imageData(file,true);
-        if (!host.valid(identity) || rev !== uploadRevision || !drafts.has(draft.id)) return;
-        const scale = Math.min(234/image.width,50.4/image.height);
-        draft.customLogo = {dataUrl:image.dataUrl,alt:"Uploaded product logo",widthPt:image.width*scale,heightPt:image.height*scale};
-        draft.logoMode = "custom"; draft.logoChoice = "";
-        invalidate("Logo added for this print job · Select Preview layout.");
-        if (current() === draft) {$("psBagLogoMode").value="custom";logoOptions();}
-      } catch (error) {if(host.valid(identity) && rev === uploadRevision) {recordError(error,"LABEL_LOGO_UPLOAD");$("psBagLogoStatus").textContent=error.message;host.status(error.message,"error");}}
+        if (!host.valid(identity)) return;
+        const name = file.name.replace(/\.[^.]+$/,"").trim().slice(0,120) || "Uploaded logo";
+        let appliedLogo = null;
+        if (rev === uploadRevision && current() === draft) {
+          useUploadedLogo(draft,name,image);
+          appliedLogo = draft.customLogo;
+          draft.logoSaveStatus = "Saving to shared library…";
+          logoOptions(); requestPreview();
+        }
+        try {
+          await window.foodBrokerLogoLibrary.save(name,image);
+          if (appliedLogo && draft.customLogo === appliedLogo) draft.logoSaveStatus = "Saved to shared library";
+        } catch (error) {
+          if (!host.valid(identity)) return;
+          const message = "Logo could not be saved to the shared library. Upload the file again to retry.";
+          if (appliedLogo && draft.customLogo === appliedLogo) draft.logoSaveStatus = message;
+          host.status(message,"error");
+          recordError(error,"LABEL_LOGO_SAVE");
+        }
+        if (host.valid(identity) && current() === draft && draft.customLogo === appliedLogo) logoOptions();
+      } catch (error) {if(host.valid(identity) && rev === uploadRevision) {requestPreview();recordError(error,"LABEL_LOGO_UPLOAD");$("psBagLogoStatus").textContent=error.message;host.status(error.message,"error");}}
       finally {if(host.valid(identity) && rev === uploadRevision) $("psBagLogoFile").value="";}
     }
     async function assetData(src) {
@@ -235,7 +348,7 @@
       frame.title = "Product label print preview"; frame.style.cssText = "position:fixed;width:816px;height:1056px;left:-20000px;top:0;border:0;visibility:hidden";
       frames.add(frame); host.frames.add(frame);
       const loaded = new Promise((resolve,reject)=>{
-        const timer=setTimeout(()=>reject(new Error("The label preview took too long to load. Try Preview layout again.")),10000);
+        const timer=setTimeout(()=>reject(new Error("The label preview took too long to load. Refresh the preview to retry.")),10000);
         frame.onload=()=>{clearTimeout(timer);resolve();};
       });
       frame.srcdoc = renderer.printDocument(job); document.body.appendChild(frame);
@@ -270,11 +383,13 @@
         }
       } catch (error) {frame.remove();frames.delete(frame);host.frames.delete(frame);throw error;}
     }
-    async function prepare() {
+    function prepare() {
       if (!host.allowed()) return;
       sync();
       if (!products.length) {host.status("Select at least one product in the print checklist.","waiting");return;}
-      const rev=invalidate("Checking label size and logos…"),identity=host.identity();
+      requestPreview(true);
+    }
+    async function prepareLabels(identity, rev) {
       const resources = {byData:new Map(),bytes:0,released:false}; resourceGroups.add(resources);
       host.status("Checking label size and logos…","waiting");
       let ownedFrame = null;
@@ -285,24 +400,45 @@
         ownedFrame = frame;
         if (!frame || !isCurrent(identity,rev)) {if(frame){frame.remove();frames.delete(frame);host.frames.delete(frame);}releaseResources(resources);return;}
         const output=renderer.build(job);
-        ready={job,output,frame,identity,revision:rev,resources,keys:products.map(productKey)};pageNumber=0;renderPreview();
+        ready={job,output,frame,identity,revision:rev,resources,keys:products.map(productKey)};
+        renderPreview();
+        releaseResources(displayedResources);
+        displayedResources = resources;
+        if (lastErrorStep === "LABEL_PREVIEW") clearErrors();
         host.status("Preview ready · "+(job.autoFitCount?job.autoFitCount+" product"+(job.autoFitCount===1?"":"s")+" adjusted automatically to fit. ":"")+"Label wording is for this print job only. Print Letter paper at 100% / actual size.");
       } catch(error) {
         if (ownedFrame) {ownedFrame.remove();frames.delete(ownedFrame);host.frames.delete(ownedFrame);}
         if (ready?.resources === resources) ready = null;
         const currentJob = isCurrent(identity,rev);
-        try {if(currentJob)$("psPrintPreview").innerHTML='<p id="psBagFit" class="ps-status" data-tone="error" role="alert">'+esc(error.message)+'</p>';}
+        try {if(currentJob){$("psPrintPreview").innerHTML='<p id="psBagFit" class="ps-status" data-tone="error" role="alert">'+esc(error.message)+'</p>';releaseResources(displayedResources);displayedResources=null;}}
         finally {releaseResources(resources);}
         if (!currentJob) return;
-        if(Number.isInteger(error.productIndex) && products[error.productIndex]){active=productKey(products[error.productIndex]);$("psBagProduct").value=active;loadEditor();}
         recordError(error,"LABEL_PREVIEW");
         host.status("Labels need an adjustment before printing.","error");
       }
     }
+    // Zoom applies only to the screen copy. The print frame keeps its physical dimensions.
+    const previewZoom = {sheet:75, label:100};
     function scalePreview() {
-      const paper=$("psBagPreviewPaper"),inner=paper?.querySelector(".ps-bag-paper-inner");if(!inner)return;
-      const sheet=view==="sheet",width=sheet?816:384,height=sheet?1056:192,ratio=Math.min(paper.clientWidth/width,sheet?1:1.6);
-      inner.style.width=width+"px";inner.style.height=height+"px";inner.style.transform="scale("+ratio+")";inner.style.left=Math.max(0,(paper.clientWidth-width*ratio)/2)+"px";paper.style.height=(height*ratio)+"px";
+      const paper = $("psBagPreviewPaper");
+      if (!paper) return;
+      const viewport = paper.parentElement;
+      const inner = paper.querySelector(".ps-bag-paper-inner");
+      const sheet = view === "sheet";
+      const width = sheet ? 816 : 384, height = sheet ? 1056 : 192;
+      const fit = Math.min(viewport.clientWidth / width, sheet ? 1 : 1.6);
+      const ratio = fit * previewZoom[view] / 100;
+      inner.style.width = width + "px";
+      inner.style.height = height + "px";
+      inner.style.transform = "scale(" + ratio + ")";
+      paper.style.width = width * ratio + "px";
+      paper.style.height = height * ratio + "px";
+    }
+    function zoomControl() {
+      const options = [50, 75, 100, 125, 150, 200].map(percent =>
+        `<option value="${percent}"${percent === previewZoom[view] ? " selected" : ""}>${percent}%</option>`
+      ).join("");
+      return `<label class="ps-bag-zoom">Zoom <select id="psBagZoom" aria-label="Preview zoom">${options}</select></label>`;
     }
     function renderPreview() {
       if (!ready || !isCurrent(ready.identity,ready.revision)) return;
@@ -311,7 +447,11 @@
       let content;
       if(view==="sheet")content=pages[pageNumber].outerHTML;
       else {const index=Math.max(0,ready.keys.indexOf(active)),offset=job.products.slice(0,index).reduce((n,p)=>n+p.copies,0);content='<div class="bag-label-single">'+holder.querySelector('[data-label-index="'+(offset+1)+'"]').outerHTML+'</div>';}
-      $("psPrintPreview").innerHTML='<style>'+output.css+'</style><div class="ps-bag-stagebar"><div class="ps-bag-view-controls" role="group" aria-label="Label preview"><button type="button" data-bag-view="label" aria-pressed="'+(view==="label")+'">One label</button><button type="button" data-bag-view="sheet" aria-pressed="'+(view==="sheet")+'">Full sheet</button></div><button id="psPrintNow" type="button" class="primary-action">Print this preview</button></div><div id="psBagPreviewPaper"><div class="ps-bag-paper-inner">'+content+'</div></div><div class="ps-bag-preview-footer"><p id="psBagFit" role="status">'+output.labelCount+' labels · '+output.pageCount+' sheet'+(output.pageCount===1?"":"s")+' · Content fits'+(job.autoFitCount?' · '+job.autoFitCount+' product'+(job.autoFitCount===1?'':'s')+' adjusted automatically':'')+'</p><div class="ps-bag-pagination"'+(view!=="sheet"||pages.length<2?' hidden':'')+'><button id="psBagPrev" type="button" aria-label="Previous sheet"'+(pageNumber===0?' disabled':'')+'>←</button><span>Sheet '+(pageNumber+1)+' of '+pages.length+'</span><button id="psBagNext" type="button" aria-label="Next sheet"'+(pageNumber===pages.length-1?' disabled':'')+'>→</button></div></div>';
+      $("psPrintPreview").innerHTML='<style>'+output.css+'</style><div class="ps-bag-stagebar"><div class="ps-bag-view-controls" role="group" aria-label="Label preview"><button type="button" data-bag-view="label" aria-pressed="'+(view==="label")+'">One label</button><button type="button" data-bag-view="sheet" aria-pressed="'+(view==="sheet")+'">Full sheet</button></div>'+zoomControl()+'<button id="psPrintNow" type="button" class="primary-action">Print this preview</button></div><div class="ps-bag-viewport"><div id="psBagPreviewPaper"><div class="ps-bag-paper-inner">'+content+'</div></div></div><div class="ps-bag-preview-footer"><p id="psBagFit" role="status">'+output.labelCount+' labels · '+output.pageCount+' sheet'+(output.pageCount===1?"":"s")+' · Content fits'+(job.autoFitCount?' · '+job.autoFitCount+' product'+(job.autoFitCount===1?'':'s')+' adjusted automatically':'')+'</p><div class="ps-bag-pagination"'+(view!=="sheet"||pages.length<2?' hidden':'')+'><button id="psBagPrev" type="button" aria-label="Previous sheet"'+(pageNumber===0?' disabled':'')+'>←</button><span>Sheet '+(pageNumber+1)+' of '+pages.length+'</span><button id="psBagNext" type="button" aria-label="Next sheet"'+(pageNumber===pages.length-1?' disabled':'')+'>→</button></div></div>';
+      $("psBagZoom").addEventListener("change", event => {
+        previewZoom[view] = Number(event.target.value);
+        scalePreview();
+      });
       $("psPrintNow").addEventListener("click",print);
       $("psPrintPreview").querySelectorAll("[data-bag-view]").forEach(button=>button.addEventListener("click",()=>{view=button.dataset.bagView;renderPreview();}));
       $("psBagPrev").addEventListener("click",()=>{pageNumber--;renderPreview();});$("psBagNext").addEventListener("click",()=>{pageNumber++;renderPreview();});scalePreview();
@@ -322,23 +462,23 @@
       if (!ready || !isCurrent(ready.identity,ready.revision) || !ready.frame.isConnected) return;
       try {
         const frame=ready.frame,resources=ready.resources,fit=renderer.inspectOverflow(frame.contentDocument);
-        if(!fit.ok)throw new Error("Label content changed. Select Preview layout to check it again.");
-        frame.contentWindow.addEventListener("afterprint",()=>{frame.remove();frames.delete(frame);host.frames.delete(frame);if(ready?.frame===frame)invalidate("Print dialog closed · Select Preview layout to print again.");else releaseResources(resources);},{once:true});
+        if(!fit.ok)throw new Error("The label content changed. Refresh the preview to check it again.");
+        frame.contentWindow.addEventListener("afterprint",()=>{frame.remove();frames.delete(frame);host.frames.delete(frame);if(ready?.frame===frame)requestPreview();else releaseResources(resources);},{once:true});
         frame.contentWindow.focus();frame.contentWindow.print();
-      } catch(error) {invalidate("Printing could not start. Select Preview layout and try again.");recordError(error,"LABEL_PRINT");host.status("Printing could not start. The error details are kept below.","error");}
+      } catch(error) {requestPreview();recordError(error,"LABEL_PRINT");host.status("Printing could not start. The error details are kept below.","error");}
     }
     $("psPrintProductList").addEventListener("change",event=>{
       if (!host.allowed()) return;
       const input=event.target.closest("[data-print-product]");
       if (!input || !available.some(p=>productKey(p)===input.dataset.printProduct)) return;
       if (input.checked) excluded().delete(input.dataset.printProduct); else excluded().add(input.dataset.printProduct);
-      invalidate("Product selection changed · Select Preview layout."); chooseProducts();
+      chooseProducts(); requestPreview();
     });
     $("psPrintProductSearch").addEventListener("input",()=>{if(host.allowed())renderSelection();});
-    $("psPrintSelectAll").addEventListener("click",()=>{if(!host.allowed())return;excluded().clear();invalidate("All products selected · Select Preview layout.");chooseProducts();});
-    $("psPrintSelectNone").addEventListener("click",()=>{if(!host.allowed())return;available.forEach(p=>excluded().add(productKey(p)));invalidate("Select the products you want to print.");chooseProducts();});
+    $("psPrintSelectAll").addEventListener("click",()=>{if(!host.allowed())return;excluded().clear();chooseProducts();requestPreview();});
+    $("psPrintSelectNone").addEventListener("click",()=>{if(!host.allowed())return;available.forEach(p=>excluded().add(productKey(p)));chooseProducts();requestPreview();});
     for (const [id,copies] of [["psBagOneEach",1],["psBagFullSheet",10]]) $(id).addEventListener("click",()=>{
-      if(!host.allowed())return;products.forEach(p=>{draftFor(p).copies=copies;});invalidate("Label quantities changed · Select Preview layout.");loadEditor();updateQuantities();
+      if(!host.allowed())return;products.forEach(p=>{draftFor(p).copies=copies;});requestPreview();loadEditor();updateQuantities();
     });
     $("psPrintDismissError").addEventListener("click",clearErrors);
     $("psPrintCopyError").addEventListener("click",async()=>{
@@ -348,15 +488,19 @@
       catch {if(host.valid(identity)){$("psPrintCopyStatus").textContent="Select and copy the details below. Your browser could not copy them automatically.";const range=document.createRange();range.selectNodeContents($("psPrintErrorDetails"));const selection=window.getSelection();selection?.removeAllRanges();selection?.addRange(range);}}
     });
     $("psBagProduct").addEventListener("change",()=>{active=$("psBagProduct").value;uploadRevision++;loadEditor();renderPreview();});
-    Object.entries(fields).forEach(([id,field])=>$(id).addEventListener("input",()=>{if(!host.allowed()||!current())return;current()[field]=$(id).value;current().dirty.add(field);invalidate();}));
-    $("psBagCopies").addEventListener("input",()=>{if(host.allowed()&&current()){current().copies=Number($("psBagCopies").value);invalidate();updateQuantities();}});
-    $("psBagLogoMode").addEventListener("change",()=>{if(current()){current().logoMode=$("psBagLogoMode").value;current().logoChoice="";uploadRevision++;invalidate();logoOptions();}});
-    $("psBagLogoChoice").addEventListener("change",()=>{if(current()){current().logoChoice=$("psBagLogoChoice").value;invalidate();logoOptions();}});
+    Object.entries(fields).forEach(([id,field])=>$(id).addEventListener("input",()=>{if(!host.allowed()||!current())return;current()[field]=$(id).value;current().dirty.add(field);requestPreview();}));
+    $("psBagCopies").addEventListener("input",()=>{if(host.allowed()&&current()){current().copies=Number($("psBagCopies").value);requestPreview();updateQuantities();}});
+    $("psBagLogoMode").addEventListener("change",()=>{if(current()){current().logoMode=$("psBagLogoMode").value;current().logoChoice="";uploadRevision++;requestPreview();logoOptions();}});
+    $("psBagLogoChoice").addEventListener("change",()=>{if(current()){current().logoChoice=$("psBagLogoChoice").value;requestPreview();logoOptions();}});
     $("psBagLogoFile").addEventListener("change",event=>upload(event.target.files[0]));
-    $("psBagClearLogo").addEventListener("click",()=>{if(current()){uploadRevision++;current().customLogo=null;$("psBagLogoFile").value="";invalidate();logoOptions();}});
-    $("psBagReset").addEventListener("click",()=>{const p=products.find(p=>productKey(p)===active);if(p){uploadRevision++;drafts.delete(active);draftFor(p);invalidate();loadEditor();updateQuantities();}});
-    ["psBagStart","psBagShowMf","psBagShowApn","psBagShowSupc","psBagShowItem","psBagTextSize"].forEach(id=>$(id).addEventListener("change",()=>invalidate()));
-    ["psPrintFormat","psPrintLogo","psPrintHeading","psPrintCopies"].forEach(id=>$(id).addEventListener(id==="psPrintHeading"||id==="psPrintCopies"?"input":"change",()=>{invalidate();sync();}));
+    $("psBagBrowseLogos").addEventListener("click",browseLogos);
+    $("psBagUploadLogo").addEventListener("click",()=>{if(host.allowed() && current()) $("psBagLogoFile").click();});
+    $("psBagClearLogo").addEventListener("click",()=>{if(current()){uploadRevision++;current().customLogo=null;$("psBagLogoFile").value="";requestPreview();logoOptions();}});
+    $("psBagReset").addEventListener("click",()=>{const p=products.find(p=>productKey(p)===active);if(p){uploadRevision++;drafts.delete(active);draftFor(p);requestPreview();loadEditor();updateQuantities();}});
+    $("psBagStart").addEventListener("change",()=>{view="sheet";pageNumber=0;requestPreview();});
+    ["psBagShowMf","psBagShowApn","psBagShowSupc","psBagShowItem","psBagTextSize"].forEach(id=>$(id).addEventListener("change",()=>requestPreview()));
+    $("psPrintFormat").addEventListener("change",sync);
+    ["psPrintLogo","psPrintHeading","psPrintCopies"].forEach(id=>$(id).addEventListener(id==="psPrintLogo"?"change":"input",()=>requestPreview()));
     new ResizeObserver(scalePreview).observe($("psPrintPreview"));
     return Object.freeze({sync,clear,invalidate,prepare,recordError,clearErrors,getProducts:()=>host.allowed()?products.slice():[],getRevision:()=>revision});
   }
